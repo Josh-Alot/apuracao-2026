@@ -62,16 +62,19 @@ async function mapa(q) {
   const mun = q.get('mun');
   const base = { eleicao: c.eleicao, cargo: c.cargo };
 
+  // Para colorir o mapa basta o líder: com todas as seções totalizadas ele não muda mais.
+  const opcoes = { ttlCompletoMs: 30 * 60_000 };
+
   if (u === 'br') {
     const ufs = c.ufs;
-    const rs = await getResultadosRapidos(ufs.map((x) => ({ ...base, uf: x })), 30_000, PRIORIDADE.media);
+    const rs = await getResultadosRapidos(ufs.map((x) => ({ ...base, uf: x })), 30_000, PRIORIDADE.media, opcoes);
     return Object.fromEntries(ufs.map((x, i) => [x, resumo(rs[i])]));
   }
 
   const municipios = (await getMunicipios(c.eleicao))?.[u]?.municipios ?? [];
   if (mun) {
     const zonas = municipios.find((m) => m.cd === mun)?.zonas ?? [];
-    const rs = await getResultadosRapidos(zonas.map((z) => ({ ...base, uf: u, mun, zona: z })), 60_000, PRIORIDADE.baixa);
+    const rs = await getResultadosRapidos(zonas.map((z) => ({ ...base, uf: u, mun, zona: z })), 60_000, PRIORIDADE.baixa, opcoes);
     return Object.fromEntries(zonas.map((z, i) => [z, resumo(rs[i])]));
   }
 
@@ -81,7 +84,7 @@ async function mapa(q) {
 
   // Um arquivo por município (853 em MG): entram na fila com prioridade baixa e o mapa vai se
   // completando a cada atualização, em vez de disparar centenas de consultas de uma vez.
-  const rs = await getResultadosRapidos(municipios.map((m) => ({ ...base, uf: u, mun: m.cd })), 3 * 60_000, PRIORIDADE.baixa);
+  const rs = await getResultadosRapidos(municipios.map((m) => ({ ...base, uf: u, mun: m.cd })), 3 * 60_000, PRIORIDADE.baixa, opcoes);
   return Object.fromEntries(municipios.map((m, i) => [m.cd, resumo(rs[i])]));
 }
 

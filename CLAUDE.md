@@ -124,6 +124,13 @@ bens); rode `npm run candidatos` de novo e faça commit. A API DivulgaCandContas
   mapa é consultado a cada 30 s; desligado, resultados a cada 30 s e mapa a cada 60 s (`ATUALIZA_*_MS` em `App.tsx`);
   o servidor guarda cache de 20 s (UF/BR), 45 s (zonas) e 60 s (municípios). O TSE não tem intervalo
   fixo — publica conforme as urnas são totalizadas. Se mudar os intervalos, os avisos se ajustam sozinhos.
+- O Akamai do TSE guarda cada arquivo por ~60 s (`cache-control: max-age` com o tempo que falta, fase
+  própria por arquivo): o cache do servidor vale no mínimo até lá (`vale()` em `tse.mjs`), então o "ao vivo"
+  de 5 s vai ao TSE ~1x por minuto por arquivo. Vencido, a consulta é condicional (`If-None-Match` → 304 sem
+  corpo). O resultado normalizado fica junto do JSON no cache (`deRaw`) e só é refeito quando o JSON muda.
+- Mapas: região com 100% das seções totalizadas renova a cada 30 min (`ttlCompletoMs`), já que o líder não
+  muda mais. A fila baixa (municípios, zonas, busca) atende o pedido mais recente primeiro e um pedido
+  repetido volta para o fim; o que ninguém pede mais afunda e é descartado quando a fila enche.
 - Antes do fechamento das urnas (17h de Brasília) o TSE não divulga nada (nem o exterior): o servidor busca
   cada arquivo de resultado no máximo uma vez e guarda até o fechamento (`fimDaVotacao` + `validoAte` no
   `fetchJson`), e o front não abre "ao vivo" nem polling (`apuracaoAberta` no `App.tsx`); às 17h liga sozinho.

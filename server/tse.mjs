@@ -38,23 +38,56 @@ export const UFS = [
 // milhares de arquivos de município e estoura os 512 MB do Render gratuito (o processo trava e o
 // health check falha). Em memória o JSON ocupa ~6x o tamanho do texto: 40 MB de texto ≈ 250 MB.
 const CACHE_MAX_BYTES = Number(process.env.CACHE_MB || 40) * 1024 * 1024;
-const cache = new Map(); // url -> { ts, data, bytes } (ordem de inserção = do menos ao mais recente)
+// url -> { ts, data, bytes, expira, etag, modificado, norm, normBytes }
+// (ordem de inserção = do menos ao mais recente; `norm` = resultado já normalizado, ver deRaw)
+const cache = new Map();
 let cacheBytes = 0;
 const inflight = new Map(); // url -> Promise
 
-function guardar(url, data, bytes) {
-  const antigo = cache.get(url);
-  if (antigo) {
-    cacheBytes -= antigo.bytes;
-    cache.delete(url);
-  }
-  cache.set(url, { ts: Date.now(), data, bytes });
-  cacheBytes += bytes;
+const pesoDe = (e) => e.bytes + (e.normBytes || 0);
+
+function aparar() {
   for (const [u, e] of cache) {
     if (cacheBytes <= CACHE_MAX_BYTES) break;
     cache.delete(u);
-    cacheBytes -= e.bytes;
+    cacheBytes -= pesoDe(e);
   }
+}
+
+/** Guarda no cache. `meta` traz validade e validadores HTTP (expira, etag, modificado). */
+function guardar(url, data, bytes, meta = {}) {
+  const antigo = cache.get(url);
+  if (antigo) {
+    cacheBytes -= pesoDe(antigo);
+    cache.delete(url);
+  }
+  const e = { ts: Date.now(), data, bytes, ...meta };
+  // Mesmo JSON (resposta 304): aproveita a normalização já feita.
+  if (antigo && antigo.data === data && antigo.norm) {
+    e.norm = antigo.norm;
+    e.normBytes = antigo.normBytes;
+  }
+  cache.set(url, e);
+  cacheBytes += pesoDe(e);
+  aparar();
+}
+
+// O Akamai do TSE guarda cada arquivo por ~60 s e informa quanto falta em `cache-control: max-age`.
+// Antes disso, consultar de novo só devolve o mesmo arquivo — e gasta a cota da fila.
+const MAX_AGE_TETO_S = 300;
+function metaHttp(res, antigo) {
+  const maxAge = Number(/max-age=(\d+)/.exec(res.headers.get('cache-control') || '')?.[1]);
+  return {
+    expira: maxAge > 0 ? Date.now() + Math.min(maxAge, MAX_AGE_TETO_S) * 1000 : 0,
+    etag: res.headers.get('etag') || antigo?.etag || null,
+    modificado: res.headers.get('last-modified') || antigo?.modificado || null,
+  };
+}
+
+/** O dado em cache ainda vale: pelo TTL pedido, até `validoAte` ou enquanto o Akamai não renova. */
+function vale(hit, ttlMs, validoAte = 0) {
+  const agora = Date.now();
+  return agora - hit.ts < ttlMs || agora < validoAte || agora < (hit.expira || 0);
 }
 
 function lerCache(url) {
@@ -98,7 +131,10 @@ const RPS_MIN = 0.5;
 let rps = RPS_MAX;
 let ultimoDisparo = 0;
 let ultimo429 = 0;
-const filas = [[], [], []]; // por prioridade: { url, liberar(ok) }
+// Por prioridade: { url, liberar(ok) }. A baixa é atendida do fim (o pedido mais recente primeiro):
+// quem está olhando um mapa pede de novo a cada atualização e volta para o fim; pedidos de mapas
+// que ninguém olha mais afundam e são descartados quando a fila enche.
+const filas = [[], [], []];
 const naFila = new Map(); // url -> { item, prioridade }
 const MAX_FILA_BAIXA = 3000; // acima disso descarta os pedidos mais antigos de baixa prioridade
 let timerFila = null;
@@ -111,7 +147,7 @@ function agendarFila() {
     if (Date.now() < pausaAte) return agendarFila();
     const fila = filas.find((f) => f.length);
     if (fila) {
-      const item = fila.shift();
+      const item = fila === filas[PRIORIDADE.baixa] ? fila.pop() : fila.shift();
       naFila.delete(item.url);
       ultimoDisparo = Date.now();
       item.liberar(true);
@@ -135,10 +171,14 @@ function aguardarVez(url, prioridade) {
   });
 }
 
-/** Se alguém mais importante pede uma URL que já está na fila, ela sobe de prioridade. */
+/**
+ * Pedido repetido de uma URL que já está na fila: sobe de prioridade se quem pede é mais
+ * importante; na fila baixa, volta para o fim (é atendida antes, por ainda ter alguém olhando).
+ */
 function promover(url, prioridade) {
   const f = naFila.get(url);
-  if (!f || f.prioridade <= prioridade) return;
+  if (!f || f.prioridade < prioridade) return;
+  if (f.prioridade === prioridade && prioridade !== PRIORIDADE.baixa) return;
   const fila = filas[f.prioridade];
   fila.splice(fila.indexOf(f.item), 1);
   filas[prioridade].push(f.item);
@@ -165,7 +205,7 @@ export function estadoFila() {
  */
 export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDADE.alta) {
   const hit = lerCache(url);
-  if (hit && (Date.now() - hit.ts < ttlMs || Date.now() < validoAte)) return hit.data;
+  if (hit && vale(hit, ttlMs, validoAte)) return hit.data;
   if (inflight.has(url)) {
     promover(url, prioridade);
     return inflight.get(url);
@@ -182,7 +222,21 @@ export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDA
       if (doTse && !(await aguardarVez(url, prioridade))) {
         throw new ErroTse('Consulta ao TSE descartada (fila cheia)');
       }
-      const res = await fetch(url, { headers: { 'user-agent': 'apuracao-2026/0.1' } });
+      // Requisição condicional: se o arquivo não mudou, o TSE responde 304 sem corpo e o JSON
+      // (e a normalização) em cache continuam valendo.
+      const headers = { 'user-agent': 'apuracao-2026/0.1' };
+      if (hit?.data && hit.etag) headers['if-none-match'] = hit.etag;
+      else if (hit?.data && hit.modificado) headers['if-modified-since'] = hit.modificado;
+      const res = await fetch(url, { headers });
+      if (res.status === 304 && hit?.data) {
+        guardar(url, hit.data, hit.bytes, metaHttp(res, hit));
+        falhaAte.delete(url);
+        if (doTse) {
+          pausaMs = 0;
+          ajustarTaxa(false);
+        }
+        return hit.data;
+      }
       if (res.status === 404 || res.status === 403) {
         guardar(url, null, 0);
         return null;
@@ -195,7 +249,7 @@ export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDA
       if (!res.ok) throw new ErroTse(`HTTP ${res.status} em ${url}`, 502);
       const texto = await res.text();
       const data = JSON.parse(texto);
-      guardar(url, data, texto.length);
+      guardar(url, data, texto.length, metaHttp(res));
       falhaAte.delete(url);
       if (doTse) {
         pausaMs = 0;
@@ -266,8 +320,12 @@ async function configTse() {
   return configReserva;
 }
 
+// getConfig() é chamada em quase toda requisição: só remonta quando o ele-c.json muda.
+let configMemo = { raw: null, cfg: null };
+
 export async function getConfig() {
   const raw = await configTse();
+  if (configMemo.raw === raw) return configMemo.cfg;
   const cargos = [];
   for (const pl of raw.pl.filter((p) => p.c === CICLO)) {
     for (const e of pl.e) {
@@ -308,7 +366,9 @@ export async function getConfig() {
   }
   const ordem = ['1', '3', '5', '6', '7', '8'];
   cargos.sort((a, b) => a.turno - b.turno || ordem.indexOf(a.cargo) - ordem.indexOf(b.cargo));
-  return { ciclo: CICLO, demo: DEMO, cargos };
+  const cfg = { ciclo: CICLO, demo: DEMO, cargos };
+  configMemo = { raw, cfg };
+  return cfg;
 }
 
 export async function getMunicipios(eleicao) {
@@ -370,7 +430,8 @@ async function fimDaVotacao(eleicao) {
 }
 
 export async function getResultado(params, ttlMs = 20_000, prioridade = PRIORIDADE.alta) {
-  const r = deRaw(await fetchJson(resultadoUrl(params), ttlMs, await fimDaVotacao(params.eleicao), prioridade), params);
+  const url = resultadoUrl(params);
+  const r = deRaw(await fetchJson(url, ttlMs, await fimDaVotacao(params.eleicao), prioridade), params, url);
   // Abaixo da abrangência da disputa (município, zona, UF do Presidente), "matematicamente eleito/2º turno"
   // vem do arquivo da disputa — que é o mesmo para todos, fica em cache e já é o mais consultado.
   if (r && (params.mun || params.zona || escopoDaDisputa(params.cargo) !== (params.uf === 'br' ? 'br' : 'uf'))) {
@@ -382,10 +443,27 @@ export async function getResultado(params, ttlMs = 20_000, prioridade = PRIORIDA
   return r;
 }
 
-function deRaw(raw, params) {
+/**
+ * Resultado normalizado, guardado junto do JSON no cache: o mapa estadual lê centenas de arquivos
+ * a cada atualização e o "ao vivo" relê o mesmo a cada 5 s — normalizar de novo só quando o JSON muda.
+ * O normalizado conta no limite do cache (estimado em metade do tamanho do texto).
+ */
+function deRaw(raw, params, url) {
   if (!raw || !raw.carg?.length) return null;
-  return normalizar(DEMO ? applyDemo(raw) : raw, params);
+  if (DEMO) return normalizar(applyDemo(raw), params); // a demo muda com o tempo
+  const e = cache.get(url);
+  if (e?.data !== raw) return normalizar(raw, params);
+  if (!e.norm) {
+    e.norm = normalizar(raw, params);
+    e.normBytes = e.bytes >> 1;
+    cacheBytes += e.normBytes;
+    aparar();
+  }
+  return e.norm;
 }
+
+/** Todas as seções totalizadas: o líder não muda mais (o mapa pode renovar bem devagar). */
+const apuracaoCompleta = (raw) => !DEMO && pct(raw?.s?.pst) >= 100;
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -395,14 +473,17 @@ const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
  * vencido), null se o TSE não tem o arquivo, ou undefined se ainda não chegou (segue na fila e
  * entra na próxima atualização).
  */
-export async function getResultadosRapidos(lista, ttlMs, prioridade, esperaMs = 4_000) {
+export async function getResultadosRapidos(lista, ttlMs, prioridade, { esperaMs = 4_000, ttlCompletoMs = ttlMs } = {}) {
   const fim = await fimDaVotacao(lista[0]?.eleicao);
-  const pendentes = lista.map((params) =>
-    fetchJson(resultadoUrl(params), ttlMs, fim, prioridade).catch(() => undefined));
+  const urls = lista.map(resultadoUrl);
+  const pendentes = urls.map((url) => {
+    const ttl = apuracaoCompleta(cache.get(url)?.data) ? Math.max(ttlMs, ttlCompletoMs) : ttlMs;
+    return fetchJson(url, ttl, fim, prioridade).catch(() => undefined);
+  });
   await Promise.race([Promise.allSettled(pendentes), dormir(esperaMs)]);
-  return lista.map((params) => {
-    const hit = cache.get(resultadoUrl(params));
-    return hit ? deRaw(hit.data, params) : undefined;
+  return lista.map((params, i) => {
+    const hit = cache.get(urls[i]);
+    return hit ? deRaw(hit.data, params, urls[i]) : undefined;
   });
 }
 
@@ -460,7 +541,10 @@ function situacaoMatematica(raw, candidatos, grupos) {
     const teto = validos + subJudice + faltam;
     const qeMax = Math.ceil(teto / vagas) + 1; // o TSE arredonda o QE; +1 cobre o arredondamento
     const doGrupo = new Map(); // agremiação → índices dos candidatos
-    grupos.agrDe.forEach((agr, i) => doGrupo.set(agr, [...(doGrupo.get(agr) ?? []), i]));
+    grupos.agrDe.forEach((agr, i) => {
+      if (!doGrupo.has(agr)) doGrupo.set(agr, []);
+      doGrupo.get(agr).push(i);
+    });
     candidatos.forEach((c, i) => {
       if (!podeSerEleito(c) || c.votos < 0.1 * qeMax) return; // mínimo de 10% do QE
       const agr = grupos.agrDe[i];

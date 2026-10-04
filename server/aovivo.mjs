@@ -17,7 +17,8 @@ async function verificar(chave) {
   const v = vigias.get(chave);
   if (!v) return;
   try {
-    // TTL um pouco menor que o intervalo: cada verificação vai de fato ao TSE.
+    // TTL um pouco menor que o intervalo; mesmo assim, enquanto o Akamai do TSE não renova o arquivo
+    // (max-age, ~60 s), a verificação usa o cache — consultar antes só traria o mesmo arquivo.
     const r = await getResultado(v.params, VERIFICA_MS - 500);
     const corpo = r ? JSON.stringify(r) : null;
     const agora = Date.now();
