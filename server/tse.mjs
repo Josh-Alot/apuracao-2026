@@ -1,6 +1,7 @@
 // Cliente da API pública de divulgação de resultados do TSE (resultados.tse.jus.br).
 // O TSE não envia cabeçalhos CORS, por isso todo acesso passa por este servidor.
 
+import { readFile } from 'node:fs/promises';
 import { applyDemo, demoProgresso } from './demo.mjs';
 
 export const TSE_BASE = 'https://resultados.tse.jus.br/oficial';
@@ -36,11 +37,39 @@ export const UFS = [
 const cache = new Map(); // url -> { ts, data }
 const inflight = new Map(); // url -> Promise
 
+/** Erro de consulta ao TSE que já foi registrado no log de forma resumida (sem pilha). */
+export class ErroTse extends Error {
+  constructor(msg, status = 503) { super(msg); this.status = status; this.silencioso = true; }
+}
+
+// O TSE limita requisições por IP (HTTP 429). No Render o IP de saída é compartilhado com outros
+// serviços, então o limite pode estourar sem culpa nossa. Ao receber 429, TODAS as consultas ao TSE
+// param por um tempo (Retry-After / x-ratelimit-reset, dobrando a cada 429 seguido, até 60 s):
+// quem tem dado em cache recebe o dado antigo; quem não tem recebe 503 sem bater no TSE.
+let pausaAte = 0;
+let pausaMs = 0;
+// Outras falhas (5xx, rede) pausam só aquela URL por alguns segundos.
+const falhaAte = new Map(); // url -> ms
+const FALHA_MS = 5_000;
+
+function pausarTse(res) {
+  const pedido = Number(res.headers.get('retry-after') || res.headers.get('x-ratelimit-reset')) * 1000;
+  pausaMs = Math.min(60_000, Math.max(pedido || 0, pausaMs ? pausaMs * 2 : 2_000));
+  pausaAte = Date.now() + pausaMs;
+  console.warn(`TSE respondeu 429: consultas pausadas por ${pausaMs / 1000} s`);
+}
+
 /** Busca JSON com cache: vale por `ttlMs` ou, se informado, até o instante `validoAte` (ms). */
 export async function fetchJson(url, ttlMs, validoAte = 0) {
   const hit = cache.get(url);
   if (hit && (Date.now() - hit.ts < ttlMs || Date.now() < validoAte)) return hit.data;
   if (inflight.has(url)) return inflight.get(url);
+  const doTse = url.startsWith(TSE_BASE);
+  const espera = Math.max(doTse ? pausaAte : 0, falhaAte.get(url) ?? 0) - Date.now();
+  if (espera > 0) {
+    if (hit) return hit.data;
+    throw new ErroTse(`Consulta ao ${doTse ? 'TSE' : 'serviço externo'} pausada após falha; nova tentativa em ${Math.ceil(espera / 1000)} s`);
+  }
 
   const p = (async () => {
     try {
@@ -49,13 +78,23 @@ export async function fetchJson(url, ttlMs, validoAte = 0) {
         cache.set(url, { ts: Date.now(), data: null });
         return null;
       }
-      if (!res.ok) throw new Error(`HTTP ${res.status} em ${url}`);
+      if (res.status === 429 && doTse) {
+        pausarTse(res);
+        throw new ErroTse('TSE limitou as consultas (HTTP 429); tentando de novo em instantes');
+      }
+      if (!res.ok) throw new ErroTse(`HTTP ${res.status} em ${url}`, 502);
       const data = await res.json();
       cache.set(url, { ts: Date.now(), data });
+      falhaAte.delete(url);
+      if (doTse) pausaMs = 0;
       return data;
     } catch (err) {
+      if (!(err instanceof ErroTse) || err.status === 502) {
+        falhaAte.set(url, Date.now() + FALHA_MS);
+        if (!(err instanceof ErroTse)) console.warn(`Falha ao consultar ${url}: ${err.message}`);
+      }
       if (hit) return hit.data; // devolve dado antigo se o TSE oscilar
-      throw err;
+      throw err instanceof ErroTse ? err : new ErroTse(`Falha ao consultar o TSE: ${err.message}`, 502);
     } finally {
       inflight.delete(url);
     }
@@ -99,8 +138,22 @@ export function fotoUrl(eleicao, uf, sqcand) {
 
 // ---------- configuração ----------
 
+// Cópia do ele-c.json guardada no repositório: sem ela, um 429 logo após reiniciar (cache vazio)
+// derrubaria todas as rotas, já que todas dependem da configuração.
+const CONFIG_RESERVA = new URL('../dados/ele-c.json', import.meta.url);
+let configReserva = null;
+
+async function configTse() {
+  try {
+    const raw = await fetchJson(`${TSE_BASE}/comum/config/ele-c.json`, 5 * 60_000);
+    if (raw) return raw;
+  } catch { /* usa a cópia local abaixo */ }
+  configReserva ??= readFile(CONFIG_RESERVA, 'utf8').then(JSON.parse);
+  return configReserva;
+}
+
 export async function getConfig() {
-  const raw = await fetchJson(`${TSE_BASE}/comum/config/ele-c.json`, 5 * 60_000);
+  const raw = await configTse();
   const cargos = [];
   for (const pl of raw.pl.filter((p) => p.c === CICLO)) {
     for (const e of pl.e) {

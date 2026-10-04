@@ -237,7 +237,7 @@ const server = http.createServer(async (req, res) => {
     return estatico(res, url.pathname);
   } catch (err) {
     const status = err.status || 502;
-    if (status >= 500) console.error(err);
+    if (status >= 500 && !err.silencioso) console.error(err); // falhas do TSE já saem resumidas no log
     return json(status, { erro: err.message });
   }
 });
