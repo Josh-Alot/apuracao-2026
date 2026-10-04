@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import type { Cargo } from '../types';
 
-export type FaseVotacao = 'antes' | 'votando' | 'aguardando' | 'apurando';
+export type FaseVotacao = 'antes' | 'votando' | 'aguardando' | 'indisponivel' | 'apurando';
 
-/** Em que momento da eleição estamos, pelo relógio e pelo % já apurado. */
-export function faseVotacao(cargo: Cargo, agora: number, pctApurado: number | null): FaseVotacao {
+/**
+ * Em que momento da eleição estamos, pelo relógio e pelo % já apurado.
+ * `tseIndisponivel`: depois do fechamento, nenhum dado chegou porque a consulta ao TSE falhou.
+ */
+export function faseVotacao(cargo: Cargo, agora: number, pctApurado: number | null, tseIndisponivel = false): FaseVotacao {
   if (!cargo.abertura || !cargo.encerramento) return 'apurando';
   if (agora < Date.parse(cargo.abertura)) return 'antes';
   if (agora < Date.parse(cargo.encerramento)) return 'votando';
-  return pctApurado ? 'apurando' : 'aguardando';
+  if (pctApurado) return 'apurando';
+  return tseIndisponivel ? 'indisponivel' : 'aguardando';
 }
 
 /** Relógio que só "anda" enquanto `ativo` (atualiza a cada 15 s — a contagem é em minutos). */
@@ -75,6 +79,15 @@ export function AvisoVotacao({ cargo, fase, agora }: Props) {
           <strong>Urnas fechadas.</strong>
           <span>
             Aguardando os primeiros boletins do TSE; esta página se atualiza sozinha assim que a apuração começar.
+          </span>
+        </>
+      )}
+      {fase === 'indisponivel' && (
+        <>
+          <strong>TSE indisponível no momento.</strong>
+          <span>
+            O site de resultados do TSE não respondeu às últimas consultas (costuma ser sobrecarga passageira).
+            Os números aparecem aqui assim que ele voltar — não é preciso recarregar a página.
           </span>
         </>
       )}

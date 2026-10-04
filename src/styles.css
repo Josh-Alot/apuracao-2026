@@ -571,6 +571,8 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
   background: color-mix(in srgb, var(--ao-vivo) 8%, transparent);
 }
 :root .aviso-votacao strong { font-family: var(--fonte-titulo); font-size: 1.25rem; color: var(--ao-vivo); }
+:root .aviso-indisponivel { border-left-color: var(--erro); background: color-mix(in srgb, var(--erro) 8%, transparent); }
+:root .aviso-indisponivel strong { color: var(--erro); }
 
 /* ---------- situação do candidato ---------- */
 .selo-2turno { color: var(--ao-vivo); }

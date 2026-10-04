@@ -95,11 +95,14 @@ export default function App() {
   );
 
   // Fase da eleição (antes / votando / aguardando boletins / apurando) para o aviso do topo.
-  const pctApurado = resultado.data?.secoes.pct ?? Math.max(
-    0, ...Object.values((uf ? mapaUf.data : mapaBr.data) ?? {}).map((x) => x?.pctApurado ?? 0),
-  );
-  const temDadoApuracao = !!(resultado.data || (uf ? mapaUf.data : mapaBr.data));
-  const fase = cargo ? faseVotacao(cargo, agora, temDadoApuracao ? pctApurado : null) : 'apurando';
+  const mapaAtual = uf ? mapaUf : mapaBr;
+  // O mapa devolve null nas regiões cuja consulta ao TSE falhou: só contam as que vieram.
+  const regioesComDado = Object.values(mapaAtual.data ?? {}).filter((x) => x != null);
+  const pctApurado = resultado.data?.secoes.pct ?? Math.max(0, ...regioesComDado.map((x) => x.pctApurado ?? 0));
+  const temDadoApuracao = !!(resultado.data || regioesComDado.length);
+  // Sem nenhum dado e com erro na consulta: o TSE não respondeu (429, fora do ar), não é falta de boletim.
+  const tseIndisponivel = !temDadoApuracao && !!(resultado.erro || mapaAtual.erro || Object.keys(mapaAtual.data ?? {}).length);
+  const fase = cargo ? faseVotacao(cargo, agora, temDadoApuracao ? pctApurado : null, tseIndisponivel) : 'apurando';
 
   const munsUf = useMemo(() => (uf && municipios?.[uf]?.municipios) || [], [uf, municipios]);
   const porIbge = useMemo(() => new Map(munsUf.filter((m) => m.ibge).map((m) => [m.ibge!, m])), [munsUf]);
