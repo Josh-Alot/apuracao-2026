@@ -339,12 +339,27 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
     color: var(--muted);
   }
   .ao-vivo { color: var(--ao-vivo); font-weight: 700; }
-  .botao-tema {
+  /* Switch claro/escuro: trilho com ☀ e ☾ nas pontas e uma bolinha que desliza por cima */
+  .switch-tema {
+    display: inline-flex; align-items: center; gap: 8px;
     border: 0; background: none; padding: 0; color: inherit;
     font: inherit; text-transform: inherit; letter-spacing: inherit;
-    text-decoration: underline; text-underline-offset: 3px;
   }
-  .botao-tema:hover { color: var(--texto); }
+  .switch-tema-trilho {
+    position: relative; display: inline-flex; align-items: center; justify-content: space-between;
+    width: 40px; height: 20px; padding: 0 4px; border-radius: 99px;
+    border: 1px solid var(--texto); background: var(--destaque-suave);
+    color: var(--muted);
+  }
+  .switch-tema-bolinha {
+    position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--texto); transition: transform 0.2s ease;
+  }
+  .switch-tema[aria-checked='true'] .switch-tema-bolinha { transform: translateX(20px); }
+  .switch-tema:hover .switch-tema-trilho { background: var(--borda); }
+  .switch-tema:focus-visible { outline: none; }
+  .switch-tema:focus-visible .switch-tema-trilho { outline: 2px solid var(--ao-vivo); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .switch-tema-bolinha { transition: none; } }
   .ao-vivo::before {
     content: '';
     display: inline-block;

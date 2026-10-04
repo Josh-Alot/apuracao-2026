@@ -11,7 +11,7 @@ function temaAtual(): Tema {
   return escuroNoSistema() ? 'escuro' : 'claro';
 }
 
-/** Alterna entre claro e escuro. Sem escolha salva, o tema segue o do sistema. */
+/** Switch claro/escuro. Sem escolha salva, o tema segue o do sistema. */
 export function BotaoTema() {
   const [tema, setTema] = useState<Tema>(temaAtual);
 
@@ -36,8 +36,30 @@ export function BotaoTema() {
   };
 
   return (
-    <button type="button" className="botao-tema" onClick={alternar} title="Alternar entre tema claro e escuro">
-      {tema === 'escuro' ? '☀ Tema claro' : '☾ Tema escuro'}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={tema === 'escuro'}
+      aria-label="Tema escuro"
+      className="switch-tema"
+      onClick={alternar}
+      title={tema === 'escuro' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro'}
+    >
+      <span className="switch-tema-trilho" aria-hidden="true">
+        <svg viewBox="0 0 16 16" width="10" height="10">
+          <circle cx="8" cy="8" r="3" fill="currentColor" />
+          <path
+            d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+        </svg>
+        <svg viewBox="0 0 16 16" width="10" height="10">
+          <path d="M10.5 1.5a6.5 6.5 0 1 0 4 11.2A5.5 5.5 0 0 1 10.5 1.5Z" fill="currentColor" />
+        </svg>
+        <span className="switch-tema-bolinha" />
+      </span>
     </button>
   );
 }
