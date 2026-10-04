@@ -8,6 +8,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..800&family=Libre+Franklin:wght@400..800&display=swap" rel="stylesheet" />
     <title>Apuração 2026</title>
+    <script>
+      // Aplica o tema escolhido antes da primeira pintura (sem escolha salva, segue o sistema).
+      try {
+        var tema = localStorage.getItem('tema');
+        if (tema === 'claro' || tema === 'escuro') document.documentElement.dataset.tema = tema;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -10,6 +10,7 @@ import { ListaRegioes } from './components/ListaRegioes';
 import { BarraTopo, EsqueletoPagina } from './components/Carregando';
 import { ProximaAtualizacao } from './components/ProximaAtualizacao';
 import { AvisoVotacao, faseVotacao, useAgora } from './components/AvisoVotacao';
+import { BotaoTema } from './components/BotaoTema';
 
 /** "04/10/2026" → "Domingo, 4 de outubro de 2026" */
 function dataPorExtenso(ddmmaaaa: string) {
@@ -145,6 +146,7 @@ export default function App() {
               : fase === 'antes' ? <span>Votação ainda não começou</span>
               : auto ? <span className="ao-vivo">Ao vivo</span> : <span>Atualização periódica</span>}
             <span>Dados oficiais do TSE</span>
+            <BotaoTema />
           </div>
         </div>
         <BarraBusca cargos={config.cargos} onEscolher={escolherBusca} />

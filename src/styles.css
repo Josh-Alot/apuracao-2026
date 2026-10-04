@@ -19,8 +19,10 @@
   color-scheme: light;
 }
 
+/* Tema escuro: segue o sistema, a menos que o leitor tenha escolhido um tema no botão do topo
+   (atributo data-tema no <html>, aplicado em index.html antes da pintura). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema="claro"]) {
     --bg: #121212;
     --superficie: #121212;
     --texto: #f1ece2;
@@ -33,6 +35,20 @@
     --erro: #ff8a80;
     color-scheme: dark;
   }
+}
+
+:root[data-tema="escuro"] {
+  --bg: #121212;
+  --superficie: #121212;
+  --texto: #f1ece2;
+  --muted: #a39e94;
+  --borda: #34312c;
+  --destaque: #f1ece2;
+  --destaque-suave: #26231f;
+  --sem-dado: #2c2925;
+  --ao-vivo: #f59e0b;
+  --erro: #ff8a80;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -323,6 +339,12 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
     color: var(--muted);
   }
   .ao-vivo { color: var(--ao-vivo); font-weight: 700; }
+  .botao-tema {
+    border: 0; background: none; padding: 0; color: inherit;
+    font: inherit; text-transform: inherit; letter-spacing: inherit;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .botao-tema:hover { color: var(--texto); }
   .ao-vivo::before {
     content: '';
     display: inline-block;
