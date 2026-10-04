@@ -94,11 +94,12 @@ Base: `https://resultados.tse.jus.br/oficial`
 - Campos de progresso: `e.esnt` = eleitores em seções ainda não totalizadas (teto de votos que faltam),
   `v.vansj` = votos anulados sub judice; no proporcional, `par[].tvtn`/`tvtl` = votos nominais/legenda e
   `agr[].vag` = vagas projetadas pelo TSE (não garantidas).
-- "Matematicamente eleito" (`matematicamenteEleito`, `matematicamenteEleitos()` em `tse.mjs`): calculado só
+- "Matematicamente eleito" / "2º turno garantido" (`matematicamente`, `situacaoMatematica()` em `tse.mjs`): calculado só
   no arquivo da disputa (BR p/ Presidente, UF p/ os demais); município/zona/UF do Presidente copiam do
   arquivo da disputa em `getResultado`. Pior caso: todo eleitor que falta vota contra; sub judice conta
-  como válido para os rivais; no proporcional só a vaga por QP (sobras fora). O selo some quando o TSE
-  marca `st` = eleito.
+  como válido para os rivais; no proporcional só a vaga por QP (sobras fora). 2º turno garantido (executivo):
+  ninguém mais alcança a maioria e os 2 rivais mais próximos, juntos, precisariam de mais votos do que
+  faltam. Os selos somem quando o TSE marca `st` (eleito / 2º turno).
 - Não existe arquivo agregado "vencedor por município": o mapa estadual faz 1 requisição por
   município (SP = 645), com concorrência limitada (`mapLimit`) e cache de 60 s. Por isso, cargos
   proporcionais (arquivos de centenas de KB) usam só o `-ab.json` no mapa estadual.

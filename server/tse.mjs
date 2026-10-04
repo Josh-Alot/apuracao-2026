@@ -371,13 +371,13 @@ async function fimDaVotacao(eleicao) {
 
 export async function getResultado(params, ttlMs = 20_000, prioridade = PRIORIDADE.alta) {
   const r = deRaw(await fetchJson(resultadoUrl(params), ttlMs, await fimDaVotacao(params.eleicao), prioridade), params);
-  // Abaixo da abrangência da disputa (município, zona, UF do Presidente), "matematicamente eleito"
+  // Abaixo da abrangência da disputa (município, zona, UF do Presidente), "matematicamente eleito/2º turno"
   // vem do arquivo da disputa — que é o mesmo para todos, fica em cache e já é o mais consultado.
   if (r && (params.mun || params.zona || escopoDaDisputa(params.cargo) !== (params.uf === 'br' ? 'br' : 'uf'))) {
     const disputa = { eleicao: params.eleicao, cargo: params.cargo, uf: escopoDaDisputa(params.cargo) === 'br' ? 'br' : params.uf };
     const geral = await getResultado(disputa, 20_000, prioridade).catch(() => null);
-    const eleitos = new Set(geral?.candidatos.filter((c) => c.matematicamenteEleito).map((c) => c.sq));
-    for (const c of r.candidatos) c.matematicamenteEleito = eleitos.has(c.sq);
+    const situacao = new Map(geral?.candidatos.map((c) => [c.sq, c.matematicamente]));
+    for (const c of r.candidatos) c.matematicamente = situacao.get(c.sq) ?? null;
   }
   return r;
 }
@@ -411,28 +411,45 @@ export async function getResultadosRapidos(lista, ttlMs, prioridade, esperaMs = 
  * votassem contra, o candidato não perde a vaga. Só vale no arquivo da disputa (BR para Presidente,
  * UF para os demais cargos). Conservador de propósito: votos anulados sub judice contam como se
  * fossem validados para os rivais, e no proporcional só entra a vaga pelo quociente partidário
- * (as sobras ficam de fora). Devolve o conjunto de `sqcand`.
+ * (as sobras ficam de fora). No executivo também marca quem já tem o 2º turno garantido.
+ * Devolve Map sqcand → 'eleito' | 'segundo-turno'.
  */
-function matematicamenteEleitos(raw, candidatos, grupos) {
+function situacaoMatematica(raw, candidatos, grupos) {
   const carg = raw.carg[0];
   const faltam = int(raw.e?.esnt);
   const validos = int(raw.v?.vv);
   const subJudice = int(raw.v?.vansj);
   const vagas = int(carg.nv) || 1;
-  const out = new Set();
+  const out = new Map();
   const podeSerEleito = (c) => c.votos > 0 && c.destinoVotos === 'Válido';
 
   if (carg.cd === '1' || carg.cd === '3') {
     // Presidente e Governador: maioria absoluta dos votos válidos no 1º turno.
     const tetoValidos = validos + subJudice + faltam;
-    for (const c of candidatos) if (podeSerEleito(c) && 2 * c.votos > tetoValidos) out.add(c.sq);
+    for (const c of candidatos) if (podeSerEleito(c) && 2 * c.votos > tetoValidos) out.set(c.sq, 'eleito');
+    if (out.size) return out;
+
+    // 2º turno garantido: (1) ninguém mais pode ter maioria — dando a cada um todos os votos que
+    // faltam (que também entram nos válidos); um sub judice validado soma os votos dele aos válidos —
+    // e (2) o candidato fica entre os 2 primeiros: cada eleitor vota uma vez, então os dois rivais
+    // mais próximos precisariam, juntos, de mais votos do que faltam. Empate conta como ameaça.
+    const alguemPodeVencer = candidatos.some((c) => (c.destinoVotos === 'Válido'
+      ? 2 * c.votos + faltam > validos
+      : c.votos + faltam > validos));
+    if (alguemPodeVencer) return out;
+    for (const c of candidatos) {
+      if (!podeSerEleito(c)) continue;
+      const [a = Infinity, b = Infinity] = candidatos.filter((o) => o !== c)
+        .map((o) => Math.max(0, c.votos - o.votos)).sort((x, y) => x - y);
+      if (a + b > faltam) out.set(c.sq, 'segundo-turno');
+    }
   } else if (carg.cd === '5') {
     // Senado: os `vagas` mais votados. Cada eleitor dá no máximo 1 voto a cada candidato, então
     // cada rival pode receber até `faltam` votos. Empate conta como ameaça (desempate é por idade).
     for (const c of candidatos) {
       if (!podeSerEleito(c)) continue;
       const ameacas = candidatos.filter((o) => o !== c && o.votos + faltam >= c.votos).length;
-      if (ameacas < vagas) out.add(c.sq);
+      if (ameacas < vagas) out.set(c.sq, 'eleito');
     }
   } else {
     // Proporcional (só a vaga pelo quociente partidário). O adversário divide os votos que faltam:
@@ -458,7 +475,7 @@ function matematicamenteEleitos(raw, candidatos, grupos) {
         if (y > faltam) break;
         if (Math.floor((total + y) / qeMax) <= k) return;
       }
-      out.add(c.sq);
+      out.set(c.sq, 'eleito');
     });
   }
   return out;
@@ -494,14 +511,14 @@ function normalizar(raw, { eleicao, uf }) {
           destinoVotos: c.dvt || null,
           vices: (c.vs ?? []).map((v) => ({ tipo: v.tp, sq: v.sqcand, nome: v.nmu, partido: v.sgp, foto: fotoUrl(eleicao, fotoUf, v.sqcand) })),
           foto: fotoUrl(eleicao, fotoUf, c.sqcand),
-          matematicamenteEleito: false,
+          matematicamente: null,
         });
       }
     }
   }
   if (raw.tpabr === escopoDaDisputa(carg.cd)) {
-    const eleitos = matematicamenteEleitos(raw, candidatos, grupos);
-    for (const c of candidatos) c.matematicamenteEleito = eleitos.has(c.sq);
+    const situacao = situacaoMatematica(raw, candidatos, grupos);
+    for (const c of candidatos) c.matematicamente = situacao.get(c.sq) ?? null;
   }
   candidatos.sort((a, b) => b.votos - a.votos || a.nomeUrna.localeCompare(b.nomeUrna, 'pt-BR'));
 
