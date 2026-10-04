@@ -144,26 +144,35 @@ const normalizarTexto = (s) =>
 
 async function busca(q) {
   const termo = (q.get('q') || '').trim();
-  if (termo.length < 2 && !/^\d+$/.test(termo)) return { total: 0, itens: [], parcial: null };
+  const partido = (q.get('partido') || '').trim().toUpperCase();
+  // Com partido escolhido o termo é opcional: a busca lista todos os candidatos do partido.
+  if (!partido && termo.length < 2 && !/^\d+$/.test(termo)) return { total: 0, itens: [], parcial: null, partidos: [] };
   const cargoId = q.get('cargo') || '';
   const ufFiltro = q.get('uf') ? uf(q.get('uf')) : '';
   const { itens: indice, listas, faltando } = await indiceBusca(cargoId, ufFiltro === 'br' ? '' : ufFiltro);
+  const partidos = [...new Set(indice.map((c) => c.partido))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-  let hits;
+  let hits = partido ? indice.filter((c) => c.partido.toUpperCase() === partido) : indice;
   if (/^\d+$/.test(termo)) {
-    hits = indice.filter((c) => c.numero.startsWith(termo));
+    hits = hits.filter((c) => c.numero.startsWith(termo));
     hits.sort((a, b) => (b.numero === termo) - (a.numero === termo) || b.votos - a.votos);
-  } else {
+  } else if (termo) {
     const tokens = normalizarTexto(termo).split(/\s+/).filter(Boolean);
-    hits = indice.filter((c) => tokens.every((t) => c.chave.includes(t)));
+    hits = hits.filter((c) => tokens.every((t) => c.chave.includes(t)));
     hits.sort((a, b) => b.votos - a.votos);
+  } else {
+    // Só o partido: agrupa por cargo (na ordem da config) e, dentro do cargo, por votos.
+    const ordem = new Map((await getConfig()).cargos.map((c, i) => [c.id, i]));
+    hits = [...hits].sort((a, b) => ordem.get(a.cargoId) - ordem.get(b.cargoId) || b.votos - a.votos);
   }
-  const limite = Math.min(Number(q.get('limite') || 50), 200);
+  // Por partido a lista pode passar de mil candidatos: o front pede em páginas ("Mostrar mais").
+  const limite = Math.min(Number(q.get('limite') || 50), partido ? 5000 : 200);
   return {
     total: hits.length,
     itens: hits.slice(0, limite).map(({ chave, ...resto }) => resto),
     // Listas de candidatos (cargo × UF) que ainda não chegaram do TSE: a busca está incompleta.
     parcial: faltando ? { listas, faltando } : null,
+    partidos,
   };
 }
 

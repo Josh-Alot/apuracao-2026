@@ -2,7 +2,7 @@
 
 App web para acompanhar a apuração das Eleições Gerais 2026 (1º turno em 04/10/2026) com dados
 oficiais do TSE: mapa interativo com funil **Brasil → UF → município → zona eleitoral** e busca de
-candidatos por nome/número.
+candidatos por nome/número ou partido.
 
 Idioma do projeto: **português** (código, UI, comentários e commits).
 
@@ -40,7 +40,8 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
                        zoom/arraste do leitor (roda, arrastar, pinça, botões +/−/Ajustar) via viewBox
     PainelResultado.tsx Totais, % apurado, lista de candidatos com filtro local
     ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
-    BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF
+    BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF/partido; só o partido lista
+                       todos os candidatos dele, agrupados por cargo, em páginas ("Mostrar mais")
     ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
     Carregando.tsx     Barra fina no topo (conta requisições ativas em getJson) + esqueletos de página/painel/mapa
     AvisoVotacao.tsx   Faixa "votação ainda não começou / em andamento (contagem regressiva) / urnas fechadas"

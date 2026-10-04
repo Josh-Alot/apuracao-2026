@@ -45,6 +45,9 @@ const CORES_PARTIDO: Record<string, string> = {
   MOBILIZA: '#5d4037', // sem predefinição na Wikipédia
 };
 
+/** Siglas conhecidas, para o filtro de partido da busca antes de o índice do servidor responder. */
+export const PARTIDOS = Object.keys(CORES_PARTIDO);
+
 export function corPartido(sigla: string | undefined | null): string {
   if (!sigla) return '#9aa3ad';
   if (CORES_PARTIDO[sigla]) return CORES_PARTIDO[sigla];

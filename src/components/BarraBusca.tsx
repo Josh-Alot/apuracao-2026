@@ -1,10 +1,10 @@
-import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { getJson, qs } from '../api';
 import { Esq } from './Carregando';
 import { Num } from './Num';
 import { SeloSituacao } from './SeloSituacao';
 import type { Cargo, ItemBusca } from '../types';
-import { UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../util';
+import { PARTIDOS, UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../util';
 
 interface Props {
   cargos: Cargo[];
@@ -16,14 +16,25 @@ interface RespostaBusca {
   itens: ItemBusca[];
   /** Listas de candidatos (cargo × UF) que o servidor ainda não recebeu do TSE. */
   parcial: { listas: number; faltando: number } | null;
+  /** Siglas presentes no índice do servidor (para completar o filtro de partido). */
+  partidos: string[];
 }
 
 const REPETIR_PARCIAL_MS = 4_000;
+const POR_PAGINA = 50;
+const PAGINA_PARTIDO = 200;
 
 export function BarraBusca({ cargos, onEscolher }: Props) {
   const [termo, setTermo] = useState('');
   const [cargo, setCargo] = useState('');
   const [uf, setUf] = useState('');
+  const [partido, setPartido] = useState('');
+  const [limite, setLimite] = useState(POR_PAGINA);
+  const [siglasServidor, setSiglasServidor] = useState<string[]>([]);
+  const partidos = useMemo(
+    () => [...new Set([...PARTIDOS, ...siglasServidor])].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [siglasServidor],
+  );
   const [res, setRes] = useState<RespostaBusca | null>(null);
   // Busca parcial (listas ainda chegando do TSE): repete sozinha até completar.
   const [tentativa, setTentativa] = useState(0);
@@ -35,19 +46,20 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
 
   useEffect(() => {
     const t = termo.trim();
-    if (t.length < 2 && !/^\d+$/.test(t)) {
+    if (!partido && t.length < 2 && !/^\d+$/.test(t)) {
       setRes(null);
       return;
     }
     const ctrl = new AbortController();
-    const chave = `${t}|${cargo}|${uf}`;
+    const chave = `${t}|${cargo}|${uf}|${partido}`;
     const repeticao = chave === ultimaBusca.current; // mesma busca de novo: sem debounce
     ultimaBusca.current = chave;
     const id = setTimeout(async () => {
       setCarregando(true);
       try {
-        const r = await getJson<RespostaBusca>(`/api/busca?${qs({ q: t, cargo, uf })}`, ctrl.signal);
+        const r = await getJson<RespostaBusca>(`/api/busca?${qs({ q: t, cargo, uf, partido, limite: String(limite) })}`, ctrl.signal);
         setRes(r);
+        if (r.partidos.some((p) => !PARTIDOS.includes(p))) setSiglasServidor(r.partidos);
         setErro(null);
         if (r.parcial) repetir = setTimeout(() => setTentativa((n) => n + 1), REPETIR_PARCIAL_MS);
       } catch (e) {
@@ -62,7 +74,12 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
       clearTimeout(repetir);
       ctrl.abort();
     };
-  }, [termo, cargo, uf, tentativa]);
+  }, [termo, cargo, uf, partido, limite, tentativa]);
+
+  // Filtros novos começam da primeira página.
+  useEffect(() => setLimite(POR_PAGINA), [termo, cargo, uf, partido]);
+  // Só o partido (sem termo): a lista vem agrupada por cargo, com um título a cada troca.
+  const agrupar = !!partido && !termo.trim();
 
   useEffect(() => {
     const fechar = (e: MouseEvent) => {
@@ -77,7 +94,7 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
       <div className="busca-campos">
         <input
           type="search"
-          placeholder="Buscar candidato por nome ou número…"
+          placeholder={partido ? `Filtrar candidatos do ${partido}…` : 'Buscar candidato por nome ou número…'}
           value={termo}
           onChange={(e) => { setTermo(e.target.value); setAberto(true); }}
           onFocus={() => setAberto(true)}
@@ -94,6 +111,10 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
         <select value={uf} onChange={(e) => setUf(e.target.value)} aria-label="Filtrar por UF">
           <option value="">Todas as UFs</option>
           {Object.entries(UF_NOMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select value={partido} onChange={(e) => { setPartido(e.target.value); setAberto(true); }} aria-label="Filtrar por partido">
+          <option value="">Todos os partidos</option>
+          {partidos.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>
 
@@ -130,31 +151,43 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
           {res && res.itens.length > 0 && (
             <>
               <div className="muted pad pequeno">
-                {fmt(res.total)} resultado(s){res.total > res.itens.length && `, mostrando ${res.itens.length}`}
+                {fmt(res.total)} {partido ? `candidato(s) do ${partido}` : 'resultado(s)'}
+                {res.total > res.itens.length && `, mostrando ${fmt(res.itens.length)}`}
                 {uf ? ` · votos em ${UF_NOMES[uf]}` : ''}
               </div>
               <ul>
-                {res.itens.map((i) => (
-                  <li key={`${i.cargoId}-${i.uf}-${i.sq}`}>
-                    <button onClick={() => { onEscolher(i); setAberto(false); }}>
-                      <img className="foto pequena" src={i.foto} alt="" loading="lazy"
-                        onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
-                      <span className="busca-info">
-                        <strong>{titulo(i.nomeUrna)}</strong> <span className="numero">{i.numero}</span>{' '}
-                        <span className="partido" style={{ '--cor': corPartido(i.partido) } as CSSProperties}>{i.partido}</span>
-                        <SeloSituacao c={i} />
-                        <span className="muted pequeno">
-                          {i.cargoNome} · {i.uf === 'br' ? 'Brasil' : UF_NOMES[i.uf]} · {fmtPct(i.pctApurado)} apurado
+                {res.itens.map((i, k) => (
+                  <Fragment key={`${i.cargoId}-${i.uf}-${i.sq}`}>
+                    {agrupar && i.cargoId !== res.itens[k - 1]?.cargoId && (
+                      <li className="busca-grupo">{i.cargoNome}</li>
+                    )}
+                    <li>
+                      <button onClick={() => { onEscolher(i); setAberto(false); }}>
+                        <img className="foto pequena" src={i.foto} alt="" loading="lazy"
+                          onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
+                        <span className="busca-info">
+                          <strong>{titulo(i.nomeUrna)}</strong> <span className="numero">{i.numero}</span>{' '}
+                          <span className="partido" style={{ '--cor': corPartido(i.partido) } as CSSProperties}>{i.partido}</span>
+                          <SeloSituacao c={i} />
+                          <span className="muted pequeno">
+                            {i.cargoNome} · {i.uf === 'br' ? 'Brasil' : UF_NOMES[i.uf]} · {fmtPct(i.pctApurado)} apurado
+                          </span>
                         </span>
-                      </span>
-                      <span className="cand-votos">
-                        <strong><Num valor={i.votos} formatar={fmt} /></strong>
-                        <span className="muted"><Num valor={i.pct} formatar={fmtPct} /></span>
-                      </span>
-                    </button>
-                  </li>
+                        <span className="cand-votos">
+                          <strong><Num valor={i.votos} formatar={fmt} /></strong>
+                          <span className="muted"><Num valor={i.pct} formatar={fmtPct} /></span>
+                        </span>
+                      </button>
+                    </li>
+                  </Fragment>
                 ))}
               </ul>
+              {res.total > res.itens.length && (
+                <button className="busca-mais" disabled={carregando}
+                  onClick={() => setLimite((n) => n + (partido ? PAGINA_PARTIDO : POR_PAGINA))}>
+                  Mostrar mais ({fmt(res.total - res.itens.length)} restantes)
+                </button>
+              )}
             </>
           )}
         </div>

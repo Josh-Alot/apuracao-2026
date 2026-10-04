@@ -112,6 +112,16 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 .busca-resultados li button:hover { background: var(--destaque-suave); }
 .busca-info { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
 .busca-info .muted { flex-basis: 100%; }
+.busca-resultados .busca-grupo {
+  position: sticky; top: 0; z-index: 1; padding: 6px 16px; background: var(--superficie);
+  border-bottom: 1px solid var(--borda); font-size: 0.75rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+}
+.busca-mais {
+  display: block; width: calc(100% - 32px); margin: 0 16px 10px; padding: 8px;
+  border: 1px solid var(--borda); background: var(--superficie); border-radius: 8px;
+}
+.busca-mais:hover:not(:disabled) { background: var(--destaque-suave); }
 
 /* ---------- cargos ---------- */
 .cargos { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 12px; }
