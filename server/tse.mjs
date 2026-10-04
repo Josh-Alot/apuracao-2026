@@ -383,14 +383,18 @@ const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 /**
  * Vários resultados de uma vez sem prender a resposta na fila (mapas e busca): espera no máximo
  * `esperaMs` pelo que precisa ser consultado e devolve o que houver — o dado em cache (mesmo
- * vencido) ou null. O que não chegou a tempo segue na fila e entra na próxima atualização.
+ * vencido), null se o TSE não tem o arquivo, ou undefined se ainda não chegou (segue na fila e
+ * entra na próxima atualização).
  */
 export async function getResultadosRapidos(lista, ttlMs, prioridade, esperaMs = 4_000) {
   const fim = await fimDaVotacao(lista[0]?.eleicao);
   const pendentes = lista.map((params) =>
     fetchJson(resultadoUrl(params), ttlMs, fim, prioridade).catch(() => undefined));
   await Promise.race([Promise.allSettled(pendentes), dormir(esperaMs)]);
-  return lista.map((params) => deRaw(cache.get(resultadoUrl(params))?.data, params));
+  return lista.map((params) => {
+    const hit = cache.get(resultadoUrl(params));
+    return hit ? deRaw(hit.data, params) : undefined;
+  });
 }
 
 function normalizar(raw, { eleicao, uf }) {

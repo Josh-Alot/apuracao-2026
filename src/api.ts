@@ -15,11 +15,20 @@ export function useCarregandoGlobal() {
   );
 }
 
+/** Tempo máximo de espera por uma resposta da API antes de desistir e mostrar o erro. */
+const TIMEOUT_MS = 30_000;
+
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   pendentes++;
   avisar();
+  const limite = AbortSignal.timeout(TIMEOUT_MS);
   try {
-    const res = await fetch(url, { signal });
+    const res = await fetch(url, { signal: signal ? AbortSignal.any([signal, limite]) : limite }).catch((e) => {
+      if (limite.aborted && !signal?.aborted) {
+        throw new Error(`o servidor não respondeu em ${TIMEOUT_MS / 1000} s (o TSE pode estar lento)`);
+      }
+      throw e;
+    });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.erro || `Erro ${res.status}`);

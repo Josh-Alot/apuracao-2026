@@ -11,11 +11,23 @@ interface Props {
   onEscolher: (item: ItemBusca) => void;
 }
 
+interface RespostaBusca {
+  total: number;
+  itens: ItemBusca[];
+  /** Listas de candidatos (cargo × UF) que o servidor ainda não recebeu do TSE. */
+  parcial: { listas: number; faltando: number } | null;
+}
+
+const REPETIR_PARCIAL_MS = 4_000;
+
 export function BarraBusca({ cargos, onEscolher }: Props) {
   const [termo, setTermo] = useState('');
   const [cargo, setCargo] = useState('');
   const [uf, setUf] = useState('');
-  const [res, setRes] = useState<{ total: number; itens: ItemBusca[] } | null>(null);
+  const [res, setRes] = useState<RespostaBusca | null>(null);
+  // Busca parcial (listas ainda chegando do TSE): repete sozinha até completar.
+  const [tentativa, setTentativa] = useState(0);
+  const ultimaBusca = useRef('');
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
@@ -28,22 +40,29 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
       return;
     }
     const ctrl = new AbortController();
+    const chave = `${t}|${cargo}|${uf}`;
+    const repeticao = chave === ultimaBusca.current; // mesma busca de novo: sem debounce
+    ultimaBusca.current = chave;
     const id = setTimeout(async () => {
       setCarregando(true);
       try {
-        setRes(await getJson(`/api/busca?${qs({ q: t, cargo, uf })}`, ctrl.signal));
+        const r = await getJson<RespostaBusca>(`/api/busca?${qs({ q: t, cargo, uf })}`, ctrl.signal);
+        setRes(r);
         setErro(null);
+        if (r.parcial) repetir = setTimeout(() => setTentativa((n) => n + 1), REPETIR_PARCIAL_MS);
       } catch (e) {
-        if ((e as Error).name !== 'AbortError') setErro((e as Error).message);
+        if ((e as Error).name !== 'AbortError') setErro(`Falha na busca: ${(e as Error).message}`);
       } finally {
-        setCarregando(false);
+        if (!ctrl.signal.aborted) setCarregando(false);
       }
-    }, 300);
+    }, repeticao ? 0 : 300);
+    let repetir: ReturnType<typeof setTimeout> | undefined;
     return () => {
       clearTimeout(id);
+      clearTimeout(repetir);
       ctrl.abort();
     };
-  }, [termo, cargo, uf]);
+  }, [termo, cargo, uf, tentativa]);
 
   useEffect(() => {
     const fechar = (e: MouseEvent) => {
@@ -97,7 +116,17 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
             </>
           )}
           {erro && <div className="erro pad">{erro}</div>}
-          {res && res.itens.length === 0 && <div className="muted pad">Nenhum candidato encontrado.</div>}
+          {res?.parcial && (
+            <div className="muted pad pequeno busca-parcial">
+              Busca incompleta: {res.parcial.faltando} de {res.parcial.listas} listas de candidatos ainda
+              estão chegando do TSE. Os resultados se completam sozinhos em instantes…
+            </div>
+          )}
+          {res && res.itens.length === 0 && (
+            <div className="muted pad">
+              {res.parcial ? 'Nenhum candidato encontrado por enquanto.' : 'Nenhum candidato encontrado.'}
+            </div>
+          )}
           {res && res.itens.length > 0 && (
             <>
               <div className="muted pad pequeno">

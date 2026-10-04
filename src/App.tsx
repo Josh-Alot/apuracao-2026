@@ -98,6 +98,7 @@ export default function App() {
   const mapaAtual = uf ? mapaUf : mapaBr;
   // O mapa devolve null nas regiões cuja consulta ao TSE falhou: só contam as que vieram.
   const regioesComDado = Object.values(mapaAtual.data ?? {}).filter((x) => x != null);
+  const regioesTotal = Object.keys(mapaAtual.data ?? {}).length;
   const pctApurado = resultado.data?.secoes.pct ?? Math.max(0, ...regioesComDado.map((x) => x.pctApurado ?? 0));
   const temDadoApuracao = !!(resultado.data || regioesComDado.length);
   // Sem nenhum dado e com erro na consulta: o TSE não respondeu (429, fora do ar), não é falta de boletim.
@@ -238,6 +239,14 @@ export default function App() {
               inicio={apuracaoAberta ? null : cargo.encerramento}
             />
           </p>
+          <AvisoMapa
+            erro={mapaAtual.erro}
+            temDados={!!mapaAtual.data}
+            regioes={regioesTotal}
+            semDado={regioesTotal - regioesComDado.length}
+            rotulo={uf === 'zz' ? 'cidades' : uf ? 'municípios' : 'UFs'}
+            intervalo={intervaloMapa}
+          />
 
           {!uf && cargo.ufs.includes('zz') && (
             <button className="botao-exterior" onClick={() => ir({ uf: 'zz' })}>
@@ -318,5 +327,30 @@ function SeletorMunicipio({ municipios, onEscolher }: { municipios: { cd: string
         {municipios.map((m) => <option key={m.cd} value={m.nome} />)}
       </datalist>
     </>
+  );
+}
+
+/** Aviso abaixo do mapa: falha/timeout ao carregar, ou regiões que ainda não chegaram do TSE. */
+function AvisoMapa({ erro, temDados, regioes, semDado, rotulo, intervalo }: {
+  erro: string | null; temDados: boolean; regioes: number; semDado: number; rotulo: string; intervalo: number;
+}) {
+  const novaTentativa = intervalo
+    ? `Nova tentativa em ${Math.round(intervalo / 1000)} s.`
+    : 'Recarregue a página para tentar de novo.';
+  if (erro) {
+    return (
+      <p className="erro pequeno nota-mapa" role="status">
+        Não foi possível {temDados ? 'atualizar' : 'carregar'} o mapa: {erro}. {novaTentativa}
+      </p>
+    );
+  }
+  if (!semDado) return null;
+  return (
+    <p className="muted pequeno nota-mapa" role="status">
+      {semDado === regioes
+        ? `Os dados dos ${regioes} ${rotulo} ainda estão chegando do TSE`
+        : `Faltam dados de ${semDado} de ${regioes} ${rotulo}`}
+      {' '}— o servidor consulta o TSE aos poucos para não ser bloqueado, e o mapa se completa a cada atualização.
+    </p>
   );
 }

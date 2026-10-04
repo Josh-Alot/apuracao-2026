@@ -87,13 +87,16 @@ async function mapa(q) {
 
 // ---------- busca de candidatos ----------
 
-const indices = new Map(); // chave -> { ts, promise }
+const indices = new Map(); // chave -> { ts, ttl, promise }
 const INDICE_TTL = 30_000;
+// Índice montado antes de todas as listas chegarem do TSE (estão na fila): vale pouco, para a
+// próxima busca já incluir o que chegou.
+const INDICE_PARCIAL_TTL = 4_000;
 
 async function indiceBusca(cargoId, ufFiltro) {
   const chave = `${cargoId || '*'}|${ufFiltro || '*'}`;
   const hit = indices.get(chave);
-  if (hit && Date.now() - hit.ts < INDICE_TTL) return hit.promise;
+  if (hit && Date.now() - hit.ts < hit.ttl) return hit.promise;
 
   const promise = (async () => {
     const cfg = await getConfig();
@@ -108,6 +111,7 @@ async function indiceBusca(cargoId, ufFiltro) {
       alvos.map(({ c, uf: u }) => ({ eleicao: c.eleicao, cargo: c.cargo, uf: u })), 2 * 60_000, PRIORIDADE.baixa,
     );
     const out = [];
+    const faltando = rs.filter((r) => r === undefined).length;
     alvos.forEach(({ c, uf: u }, i) => {
       const r = rs[i];
       if (!r) return;
@@ -123,10 +127,15 @@ async function indiceBusca(cargoId, ufFiltro) {
         });
       }
     });
-    return out;
+    const indice = { itens: out, listas: alvos.length, faltando };
+    if (faltando) {
+      const e = indices.get(chave);
+      if (e?.promise === promise) e.ttl = INDICE_PARCIAL_TTL;
+    }
+    return indice;
   })();
   promise.catch(() => indices.delete(chave));
-  indices.set(chave, { ts: Date.now(), promise });
+  indices.set(chave, { ts: Date.now(), ttl: INDICE_TTL, promise });
   return promise;
 }
 
@@ -135,10 +144,10 @@ const normalizarTexto = (s) =>
 
 async function busca(q) {
   const termo = (q.get('q') || '').trim();
-  if (termo.length < 2 && !/^\d+$/.test(termo)) return { total: 0, itens: [] };
+  if (termo.length < 2 && !/^\d+$/.test(termo)) return { total: 0, itens: [], parcial: null };
   const cargoId = q.get('cargo') || '';
   const ufFiltro = q.get('uf') ? uf(q.get('uf')) : '';
-  const indice = await indiceBusca(cargoId, ufFiltro === 'br' ? '' : ufFiltro);
+  const { itens: indice, listas, faltando } = await indiceBusca(cargoId, ufFiltro === 'br' ? '' : ufFiltro);
 
   let hits;
   if (/^\d+$/.test(termo)) {
@@ -153,6 +162,8 @@ async function busca(q) {
   return {
     total: hits.length,
     itens: hits.slice(0, limite).map(({ chave, ...resto }) => resto),
+    // Listas de candidatos (cargo × UF) que ainda não chegaram do TSE: a busca está incompleta.
+    parcial: faltando ? { listas, faltando } : null,
   };
 }
 
