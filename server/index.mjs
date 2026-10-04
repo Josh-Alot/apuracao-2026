@@ -8,6 +8,7 @@ import {
   getConfig, getMunicipios, getResultado, getAbrangencia, resumo, mapLimit, fetchJson, UFS,
 } from './tse.mjs';
 import { assinar } from './aovivo.mjs';
+import { getCandidato } from './candidatos.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -220,6 +221,13 @@ const server = http.createServer(async (req, res) => {
       const alvo = geoMatch[1] === 'br' ? 'br' : uf(geoMatch[1]);
       const data = await geo(alvo);
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=86400' });
+      return res.end(JSON.stringify(data));
+    }
+    const candMatch = url.pathname.match(/^\/api\/candidato\/(\d{1,15})$/);
+    if (candMatch) {
+      const data = await getCandidato(candMatch[1]);
+      if (!data) return json(404, { erro: 'candidato não encontrado' });
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=3600' });
       return res.end(JSON.stringify(data));
     }
     if (url.pathname === '/api/ao-vivo') return assinar(req, res, await paramsResultado(url.searchParams));

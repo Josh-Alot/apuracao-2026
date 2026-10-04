@@ -3,6 +3,8 @@ const pf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFra
 
 export const fmt = (n: number) => nf.format(n);
 export const fmtPct = (n: number) => `${pf.format(n)}%`;
+const rf = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+export const fmtReais = (n: number) => rf.format(n);
 
 export const UF_NOMES: Record<string, string> = {
   ac: 'Acre', al: 'Alagoas', ap: 'Amapá', am: 'Amazonas', ba: 'Bahia', ce: 'Ceará',
@@ -22,6 +24,9 @@ export function titulo(s: string) {
     .map((p, i) => (i > 0 && minusculas.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)))
     .join(' ');
 }
+
+/** "SUPERIOR COMPLETO" → "Superior completo" */
+export const frase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
 export const semAcento = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();

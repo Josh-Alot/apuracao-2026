@@ -229,7 +229,7 @@ function normalizar(raw, { eleicao, uf }) {
           situacao: c.st || null,
           // Para onde vão os votos: "Válido", "Válido (legenda)", "Anulado", "Anulado sub judice".
           destinoVotos: c.dvt || null,
-          vices: (c.vs ?? []).map((v) => ({ tipo: v.tp, nome: v.nmu, partido: v.sgp })),
+          vices: (c.vs ?? []).map((v) => ({ tipo: v.tp, sq: v.sqcand, nome: v.nmu, partido: v.sgp, foto: fotoUrl(eleicao, fotoUf, v.sqcand) })),
           foto: fotoUrl(eleicao, fotoUf, c.sqcand),
         });
       }

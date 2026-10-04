@@ -46,8 +46,37 @@ export interface Candidato {
   situacao: string | null;
   /** Destino dos votos (campo `dvt`): "Válido", "Válido (legenda)", "Anulado", "Anulado sub judice". */
   destinoVotos: string | null;
-  vices?: { tipo: string; nome: string; partido: string }[];
+  vices?: { tipo: string; sq: string; nome: string; partido: string; foto: string }[];
   foto: string;
+}
+
+/** Perfil e bens do candidato (Dados Abertos do TSE, via /api/candidato/:sq). */
+export interface DetalheCandidato {
+  /** Data/hora de geração dos CSVs pelo TSE. */
+  gerado: string;
+  nomeSocial: string | null;
+  nascimento: string | null; // dd/mm/aaaa
+  ufNasc: string | null;
+  munNasc: string | null;
+  nacionalidade: string | null;
+  idadePosse: number | null;
+  genero: string | null;
+  instrucao: string | null;
+  estadoCivil: string | null;
+  corRaca: string | null;
+  ocupacao: string | null;
+  quilombola: boolean;
+  etniaIndigena: string | null;
+  partidoNome: string | null;
+  federacao: string | null;
+  composicaoFederacao: string | null;
+  coligacao: string | null;
+  composicaoColigacao: string | null;
+  situacaoCandidatura: string | null;
+  tetoGastos: number | null;
+  /** [tipo, descrição, valor], do maior para o menor valor. */
+  bens: [string | null, string | null, number][];
+  totalBens: number;
 }
 
 export interface Resultado {

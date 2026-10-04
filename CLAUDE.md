@@ -13,6 +13,7 @@ npm install
 npm run dev        # API (porta 3001) + Vite (porta 5173, proxy /api → 3001)
 npm run demo       # igual ao dev, mas com votos sintéticos (DEMO=1) — útil antes das 17h de Brasília
 npm run typecheck
+npm run candidatos # regera dados/candidatos-2026.tsv.gz (perfil e bens, Dados Abertos do TSE)
 npm run build && npm start   # produção: o servidor Node serve dist/ e /api na porta 3001
 ```
 
@@ -28,6 +29,9 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   aovivo.mjs       Stream SSE /api/ao-vivo: 1 vigia por resultado consulta o TSE a cada 5 s e empurra só quando muda
   tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
   demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais)
+  candidatos.mjs   /api/candidato/:sq — perfil e bens; lê dados/candidatos-2026.tsv.gz no 1º pedido (buffer + índice)
+  scripts/candidatos.mjs  `npm run candidatos`: baixa os CSVs dos Dados Abertos e gera o .tsv.gz
+dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz)
 src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths SVG
   App.tsx          Estado da navegação (no hash da URL), polling e composição das telas
   api.ts           useApi(url, intervalo) — fetch + polling mantendo o dado anterior
@@ -35,6 +39,7 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
     Mapa.tsx           Choropleth SVG (projeção plana própria), tooltip, legenda, zoom no município;
                        zoom/arraste do leitor (roda, arrastar, pinça, botões +/−/Ajustar) via viewBox
     PainelResultado.tsx Totais, % apurado, lista de candidatos com filtro local
+    ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
     BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF
     ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
     Carregando.tsx     Barra fina no topo (conta requisições ativas em getJson) + esqueletos de página/painel/mapa
@@ -89,6 +94,15 @@ Base: `https://resultados.tse.jus.br/oficial`
   município (SP = 645), com concorrência limitada (`mapLimit`) e cache de 60 s. Por isso, cargos
   proporcionais (arquivos de centenas de KB) usam só o `-ab.json` no mapa estadual.
 - Zonas eleitorais **não têm malha geográfica pública**; por isso aparecem como lista, não no mapa.
+
+## Dados Abertos do TSE (perfil e bens dos candidatos)
+
+O arquivo de resultados só traz nome, número, nascimento, partido, vices e votos. O resto vem dos CSVs em
+`https://cdn.tse.jus.br/estatistica/sead/odsele/<conjunto>/<conjunto>_2026.zip` (`consulta_cand`,
+`consulta_cand_complementar`, `bem_candidato`; o `*_BRASIL.csv` reúne todas as UFs). Latin1, separador `;`,
+campos vazios como `#NULO`/`#NE`. A chave `SQ_CANDIDATO` é o `sqcand` dos resultados. Os CSVs trazem **CPF,
+título de eleitor e e-mail: nunca incluir** no arquivo gerado. O TSE atualiza os CSVs (situação do registro,
+bens); rode `npm run candidatos` de novo e faça commit. A API DivulgaCandContas responde 403 (Akamai) a robôs.
 
 ## Convenções e cuidados
 

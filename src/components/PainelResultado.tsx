@@ -4,6 +4,7 @@ import { EsqueletoPainel } from './Carregando';
 import { Num } from './Num';
 import { SeloSituacao } from './SeloSituacao';
 import { ProximaAtualizacao } from './ProximaAtualizacao';
+import { ModalCandidato } from './ModalCandidato';
 import type { AoVivo } from '../api';
 import { corPartido, fmt, fmtPct, semAcento, titulo } from '../util';
 
@@ -26,6 +27,8 @@ const PAGINA = 60;
 export function PainelResultado({ resultado: r, erro, carregando, titulo: tituloLocal, filtroInicial, proxima, intervalo, aoVivo, inicioAtualizacao }: Props) {
   const [filtro, setFiltro] = useState(filtroInicial ?? '');
   const [limite, setLimite] = useState(PAGINA);
+  /** Candidato com a ficha aberta (sq). */
+  const [aberto, setAberto] = useState<string | null>(null);
 
   useEffect(() => setFiltro(filtroInicial ?? ''), [filtroInicial]);
   useEffect(() => setLimite(PAGINA), [filtro, r?.cargo.cd]);
@@ -47,6 +50,7 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
 
   const posicao = new Map(r.candidatos.map((c, i) => [c.sq, i + 1]));
   const maxPct = Math.max(1, ...r.candidatos.slice(0, 1).map((c) => c.pct));
+  const candAberto = aberto ? r.candidatos.find((c) => c.sq === aberto) : undefined;
 
   return (
     <section className={`painel ${carregando ? 'atualizando' : ''}`} aria-busy={carregando}>
@@ -90,7 +94,7 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
 
       <ol className="candidatos">
         {lista.slice(0, limite).map((c) => (
-          <LinhaCandidato key={c.sq} c={c} pos={posicao.get(c.sq)!} maxPct={maxPct} />
+          <LinhaCandidato key={c.sq} c={c} pos={posicao.get(c.sq)!} maxPct={maxPct} onAbrir={() => setAberto(c.sq)} />
         ))}
       </ol>
       {lista.length === 0 && <p className="muted">Nenhum candidato encontrado.</p>}
@@ -99,15 +103,18 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
           Mostrar mais ({fmt(lista.length - limite)} restantes)
         </button>
       )}
+      {candAberto && (
+        <ModalCandidato c={candAberto} pos={posicao.get(candAberto.sq)!} cargo={r.cargo.nome} onFechar={() => setAberto(null)} />
+      )}
     </section>
   );
 }
 
-function LinhaCandidato({ c, pos, maxPct }: { c: Candidato; pos: number; maxPct: number }) {
+function LinhaCandidato({ c, pos, maxPct, onAbrir }: { c: Candidato; pos: number; maxPct: number; onAbrir: () => void }) {
   const [semFoto, setSemFoto] = useState(false);
   const cor = corPartido(c.partido);
   return (
-    <li className="candidato">
+    <li className="candidato clicavel" onClick={onAbrir}>
       <span className="pos">{pos}º</span>
       {semFoto ? (
         <span className="foto foto-vazia" style={{ background: cor }}>{c.nomeUrna.charAt(0)}</span>
@@ -116,7 +123,9 @@ function LinhaCandidato({ c, pos, maxPct }: { c: Candidato; pos: number; maxPct:
       )}
       <div className="cand-info">
         <div className="cand-nome">
-          <strong>{titulo(c.nomeUrna)}</strong>
+          <button className="cand-abrir" onClick={(e) => { e.stopPropagation(); onAbrir(); }} title="Ver ficha do candidato">
+            <strong>{titulo(c.nomeUrna)}</strong>
+          </button>
           <span className="numero">{c.numero}</span>
           <span className="partido" style={{ borderColor: cor, color: cor }}>{c.partido}</span>
           <SeloSituacao c={c} />
