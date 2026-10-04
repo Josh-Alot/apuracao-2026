@@ -16,7 +16,7 @@ interface Props {
 
 const EXPLICACAO =
   'O TSE publica novos números à medida que as urnas são totalizadas (no pico, a cada poucos segundos). ' +
-  'Esta página consulta o TSE automaticamente nesse intervalo; o horário "atualizado em" é o da última publicação do TSE.';
+  'Esta página consulta o TSE automaticamente nesse intervalo; o horário "publicado pelo TSE em" é o da última publicação do TSE, no horário de Brasília.';
 
 const fmtIntervalo = (ms: number) => (ms >= 60_000 ? `${ms / 60_000} min` : `${ms / 1000} s`);
 

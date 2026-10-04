@@ -56,7 +56,7 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
           <div className="muted">
             {r.cargo.nome}
             {r.cargo.vagas > 1 && ` · ${r.cargo.vagas} vagas`}
-            {r.atualizado && ` · atualizado em ${r.atualizado}`}
+            {r.atualizado && ` · publicado pelo TSE em ${r.atualizado} (Brasília)`}
           </div>
           <div className={`pequeno muted ${carregando ? 'indicador-atualizando' : ''}`}>
             <ProximaAtualizacao proxima={proxima} intervalo={intervalo} carregando={carregando} aoVivo={aoVivo} inicio={inicioAtualizacao} />
