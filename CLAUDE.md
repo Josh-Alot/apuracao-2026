@@ -32,7 +32,8 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
   App.tsx          Estado da navegação (no hash da URL), polling e composição das telas
   api.ts           useApi(url, intervalo) — fetch + polling mantendo o dado anterior
   components/
-    Mapa.tsx           Choropleth SVG (projeção plana própria), tooltip, legenda, zoom no município
+    Mapa.tsx           Choropleth SVG (projeção plana própria), tooltip, legenda, zoom no município;
+                       zoom/arraste do leitor (roda, arrastar, pinça, botões +/−/Ajustar) via viewBox
     PainelResultado.tsx Totais, % apurado, lista de candidatos com filtro local
     BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF
     ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)

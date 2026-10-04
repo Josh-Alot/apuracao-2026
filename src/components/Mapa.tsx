@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { geoPath, geoTransform } from 'd3-geo';
 import type { Feature, FeatureCollection } from 'geojson';
 import type { MapaDados, ModoMapa, Resumo } from '../types';
@@ -8,6 +8,12 @@ import { corApuracao, corPartido, fmt, fmtPct, titulo } from '../util';
 const W = 1000;
 const H = 820;
 const MARGEM = 12;
+/** Aproximação máxima em relação ao mapa inteiro (municípios pequenos de SP/MG precisam de muito). */
+const ZOOM_MAX = 60;
+/** Movimento (px) a partir do qual um clique vira arraste e não seleciona a região. */
+const LIMIAR_ARRASTE = 5;
+
+interface Vista { x: number; y: number; w: number; h: number }
 
 interface Props {
   geo: FeatureCollection | null;
@@ -72,14 +78,110 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
       .filter((r): r is { k: string; d: string; b: [[number, number], [number, number]] } => !!r.k);
   }, [geo, chave]);
 
-  const viewBox = useMemo(() => {
+  // Enquadramento padrão: o mapa inteiro, ou a região em foco.
+  const base = useMemo<Vista>(() => {
     const alvo = focar && regioes.find((r) => r.k === focar);
-    if (!alvo) return `0 0 ${W} ${H}`;
+    if (!alvo) return { x: 0, y: 0, w: W, h: H };
     const [[a, b], [c, d]] = alvo.b;
     const lado = Math.max(c - a, (d - b) * (W / H), 60) * 1.8;
     const alt = lado * (H / W);
-    return `${(a + c) / 2 - lado / 2} ${(b + d) / 2 - alt / 2} ${lado} ${alt}`;
+    return { x: (a + c) / 2 - lado / 2, y: (b + d) / 2 - alt / 2, w: lado, h: alt };
   }, [focar, regioes]);
+
+  // Zoom/arraste do leitor; volta ao enquadramento padrão quando ele muda.
+  const [zoom, setZoom] = useState<Vista | null>(null);
+  useEffect(() => setZoom(null), [base.x, base.y, base.w]);
+  const vista = zoom ?? base;
+  const vistaRef = useRef(vista);
+  vistaRef.current = vista;
+
+  const svgRef = useRef<SVGSVGElement>(null);
+  /** Ponto da tela → coordenadas do viewBox. */
+  const paraMapa = (cx: number, cy: number) => {
+    const ctm = svgRef.current?.getScreenCTM();
+    if (!ctm) return null;
+    const p = new DOMPoint(cx, cy).matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  };
+  /** Mantém a vista dentro dos limites de zoom e sem deixar o mapa sair da tela. */
+  const limitar = (v: Vista): Vista => {
+    const w = Math.min(W, Math.max(W / ZOOM_MAX, v.w));
+    const h = w * (H / W);
+    const cx = Math.min(W, Math.max(0, v.x + v.w / 2));
+    const cy = Math.min(H, Math.max(0, v.y + v.h / 2));
+    return { x: cx - w / 2, y: cy - h / 2, w, h };
+  };
+  /** Aproxima (fator > 1) ou afasta mantendo fixo o ponto `p` do mapa (o centro, se omitido). */
+  const aplicarZoom = (fator: number, p?: { x: number; y: number } | null) => {
+    const v = vistaRef.current;
+    const c = p ?? { x: v.x + v.w / 2, y: v.y + v.h / 2 };
+    const w = Math.min(W, Math.max(W / ZOOM_MAX, v.w / fator));
+    const f = v.w / w;
+    setZoom(limitar({ x: c.x - (c.x - v.x) / f, y: c.y - (c.y - v.y) / f, w, h: w * (H / W) }));
+  };
+
+  // Roda do mouse / pinça do touchpad. Listener nativo porque o do React é passivo (não dá para
+  // impedir a rolagem da página).
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const roda = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+      aplicarZoom(Math.exp(-delta * (e.ctrlKey ? 0.01 : 0.002)), paraMapa(e.clientX, e.clientY));
+    };
+    svg.addEventListener('wheel', roda, { passive: false });
+    return () => svg.removeEventListener('wheel', roda);
+  });
+
+  // Arraste (mouse ou 1 dedo) e pinça (2 dedos) com Pointer Events.
+  const ponteiros = useRef(new Map<number, { x: number; y: number }>());
+  const gesto = useRef<{ inicio: { x: number; y: number }; arrastou: boolean; dist?: number } | null>(null);
+  const cliqueSuprimido = useRef(false);
+
+  const aoApertar = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    ponteiros.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    cliqueSuprimido.current = false;
+    if (ponteiros.current.size === 1) gesto.current = { inicio: { x: e.clientX, y: e.clientY }, arrastou: false };
+    else gesto.current = { inicio: { x: e.clientX, y: e.clientY }, arrastou: true };
+  };
+  const aoMover = (e: React.PointerEvent<SVGSVGElement>) => {
+    const antes = ponteiros.current.get(e.pointerId);
+    const g = gesto.current;
+    if (!antes || !g) return;
+    const agora = { x: e.clientX, y: e.clientY };
+
+    if (ponteiros.current.size >= 2) {
+      const [a, b] = [...ponteiros.current.entries()].map(([id, p]) => (id === e.pointerId ? agora : p));
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (g.dist) aplicarZoom(dist / g.dist, paraMapa((a.x + b.x) / 2, (a.y + b.y) / 2));
+      g.dist = dist;
+    } else {
+      if (!g.arrastou && Math.hypot(agora.x - g.inicio.x, agora.y - g.inicio.y) < LIMIAR_ARRASTE) return;
+      if (!g.arrastou) {
+        g.arrastou = true;
+        // Só captura depois de virar arraste: capturar antes desviaria o clique do <path>.
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setHover(null);
+      }
+      const p0 = paraMapa(antes.x, antes.y);
+      const p1 = paraMapa(agora.x, agora.y);
+      const v = vistaRef.current;
+      if (p0 && p1) setZoom(limitar({ ...v, x: v.x - (p1.x - p0.x), y: v.y - (p1.y - p0.y) }));
+    }
+    ponteiros.current.set(e.pointerId, agora);
+  };
+  const aoSoltar = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!ponteiros.current.delete(e.pointerId)) return;
+    if (gesto.current?.arrastou) cliqueSuprimido.current = true;
+    if (ponteiros.current.size === 0) gesto.current = null;
+    else if (gesto.current) gesto.current.dist = undefined;
+  };
+
+  const ampliado = vista.w < base.w * 0.999 || vista.x !== base.x || vista.y !== base.y;
+  const noMaximo = vista.w <= W / ZOOM_MAX + 1e-6;
+  const noMinimo = vista.w >= W - 1e-6;
 
   const cor = (r: Resumo | null | undefined) => {
     if (!r) return 'var(--sem-dado)';
@@ -108,11 +210,16 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
     <div className="mapa" ref={ref} onMouseLeave={() => setHover(null)}>
       {!geo && <EsqueletoMapa />}
       <svg
-        viewBox={viewBox}
+        ref={svgRef}
+        viewBox={`${vista.x} ${vista.y} ${vista.w} ${vista.h}`}
+        onPointerDown={aoApertar}
+        onPointerMove={aoMover}
+        onPointerUp={aoSoltar}
+        onPointerCancel={aoSoltar}
         role="img"
         aria-label="Mapa de resultados"
         aria-busy={!dados}
-        className={dados ? '' : 'aguardando'}
+        className={[dados ? '' : 'aguardando', vista.w < W ? 'ampliado' : ''].join(' ').trim() || undefined}
         style={geo ? undefined : { display: 'none' }}
       >
         {regioes.map((r) => {
@@ -126,8 +233,12 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
               fillOpacity={focar && !sel ? opacidade(res) * 0.35 : opacidade(res)}
               className={sel ? 'regiao selecionada' : 'regiao'}
               vectorEffect="non-scaling-stroke"
-              onClick={() => onSelect(r.k)}
+              onClick={() => {
+                if (cliqueSuprimido.current) cliqueSuprimido.current = false;
+                else onSelect(r.k);
+              }}
               onMouseMove={(e) => {
+                if (gesto.current?.arrastou) return;
                 const box = ref.current!.getBoundingClientRect();
                 setHover({ k: r.k, x: e.clientX - box.left, y: e.clientY - box.top });
               }}
@@ -139,6 +250,18 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
           <path key="sel" d={r.d} className="contorno-selecao" vectorEffect="non-scaling-stroke" />
         ))}
       </svg>
+
+      {geo && (
+        <div className="zoom-controles" role="group" aria-label="Zoom do mapa">
+          <button type="button" onClick={() => aplicarZoom(1.6)} disabled={noMaximo} aria-label="Aproximar" title="Aproximar">+</button>
+          <button type="button" onClick={() => aplicarZoom(1 / 1.6)} disabled={noMinimo} aria-label="Afastar" title="Afastar">−</button>
+          {ampliado && (
+            <button type="button" className="zoom-reset" onClick={() => setZoom(null)} title="Voltar ao enquadramento inicial">
+              Ajustar
+            </button>
+          )}
+        </div>
+      )}
 
       {hover && (
         <div

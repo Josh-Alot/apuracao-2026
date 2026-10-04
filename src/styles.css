@@ -149,6 +149,21 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 .mapa svg { width: 100%; height: auto; max-height: 72vh; display: block; }
 .regiao { stroke: var(--superficie); stroke-width: 0.6; cursor: pointer; transition: fill 0.4s, fill-opacity 0.3s; }
 .regiao:hover { stroke: var(--texto); stroke-width: 1.4; }
+.mapa svg { touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+/* Ampliado, o gesto de 1 dedo arrasta o mapa em vez de rolar a página. */
+.mapa svg.ampliado { touch-action: none; }
+.mapa svg:active { cursor: grabbing; }
+.zoom-controles {
+  position: absolute; top: 8px; right: 8px; z-index: 5;
+  display: flex; flex-direction: column; gap: 0; align-items: flex-end;
+}
+.zoom-controles button {
+  min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--texto); margin-top: -1px;
+  background: var(--superficie); color: var(--texto); font-size: 1.15rem; line-height: 1; border-radius: 0;
+}
+.zoom-controles button:hover:not(:disabled) { background: var(--destaque-suave); }
+.zoom-controles button:disabled { color: var(--muted); border-color: var(--borda); cursor: default; }
+.zoom-controles .zoom-reset { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px; }
 .contorno-selecao { fill: none; stroke: var(--texto); stroke-width: 2.5; pointer-events: none; }
 .tooltip {
   position: absolute; pointer-events: none; z-index: 10; width: 220px;
