@@ -48,6 +48,8 @@ export interface Candidato {
   destinoVotos: string | null;
   vices?: { tipo: string; sq: string; nome: string; partido: string; foto: string }[];
   foto: string;
+  /** Vaga garantida mesmo que todos os votos ainda não apurados fossem para os rivais (calculado no servidor). */
+  matematicamenteEleito: boolean;
 }
 
 /** Perfil e bens do candidato (Dados Abertos do TSE, via /api/candidato/:sq). */

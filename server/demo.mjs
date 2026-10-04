@@ -33,7 +33,10 @@ export function applyDemo(raw) {
   const eleitorado = parseInt(out.e?.te ?? '0', 10);
   const comparecimento = Math.round(eleitorado * 0.8 * progresso);
   if (out.e) {
+    const totalizado = Math.round(eleitorado * progresso);
     Object.assign(out.e, {
+      est: String(totalizado),
+      esnt: String(eleitorado - totalizado),
       c: String(comparecimento),
       pc: fmtPct(eleitorado ? (comparecimento / eleitorado) * 100 : 0),
       a: String(Math.round(eleitorado * 0.2 * progresso)),

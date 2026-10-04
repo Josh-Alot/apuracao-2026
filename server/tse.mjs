@@ -370,7 +370,16 @@ async function fimDaVotacao(eleicao) {
 }
 
 export async function getResultado(params, ttlMs = 20_000, prioridade = PRIORIDADE.alta) {
-  return deRaw(await fetchJson(resultadoUrl(params), ttlMs, await fimDaVotacao(params.eleicao), prioridade), params);
+  const r = deRaw(await fetchJson(resultadoUrl(params), ttlMs, await fimDaVotacao(params.eleicao), prioridade), params);
+  // Abaixo da abrangência da disputa (município, zona, UF do Presidente), "matematicamente eleito"
+  // vem do arquivo da disputa — que é o mesmo para todos, fica em cache e já é o mais consultado.
+  if (r && (params.mun || params.zona || escopoDaDisputa(params.cargo) !== (params.uf === 'br' ? 'br' : 'uf'))) {
+    const disputa = { eleicao: params.eleicao, cargo: params.cargo, uf: escopoDaDisputa(params.cargo) === 'br' ? 'br' : params.uf };
+    const geral = await getResultado(disputa, 20_000, prioridade).catch(() => null);
+    const eleitos = new Set(geral?.candidatos.filter((c) => c.matematicamenteEleito).map((c) => c.sq));
+    for (const c of r.candidatos) c.matematicamenteEleito = eleitos.has(c.sq);
+  }
+  return r;
 }
 
 function deRaw(raw, params) {
@@ -397,13 +406,79 @@ export async function getResultadosRapidos(lista, ttlMs, prioridade, esperaMs = 
   });
 }
 
+/**
+ * "Matematicamente eleito": mesmo que todos os eleitores das seções ainda não totalizadas (`e.esnt`)
+ * votassem contra, o candidato não perde a vaga. Só vale no arquivo da disputa (BR para Presidente,
+ * UF para os demais cargos). Conservador de propósito: votos anulados sub judice contam como se
+ * fossem validados para os rivais, e no proporcional só entra a vaga pelo quociente partidário
+ * (as sobras ficam de fora). Devolve o conjunto de `sqcand`.
+ */
+function matematicamenteEleitos(raw, candidatos, grupos) {
+  const carg = raw.carg[0];
+  const faltam = int(raw.e?.esnt);
+  const validos = int(raw.v?.vv);
+  const subJudice = int(raw.v?.vansj);
+  const vagas = int(carg.nv) || 1;
+  const out = new Set();
+  const podeSerEleito = (c) => c.votos > 0 && c.destinoVotos === 'Válido';
+
+  if (carg.cd === '1' || carg.cd === '3') {
+    // Presidente e Governador: maioria absoluta dos votos válidos no 1º turno.
+    const tetoValidos = validos + subJudice + faltam;
+    for (const c of candidatos) if (podeSerEleito(c) && 2 * c.votos > tetoValidos) out.add(c.sq);
+  } else if (carg.cd === '5') {
+    // Senado: os `vagas` mais votados. Cada eleitor dá no máximo 1 voto a cada candidato, então
+    // cada rival pode receber até `faltam` votos. Empate conta como ameaça (desempate é por idade).
+    for (const c of candidatos) {
+      if (!podeSerEleito(c)) continue;
+      const ameacas = candidatos.filter((o) => o !== c && o.votos + faltam >= c.votos).length;
+      if (ameacas < vagas) out.add(c.sq);
+    }
+  } else {
+    // Proporcional (só a vaga pelo quociente partidário). O adversário divide os votos que faltam:
+    // os que vão para outras agremiações aumentam o QE; os que vão para colegas de chapa os põem à
+    // frente, mas também somam ao partido. Com o QE no máximo possível, as vagas por QP são no mínimo
+    // floor((votos do grupo + y) / QE máx.) quando y votos vão para colegas. Basta testar y = 0 e
+    // os pontos em que mais um colega alcança o candidato (soma das menores diferenças).
+    const teto = validos + subJudice + faltam;
+    const qeMax = Math.ceil(teto / vagas) + 1; // o TSE arredonda o QE; +1 cobre o arredondamento
+    const doGrupo = new Map(); // agremiação → índices dos candidatos
+    grupos.agrDe.forEach((agr, i) => doGrupo.set(agr, [...(doGrupo.get(agr) ?? []), i]));
+    candidatos.forEach((c, i) => {
+      if (!podeSerEleito(c) || c.votos < 0.1 * qeMax) return; // mínimo de 10% do QE
+      const agr = grupos.agrDe[i];
+      const total = grupos.get(agr);
+      const diferencas = doGrupo.get(agr).filter((j) => j !== i)
+        .map((j) => Math.max(0, c.votos - candidatos[j].votos)) // empate conta como "à frente"
+        .sort((a, b) => a - b);
+      let y = 0;
+      for (let k = 0; k <= diferencas.length; k++) {
+        // k colegas à frente custam y votos; o candidato precisa de mais de k vagas.
+        if (k > 0) y += diferencas[k - 1];
+        if (y > faltam) break;
+        if (Math.floor((total + y) / qeMax) <= k) return;
+      }
+      out.add(c.sq);
+    });
+  }
+  return out;
+}
+
+/** Abrangência em que a disputa é decidida: Brasil para Presidente, UF para os demais cargos. */
+const escopoDaDisputa = (cargo) => (String(cargo) === '1' ? 'br' : 'uf');
+
 function normalizar(raw, { eleicao, uf }) {
   const carg = raw.carg[0];
   const fotoUf = carg.cd === '1' ? 'br' : uf;
   const candidatos = [];
+  // Agremiação (partido isolado ou federação) de cada candidato e o total dela (nominais + legenda).
+  const grupos = new Map();
+  grupos.agrDe = [];
   for (const agr of carg.agr ?? []) {
+    grupos.set(agr, (agr.par ?? []).reduce((t, par) => t + int(par.tvtn) + int(par.tvtl), 0));
     for (const par of agr.par ?? []) {
       for (const c of par.cand ?? []) {
+        grupos.agrDe.push(agr);
         candidatos.push({
           numero: c.n,
           sq: c.sqcand,
@@ -419,9 +494,14 @@ function normalizar(raw, { eleicao, uf }) {
           destinoVotos: c.dvt || null,
           vices: (c.vs ?? []).map((v) => ({ tipo: v.tp, sq: v.sqcand, nome: v.nmu, partido: v.sgp, foto: fotoUrl(eleicao, fotoUf, v.sqcand) })),
           foto: fotoUrl(eleicao, fotoUf, c.sqcand),
+          matematicamenteEleito: false,
         });
       }
     }
+  }
+  if (raw.tpabr === escopoDaDisputa(carg.cd)) {
+    const eleitos = matematicamenteEleitos(raw, candidatos, grupos);
+    for (const c of candidatos) c.matematicamenteEleito = eleitos.has(c.sq);
   }
   candidatos.sort((a, b) => b.votos - a.votos || a.nomeUrna.localeCompare(b.nomeUrna, 'pt-BR'));
 

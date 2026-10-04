@@ -589,6 +589,8 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 .selo-suplente { color: var(--muted); }
 .selo-nao-eleito { color: var(--muted); border-color: transparent !important; padding-left: 0; }
 .selo-anulado { color: var(--erro); }
+.selo-matematico { color: var(--texto); }
+.selo-matematico::before { content: "✓ "; }
 .selo[title] { cursor: help; }
 
 /* ---------- ficha do candidato (modal) ---------- */
