@@ -138,6 +138,9 @@ bens); rode `npm run candidatos` de novo e faça commit. A API DivulgaCandContas
 - Antes do fechamento das urnas (17h de Brasília) o TSE não divulga nada (nem o exterior): o servidor busca
   cada arquivo de resultado no máximo uma vez e guarda até o fechamento (`fimDaVotacao` + `validoAte` no
   `fetchJson`), e o front não abre "ao vivo" nem polling (`apuracaoAberta` no `App.tsx`); às 17h liga sozinho.
+- Cache do cliente (`useApi` em `src/api.ts`): ao trocar de tela, o último dado daquela URL aparece na hora
+  (atenuado, "atualizando") e é substituído quando chega o novo; espelhado no sessionStorage (respostas até
+  150 KB) para o F5, descartado após 30 min. As respostas 200 da API levam ETag + `no-cache` (304 se não mudou).
 - Seja educado com o TSE: mantenha cache/TTL e limites de concorrência ao adicionar chamadas.
   Os TTLs ficam em `getResultado(params, ttlMs)` e `fetchJson`.
 - A projeção do mapa é plana de propósito (ver comentário em `Mapa.tsx`): as malhas do IBGE não seguem

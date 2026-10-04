@@ -1,6 +1,7 @@
 // Servidor HTTP sem dependências: API (/api/*) que agrega o TSE e o IBGE + arquivos estáticos do build.
 
 import http from 'node:http';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -248,8 +249,21 @@ async function estatico(res, pathname) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const json = (status, body) => {
+    const texto = JSON.stringify(body);
+    // Respostas de sucesso levam ETag e "no-cache": o navegador guarda, mas sempre revalida — e se
+    // nada mudou recebe 304 sem corpo (o polling de 30 s deixa de baixar o JSON inteiro de novo).
+    if (status === 200 && url.pathname !== '/api/saude') {
+      const etag = `"${createHash('sha1').update(texto).digest('base64url').slice(0, 22)}"`;
+      const cabecalhos = { etag, 'cache-control': 'no-cache' };
+      if (req.headers['if-none-match'] === etag) {
+        res.writeHead(304, cabecalhos);
+        return res.end();
+      }
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', ...cabecalhos });
+      return res.end(texto);
+    }
     res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(JSON.stringify(body));
+    res.end(texto);
   };
   try {
     const geoMatch = url.pathname.match(/^\/api\/geo\/([a-z]{2})$/);

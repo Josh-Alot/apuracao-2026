@@ -15,6 +15,72 @@ export function useCarregandoGlobal() {
   );
 }
 
+// ---------- cache do cliente (mostra o último dado na hora e atualiza por trás) ----------
+// Em memória para tudo que passa pelo useApi; espelhado no sessionStorage (só respostas pequenas)
+// para o F5 também abrir com dado. Dado com mais de CACHE_VALIDADE_MS não é mostrado.
+
+const CACHE_MAX_ITENS = 80;
+const CACHE_VALIDADE_MS = 30 * 60_000;
+const STORAGE_PREFIXO = 'apuracao:';
+const STORAGE_MAX_CHARS = 150_000;
+const memoria = new Map<string, { data: unknown; ts: number }>();
+
+function lerCacheCliente<T>(url: string): T | null {
+  let e = memoria.get(url);
+  if (!e) {
+    try {
+      const txt = sessionStorage.getItem(STORAGE_PREFIXO + url);
+      if (txt) e = JSON.parse(txt);
+    } catch { /* storage bloqueado ou corrompido */ }
+  }
+  if (!e || Date.now() - e.ts > CACHE_VALIDADE_MS) return null;
+  memoria.delete(url);
+  memoria.set(url, e); // LRU: mais recente no fim
+  return e.data as T;
+}
+
+function guardarCacheCliente(url: string, data: unknown) {
+  const e = { data, ts: Date.now() };
+  memoria.delete(url);
+  memoria.set(url, e);
+  while (memoria.size > CACHE_MAX_ITENS) memoria.delete(memoria.keys().next().value!);
+  let txt: string;
+  try {
+    txt = JSON.stringify(e);
+  } catch {
+    return;
+  }
+  if (txt.length > STORAGE_MAX_CHARS) return;
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    try {
+      sessionStorage.setItem(STORAGE_PREFIXO + url, txt);
+      return;
+    } catch {
+      if (!liberarStorage()) return; // storage indisponível (ou nada mais a apagar)
+    }
+  }
+}
+
+/** Storage cheio: apaga as entradas mais antigas do app. Devolve false se não havia o que apagar. */
+function liberarStorage() {
+  try {
+    const itens: { chave: string; ts: number }[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const chave = sessionStorage.key(i);
+      if (!chave?.startsWith(STORAGE_PREFIXO)) continue;
+      let ts = 0;
+      try { ts = JSON.parse(sessionStorage.getItem(chave) || '{}').ts || 0; } catch { /* entrada inválida: sai primeiro */ }
+      itens.push({ chave, ts });
+    }
+    if (!itens.length) return false;
+    itens.sort((a, b) => a.ts - b.ts);
+    for (const { chave } of itens.slice(0, Math.max(1, Math.ceil(itens.length / 4)))) sessionStorage.removeItem(chave);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Tempo máximo de espera por uma resposta da API antes de desistir e mostrar o erro. */
 const TIMEOUT_MS = 30_000;
 
@@ -91,6 +157,7 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
     }
     let ctrl = new AbortController();
     let primeira = true;
+    let deCache = false; // a tela abriu com o dado do cache do cliente (ainda não confirmado pelo servidor)
     const carregar = async () => {
       ctrl.abort();
       ctrl = new AbortController();
@@ -99,6 +166,7 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
       setProxima(intervalo > 0 ? Date.now() + intervalo : null);
       try {
         const d = await getJson<T>(url, sinal);
+        guardarCacheCliente(url, d);
         if (urlAtual.current === url) {
           setData(d);
           setErro(null);
@@ -108,7 +176,7 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
         if ((e as Error).name === 'AbortError') return;
         if (urlAtual.current === url) {
           setErro((e as Error).message);
-          if (primeira) setData(null);
+          if (primeira && !deCache) setData(null); // com dado do cache, melhor mantê-lo junto do erro
         }
       } finally {
         primeira = false;
@@ -116,16 +184,21 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
         if (!sinal.aborted && urlAtual.current === url) setCarregando(false);
       }
     };
-    // Só limpa ao trocar de URL; ligar/desligar o "ao vivo" mantém o que já está na tela.
-    // O erro da URL anterior também sai, senão a aba nova "herda" a falha enquanto carrega.
+    // Só troca o dado ao mudar de URL; ligar/desligar o "ao vivo" mantém o que já está na tela.
+    // Com a URL já vista (cache do cliente), o último dado aparece na hora enquanto atualiza;
+    // sem cache, a tela volta ao esqueleto. O erro da URL anterior também sai, senão a aba nova
+    // "herda" a falha enquanto carrega.
     if (urlComDados.current !== url) {
-      setData(null);
+      const emCache = lerCacheCliente<T>(url);
+      setData(emCache);
       setErro(null);
+      deCache = !!emCache;
+      if (emCache) urlComDados.current = url;
     }
 
     if (sseUrl) {
       setProxima(null);
-      setCarregando(urlComDados.current !== url);
+      setCarregando(urlComDados.current !== url || deCache);
       const es = new EventSource(sseUrl);
       let estado: AoVivo = { intervalo: 0, verificadoEm: null, conectado: false };
       const atualizar = (parcial: Partial<AoVivo>) => {
@@ -138,7 +211,9 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
       es.addEventListener('verificado', (e) => atualizar({ verificadoEm: Number(e.data), conectado: true }));
       es.addEventListener('resultado', (e) => {
         if (urlAtual.current !== url) return;
-        setData(JSON.parse(e.data));
+        const d = JSON.parse(e.data);
+        guardarCacheCliente(url, d);
+        setData(d);
         setErro(null);
         setCarregando(false);
         urlComDados.current = url;
