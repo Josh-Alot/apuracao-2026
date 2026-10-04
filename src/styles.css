@@ -584,6 +584,21 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 :root .aviso-indisponivel { border-left-color: var(--erro); background: color-mix(in srgb, var(--erro) 8%, transparent); }
 :root .aviso-indisponivel strong { color: var(--erro); }
 
+/* Aviso do mapa (regiões faltando / falha): mesma "nota da redação", acima do mapa */
+.aviso-mapa {
+  margin: 0 0 14px; padding: 10px 14px 10px 16px; border-left: 4px solid var(--ao-vivo);
+  background: color-mix(in srgb, var(--ao-vivo) 8%, transparent);
+}
+.aviso-mapa strong { display: block; font-family: var(--fonte-titulo); font-size: 1.1rem; color: var(--ao-vivo); }
+.aviso-mapa p { margin: 4px 0 0; font-size: 0.88rem; }
+.aviso-mapa-barra {
+  height: 6px; margin-top: 8px; border-radius: 99px; overflow: hidden;
+  background: color-mix(in srgb, var(--ao-vivo) 18%, transparent);
+}
+.aviso-mapa-barra span { display: block; height: 100%; background: var(--ao-vivo); transition: width 0.6s ease; }
+.aviso-mapa-erro { border-left-color: var(--erro); background: color-mix(in srgb, var(--erro) 8%, transparent); }
+.aviso-mapa-erro strong { color: var(--erro); }
+
 /* ---------- situação do candidato ---------- */
 .selo-2turno { color: var(--ao-vivo); }
 .selo-suplente { color: var(--muted); }

@@ -206,6 +206,15 @@ export default function App() {
             </div>
           </div>
 
+          <AvisoMapa
+            erro={mapaAtual.erro}
+            temDados={!!mapaAtual.data}
+            regioes={regioesTotal}
+            semDado={regioesTotal - regioesComDado.length}
+            rotulo={uf === 'zz' ? 'cidades' : uf ? 'municípios' : 'UFs'}
+            intervalo={intervaloMapa}
+          />
+
           {uf === 'zz' ? (
             <ListaRegioes
               titulo="Cidades no exterior"
@@ -239,14 +248,6 @@ export default function App() {
               inicio={apuracaoAberta ? null : cargo.encerramento}
             />
           </p>
-          <AvisoMapa
-            erro={mapaAtual.erro}
-            temDados={!!mapaAtual.data}
-            regioes={regioesTotal}
-            semDado={regioesTotal - regioesComDado.length}
-            rotulo={uf === 'zz' ? 'cidades' : uf ? 'municípios' : 'UFs'}
-            intervalo={intervaloMapa}
-          />
 
           {!uf && cargo.ufs.includes('zz') && (
             <button className="botao-exterior" onClick={() => ir({ uf: 'zz' })}>
@@ -330,7 +331,7 @@ function SeletorMunicipio({ municipios, onEscolher }: { municipios: { cd: string
   );
 }
 
-/** Aviso abaixo do mapa: falha/timeout ao carregar, ou regiões que ainda não chegaram do TSE. */
+/** Aviso acima do mapa: falha/timeout ao carregar, ou regiões que ainda não chegaram do TSE. */
 function AvisoMapa({ erro, temDados, regioes, semDado, rotulo, intervalo }: {
   erro: string | null; temDados: boolean; regioes: number; semDado: number; rotulo: string; intervalo: number;
 }) {
@@ -339,18 +340,28 @@ function AvisoMapa({ erro, temDados, regioes, semDado, rotulo, intervalo }: {
     : 'Recarregue a página para tentar de novo.';
   if (erro) {
     return (
-      <p className="erro pequeno nota-mapa" role="status">
-        Não foi possível {temDados ? 'atualizar' : 'carregar'} o mapa: {erro}. {novaTentativa}
-      </p>
+      <div className="aviso-mapa aviso-mapa-erro" role="status">
+        <strong>Não foi possível {temDados ? 'atualizar' : 'carregar'} o mapa</strong>
+        <p>{erro}. {novaTentativa}</p>
+      </div>
     );
   }
   if (!semDado) return null;
+  const chegaram = regioes - semDado;
   return (
-    <p className="muted pequeno nota-mapa" role="status">
-      {semDado === regioes
-        ? `Os dados dos ${regioes} ${rotulo} ainda estão chegando do TSE`
-        : `Faltam dados de ${semDado} de ${regioes} ${rotulo}`}
-      {' '}— o servidor consulta o TSE aos poucos para não ser bloqueado, e o mapa se completa a cada atualização.
-    </p>
+    <div className="aviso-mapa" role="status">
+      <strong>
+        {chegaram === 0
+          ? `Mapa carregando: os ${regioes} ${rotulo} ainda estão chegando do TSE`
+          : `Mapa incompleto: ${chegaram} de ${regioes} ${rotulo}`}
+      </strong>
+      <div className="aviso-mapa-barra" aria-hidden="true">
+        <span style={{ width: `${(100 * chegaram) / regioes}%` }} />
+      </div>
+      <p>
+        Faltam {semDado} {rotulo}. O servidor consulta o TSE aos poucos para não ser bloqueado, e o mapa se
+        completa a cada atualização — as regiões em branco ainda não chegaram.
+      </p>
+    </div>
   );
 }
