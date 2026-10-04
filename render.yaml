@@ -9,7 +9,7 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /
-    autoDeploy: true # cada push na branch principal publica de novo
+    autoDeployTrigger: commit # cada push na branch principal publica de novo
     envVars:
       - key: NODE_VERSION
         value: "24"
