@@ -53,6 +53,21 @@ export interface Candidato {
    * a vaga ('eleito') ou, no executivo, a vaga no 2º turno ('segundo-turno').
    */
   matematicamente: 'eleito' | 'segundo-turno' | null;
+  /**
+   * Proporcional (calculado no servidor): ordem de suplência na chapa (partido ou federação) e efeito
+   * puxador. `projecao` = antes da situação oficial do TSE, pelas vagas projetadas para cada chapa.
+   */
+  chapa: {
+    /** 1 = 1º suplente da chapa; null se eleito. */
+    suplente: number | null;
+    /** Eleito com menos votos que o QE, puxado pelo mais votado da chapa (nome de urna). */
+    puxadoPor: string | null;
+    /** Quantos eleitos da chapa ficaram abaixo do QE (só no puxador). */
+    puxou: number;
+    /** Quociente eleitoral usado no cálculo. */
+    qe: number;
+    projecao: boolean;
+  } | null;
 }
 
 /** Perfil e bens do candidato (Dados Abertos do TSE, via /api/candidato/:sq). */

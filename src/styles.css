@@ -587,6 +587,8 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 /* ---------- situação do candidato ---------- */
 .selo-2turno { color: var(--ao-vivo); }
 .selo-suplente { color: var(--muted); }
+.selo-puxado { color: var(--muted); font-style: italic; }
+.selo-puxador { color: var(--texto); }
 .selo-nao-eleito { color: var(--muted); border-color: transparent !important; padding-left: 0; }
 .selo-anulado { color: var(--erro); }
 .selo-matematico { color: var(--texto); }

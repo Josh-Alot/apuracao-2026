@@ -437,8 +437,11 @@ export async function getResultado(params, ttlMs = 20_000, prioridade = PRIORIDA
   if (r && (params.mun || params.zona || escopoDaDisputa(params.cargo) !== (params.uf === 'br' ? 'br' : 'uf'))) {
     const disputa = { eleicao: params.eleicao, cargo: params.cargo, uf: escopoDaDisputa(params.cargo) === 'br' ? 'br' : params.uf };
     const geral = await getResultado(disputa, 20_000, prioridade).catch(() => null);
-    const situacao = new Map(geral?.candidatos.map((c) => [c.sq, c.matematicamente]));
-    for (const c of r.candidatos) c.matematicamente = situacao.get(c.sq) ?? null;
+    const situacao = new Map(geral?.candidatos.map((c) => [c.sq, c]));
+    for (const c of r.candidatos) {
+      c.matematicamente = situacao.get(c.sq)?.matematicamente ?? null;
+      c.chapa = situacao.get(c.sq)?.chapa ?? null;
+    }
   }
   return r;
 }
@@ -565,6 +568,50 @@ function situacaoMatematica(raw, candidatos, grupos) {
   return out;
 }
 
+/**
+ * Proporcional: ordem de suplência na chapa (partido isolado ou federação) e o "efeito puxador" —
+ * eleito com menos votos que o quociente eleitoral (QE), numa chapa em que alguém passou do QE
+ * (o puxador). Com a situação oficial do TSE (`st`) usa eleitos e suplentes oficiais; antes dela,
+ * projeta pelas vagas que o TSE calcula para cada chapa (`agr.vag`): ficam com elas os mais votados
+ * da chapa com ao menos 10% do QE. Suplência = demais candidatos com votos válidos, por votos.
+ * Devolve Map sqcand → { suplente, puxadoPor, puxou, qe, projecao }.
+ */
+function chapas(raw, candidatos, grupos) {
+  const carg = raw.carg[0];
+  const out = new Map();
+  const qe = int(carg.qe) || Math.round(int(raw.v?.vv) / (int(carg.nv) || 1));
+  if (!qe) return out;
+  const oficial = candidatos.some((c) => c.status === 'eleito' || c.status === 'suplente');
+  const porChapa = new Map(); // agremiação → candidatos
+  candidatos.forEach((c, i) => {
+    const agr = grupos.agrDe[i];
+    if (!porChapa.has(agr)) porChapa.set(agr, []);
+    porChapa.get(agr).push(c);
+  });
+  for (const [agr, cs] of porChapa) {
+    const validos = cs.filter((c) => c.destinoVotos === 'Válido' && c.votos > 0).sort((a, b) => b.votos - a.votos);
+    let eleitos;
+    let suplentes;
+    if (oficial) {
+      eleitos = validos.filter((c) => c.status === 'eleito');
+      suplentes = validos.filter((c) => c.status === 'suplente');
+    } else {
+      eleitos = validos.filter((c) => c.votos >= 0.1 * qe).slice(0, int(agr.vag));
+      suplentes = validos.filter((c) => !eleitos.includes(c));
+    }
+    const puxador = eleitos.find((c) => c.votos >= qe); // eleitos em ordem de votos: o mais votado
+    const puxados = puxador ? eleitos.filter((c) => c.votos < qe) : [];
+    const base = { suplente: null, puxadoPor: null, puxou: 0, qe, projecao: !oficial };
+    for (const c of eleitos) {
+      out.set(c.sq, { ...base, puxadoPor: puxados.includes(c) ? puxador.nomeUrna : null, puxou: c === puxador ? puxados.length : 0 });
+    }
+    suplentes.forEach((c, k) => out.set(c.sq, { ...base, suplente: k + 1 }));
+  }
+  return out;
+}
+
+const PROPORCIONAIS = new Set(['6', '7', '8']);
+
 /** Abrangência em que a disputa é decidida: Brasil para Presidente, UF para os demais cargos. */
 const escopoDaDisputa = (cargo) => (String(cargo) === '1' ? 'br' : 'uf');
 
@@ -596,6 +643,7 @@ function normalizar(raw, { eleicao, uf }) {
           vices: (c.vs ?? []).map((v) => ({ tipo: v.tp, sq: v.sqcand, nome: v.nmu, partido: v.sgp, foto: fotoUrl(eleicao, fotoUf, v.sqcand) })),
           foto: fotoUrl(eleicao, fotoUf, c.sqcand),
           matematicamente: null,
+          chapa: null,
         });
       }
     }
@@ -603,6 +651,10 @@ function normalizar(raw, { eleicao, uf }) {
   if (raw.tpabr === escopoDaDisputa(carg.cd)) {
     const situacao = situacaoMatematica(raw, candidatos, grupos);
     for (const c of candidatos) c.matematicamente = situacao.get(c.sq) ?? null;
+    if (PROPORCIONAIS.has(carg.cd)) {
+      const chapa = chapas(raw, candidatos, grupos);
+      for (const c of candidatos) c.chapa = chapa.get(c.sq) ?? null;
+    }
   }
   candidatos.sort((a, b) => b.votos - a.votos || a.nomeUrna.localeCompare(b.nomeUrna, 'pt-BR'));
 

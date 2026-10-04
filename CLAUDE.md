@@ -100,6 +100,10 @@ Base: `https://resultados.tse.jus.br/oficial`
   como válido para os rivais; no proporcional só a vaga por QP (sobras fora). 2º turno garantido (executivo):
   ninguém mais alcança a maioria e os 2 rivais mais próximos, juntos, precisariam de mais votos do que
   faltam. Os selos somem quando o TSE marca `st` (eleito / 2º turno).
+- Suplência e efeito puxador (`chapa`, `chapas()` em `tse.mjs`, só proporcional, no arquivo da UF e copiado para
+  município/zona): puxado = eleito com menos votos que o QE (`carg.qe`) numa chapa (partido isolado ou federação)
+  em que alguém passou do QE. Com `st` oficial usa eleitos/suplentes do TSE; antes, projeta pelas vagas de cada
+  chapa (`agr.vag`) e o front marca "(projeção)" e só mostra os 5 primeiros suplentes de cada chapa.
 - Não existe arquivo agregado "vencedor por município": o mapa estadual faz 1 requisição por
   município (SP = 645), com concorrência limitada (`mapLimit`) e cache de 60 s. Por isso, cargos
   proporcionais (arquivos de centenas de KB) usam só o `-ab.json` no mapa estadual.
