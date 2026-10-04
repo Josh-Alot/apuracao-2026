@@ -10,6 +10,7 @@
   --destaque: #141414;
   --destaque-suave: #efe9dc;
   --sem-dado: #e6e0d4;
+  --mistura-partido: 65%; /* quanto da cor do partido entra no texto da sigla */
   --ao-vivo: #b45309;
   --erro: #b3261e;
   --sombra: none;
@@ -31,6 +32,7 @@
     --destaque: #f1ece2;
     --destaque-suave: #26231f;
     --sem-dado: #2c2925;
+    --mistura-partido: 40%;
     --ao-vivo: #f59e0b;
     --erro: #ff8a80;
     color-scheme: dark;
@@ -46,6 +48,7 @@
   --destaque: #f1ece2;
   --destaque-suave: #26231f;
   --sem-dado: #2c2925;
+  --mistura-partido: 40%;
   --ao-vivo: #f59e0b;
   --erro: #ff8a80;
   color-scheme: dark;
@@ -226,7 +229,10 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 .foto-vazia { display: grid; place-items: center; color: #fff; font-weight: 700; }
 .cand-nome { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .numero { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
-.partido { font-size: 0.7rem; font-weight: 700; border: 1px solid; border-radius: 4px; padding: 0 5px; }
+.partido { font-size: 0.7rem; font-weight: 700; border: 1px solid var(--cor); border-radius: 4px; padding: 0 5px; }
+/* A sigla é texto: mistura a cor do partido com a do texto para o amarelo (Missão, PSD, PSB) não sumir
+   no creme e o azul-marinho/preto (PL, UP) não sumir no tema escuro. */
+.partido { color: color-mix(in oklab, var(--cor) var(--mistura-partido), var(--texto)); }
 .barra { height: 6px; background: var(--bg); border-radius: 99px; margin-top: 5px; overflow: hidden; }
 .barra i { display: block; height: 100%; border-radius: 99px; transition: width 0.6s; }
 .cand-votos { display: flex; flex-direction: column; align-items: flex-end; text-align: right; font-size: 0.85rem; }

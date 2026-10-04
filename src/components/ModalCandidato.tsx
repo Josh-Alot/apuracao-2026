@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import type { Candidato, DetalheCandidato } from '../types';
 import { useApi } from '../api';
 import { Num } from './Num';
@@ -61,7 +61,7 @@ export function ModalCandidato({ c, pos, cargo, onFechar }: Props) {
             <h2 id="modal-candidato-nome">{titulo(c.nomeUrna)}</h2>
             <div className="cand-nome">
               <span className="numero">{c.numero}</span>
-              <span className="partido" style={{ borderColor: cor, color: cor }}>{c.partido}</span>
+              <span className="partido" style={{ '--cor': cor } as CSSProperties}>{c.partido}</span>
               <SeloSituacao c={c} />
             </div>
             <div className="modal-votos">

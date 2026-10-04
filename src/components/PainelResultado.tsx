@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import type { Candidato, Resultado } from '../types';
 import { EsqueletoPainel } from './Carregando';
 import { Num } from './Num';
@@ -127,7 +127,7 @@ function LinhaCandidato({ c, pos, maxPct, onAbrir }: { c: Candidato; pos: number
             <strong>{titulo(c.nomeUrna)}</strong>
           </button>
           <span className="numero">{c.numero}</span>
-          <span className="partido" style={{ borderColor: cor, color: cor }}>{c.partido}</span>
+          <span className="partido" style={{ '--cor': cor } as CSSProperties}>{c.partido}</span>
           <SeloSituacao c={c} />
         </div>
         {c.vices && c.vices.length > 0 && (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { getJson, qs } from '../api';
 import { Esq } from './Carregando';
 import { Num } from './Num';
@@ -112,7 +112,7 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
                         onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
                       <span className="busca-info">
                         <strong>{titulo(i.nomeUrna)}</strong> <span className="numero">{i.numero}</span>{' '}
-                        <span className="partido" style={{ color: corPartido(i.partido), borderColor: corPartido(i.partido) }}>{i.partido}</span>
+                        <span className="partido" style={{ '--cor': corPartido(i.partido) } as CSSProperties}>{i.partido}</span>
                         <SeloSituacao c={i} />
                         <span className="muted pequeno">
                           {i.cargoNome} · {i.uf === 'br' ? 'Brasil' : UF_NOMES[i.uf]} · {fmtPct(i.pctApurado)} apurado

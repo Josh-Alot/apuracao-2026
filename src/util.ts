@@ -31,15 +31,18 @@ export const frase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLow
 export const semAcento = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-// Cores aproximadas das identidades visuais dos partidos; o resto recebe uma cor estável por hash.
+// Cores das identidades visuais, conforme as predefinições "<partido>/meta/cor" da Wikipédia lusófona
+// (as mesmas usadas nos mapas eleitorais da imprensa). As chaves são as siglas como o TSE as escreve
+// (campo "sg"; federações não aparecem, cada candidato vem com o próprio partido). Siglas fora da
+// lista recebem uma cor estável por hash.
 const CORES_PARTIDO: Record<string, string> = {
-  PT: '#c4161c', 'PT/PC do B/PV': '#c4161c', 'PC do B': '#a50f15', PV: '#2e9e44',
-  PL: '#1f3f99', PSD: '#f2a900', MDB: '#2b7a3d', PSDB: '#1565c0', 'PSDB/CIDADANIA': '#1565c0',
-  UNIÃO: '#0a2c74', 'UNIÃO PROGRESSISTA': '#0a2c74', PP: '#5aa1e3', REPUBLICANOS: '#0071bc',
-  PSB: '#e4572e', PDT: '#d1495b', NOVO: '#f37021', PSOL: '#7b1fa2', 'PSOL/REDE': '#7b1fa2',
-  REDE: '#16a085', PODE: '#29b6f6', AVANTE: '#00897b', SOLIDARIEDADE: '#ef6c00', PRD: '#283593',
-  CIDADANIA: '#e91e63', DC: '#6d4c41', MISSÃO: '#455a64', DEMOCRATA: '#00838f', PCO: '#8b0000',
-  PSTU: '#b71c1c', UP: '#880e4f', PMB: '#ad1457', AGIR: '#00695c', MOBILIZA: '#5d4037', PCB: '#d50000',
+  PT: '#c0122d', PCDOB: '#800314', PV: '#01652f', PSB: '#ffcc00', PDT: '#fe8e6d', PSOL: '#68018d',
+  REDE: '#3ca08c', PL: '#30306c', PSD: '#ffa400', MDB: '#009959', PSDB: '#0f2bc5', CIDADANIA: '#ec008c',
+  UNIÃO: '#00a0df', PP: '#54b8ea', REPUBLICANOS: '#005ca9', NOVO: '#ec671c', PODE: '#00d663',
+  AVANTE: '#2eabb1', SOLIDARIEDADE: '#f37021', PRD: '#007c3c', MISSÃO: '#fcbe26', DC: '#c89721',
+  DEMOCRATA: '#3da564', AGIR: '#01369e', PRTB: '#0047ab', PMB: '#8e2a4e', PCO: '#9f030a',
+  PSTU: '#c92127', PCB: '#a8231c', UP: '#000000',
+  MOBILIZA: '#5d4037', // sem predefinição na Wikipédia
 };
 
 export function corPartido(sigla: string | undefined | null): string {
