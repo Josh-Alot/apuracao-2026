@@ -332,6 +332,7 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
     gap: 4px 14px;
     font-size: 0.78rem;
     text-transform: uppercase;
@@ -347,16 +348,17 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
   }
   .switch-tema-trilho {
     position: relative; display: inline-flex; align-items: center; justify-content: space-between;
-    width: 40px; height: 20px; padding: 0 4px; border-radius: 99px;
+    width: 52px; height: 28px; padding: 0 6px; border-radius: 99px;
     border: 1px solid var(--texto); background: var(--destaque-suave);
     color: var(--muted);
   }
   .switch-tema-bolinha {
-    position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+    position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%;
     background: var(--texto); transition: transform 0.2s ease;
   }
-  .switch-tema[aria-checked='true'] .switch-tema-bolinha { transform: translateX(20px); }
+  .switch-tema[aria-checked='true'] .switch-tema-bolinha { transform: translateX(24px); }
   .switch-tema:hover .switch-tema-trilho { background: var(--borda); }
+  .switch-tema:hover .switch-tema-texto { color: var(--texto); }
   .switch-tema:focus-visible { outline: none; }
   .switch-tema:focus-visible .switch-tema-trilho { outline: 2px solid var(--ao-vivo); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { .switch-tema-bolinha { transition: none; } }
