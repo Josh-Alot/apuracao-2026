@@ -71,10 +71,10 @@ export class ErroTse extends Error {
   constructor(msg, status = 503) { super(msg); this.status = status; this.silencioso = true; }
 }
 
-// O TSE limita requisições por IP (HTTP 429). No Render o IP de saída é compartilhado com outros
-// serviços, então o limite pode estourar sem culpa nossa. Ao receber 429, TODAS as consultas ao TSE
-// param por um tempo (Retry-After / x-ratelimit-reset, dobrando a cada 429 seguido, até 60 s):
-// quem tem dado em cache recebe o dado antigo; quem não tem recebe 503 sem bater no TSE.
+// O TSE (atrás do Akamai) limita requisições por IP bem abaixo do que diz o cabeçalho
+// x-ratelimit-limit: rajadas de poucas consultas já recebem HTTP 429. Ao receber 429, TODAS as
+// consultas ao TSE param por um tempo (Retry-After / x-ratelimit-reset, dobrando a cada 429
+// seguido, até 60 s): quem tem dado em cache recebe o dado antigo; quem não tem recebe 503.
 let pausaAte = 0;
 let pausaMs = 0;
 // Outras falhas (5xx, rede) pausam só aquela URL por alguns segundos.
@@ -88,11 +88,88 @@ function pausarTse(res) {
   console.warn(`TSE respondeu 429: consultas pausadas por ${pausaMs / 1000} s`);
 }
 
-/** Busca JSON com cache: vale por `ttlMs` ou, se informado, até o instante `validoAte` (ms). */
-export async function fetchJson(url, ttlMs, validoAte = 0) {
+// ---------- fila de consultas ao TSE ----------
+// Todas as consultas ao TSE passam por uma fila com taxa máxima (TSE_RPS por segundo) e prioridade:
+// o resultado que alguém está vendo vem antes do mapa nacional, que vem antes dos mapas por
+// município e da busca. A taxa cai pela metade a cada 429 e volta a subir aos poucos.
+export const PRIORIDADE = { alta: 0, media: 1, baixa: 2 };
+const RPS_MAX = Number(process.env.TSE_RPS || 3);
+const RPS_MIN = 0.5;
+let rps = RPS_MAX;
+let ultimoDisparo = 0;
+let ultimo429 = 0;
+const filas = [[], [], []]; // por prioridade: { url, liberar(ok) }
+const naFila = new Map(); // url -> { item, prioridade }
+const MAX_FILA_BAIXA = 3000; // acima disso descarta os pedidos mais antigos de baixa prioridade
+let timerFila = null;
+
+function agendarFila() {
+  if (timerFila || !filas.some((f) => f.length)) return;
+  const espera = Math.max(0, pausaAte - Date.now(), ultimoDisparo + 1000 / rps - Date.now());
+  timerFila = setTimeout(() => {
+    timerFila = null;
+    if (Date.now() < pausaAte) return agendarFila();
+    const fila = filas.find((f) => f.length);
+    if (fila) {
+      const item = fila.shift();
+      naFila.delete(item.url);
+      ultimoDisparo = Date.now();
+      item.liberar(true);
+    }
+    agendarFila();
+  }, espera);
+}
+
+/** Espera a vez de consultar o TSE. Resolve false se o pedido foi descartado (fila cheia). */
+function aguardarVez(url, prioridade) {
+  return new Promise((liberar) => {
+    const item = { url, liberar };
+    filas[prioridade].push(item);
+    naFila.set(url, { item, prioridade });
+    if (filas[PRIORIDADE.baixa].length > MAX_FILA_BAIXA) {
+      const velho = filas[PRIORIDADE.baixa].shift();
+      naFila.delete(velho.url);
+      velho.liberar(false);
+    }
+    agendarFila();
+  });
+}
+
+/** Se alguém mais importante pede uma URL que já está na fila, ela sobe de prioridade. */
+function promover(url, prioridade) {
+  const f = naFila.get(url);
+  if (!f || f.prioridade <= prioridade) return;
+  const fila = filas[f.prioridade];
+  fila.splice(fila.indexOf(f.item), 1);
+  filas[prioridade].push(f.item);
+  f.prioridade = prioridade;
+}
+
+function ajustarTaxa(houve429) {
+  if (houve429) {
+    ultimo429 = Date.now();
+    rps = Math.max(RPS_MIN, rps / 2);
+  } else if (rps < RPS_MAX && Date.now() - ultimo429 > 30_000) {
+    rps = Math.min(RPS_MAX, rps + 0.05);
+  }
+}
+
+/** Situação da fila (para o log e para /api/saude). */
+export function estadoFila() {
+  return { rps: Math.round(rps * 100) / 100, alta: filas[0].length, media: filas[1].length, baixa: filas[2].length, cache: cache.size, cacheMB: Math.round(cacheBytes / 2 ** 20) };
+}
+
+/**
+ * Busca JSON com cache: vale por `ttlMs` ou, se informado, até o instante `validoAte` (ms).
+ * Consultas ao TSE entram na fila com a `prioridade` dada.
+ */
+export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDADE.alta) {
   const hit = lerCache(url);
   if (hit && (Date.now() - hit.ts < ttlMs || Date.now() < validoAte)) return hit.data;
-  if (inflight.has(url)) return inflight.get(url);
+  if (inflight.has(url)) {
+    promover(url, prioridade);
+    return inflight.get(url);
+  }
   const doTse = url.startsWith(TSE_BASE);
   const espera = Math.max(doTse ? pausaAte : 0, falhaAte.get(url) ?? 0) - Date.now();
   if (espera > 0) {
@@ -102,12 +179,16 @@ export async function fetchJson(url, ttlMs, validoAte = 0) {
 
   const p = (async () => {
     try {
+      if (doTse && !(await aguardarVez(url, prioridade))) {
+        throw new ErroTse('Consulta ao TSE descartada (fila cheia)');
+      }
       const res = await fetch(url, { headers: { 'user-agent': 'apuracao-2026/0.1' } });
       if (res.status === 404 || res.status === 403) {
         guardar(url, null, 0);
         return null;
       }
       if (res.status === 429 && doTse) {
+        ajustarTaxa(true);
         pausarTse(res);
         throw new ErroTse('TSE limitou as consultas (HTTP 429); tentando de novo em instantes');
       }
@@ -116,7 +197,10 @@ export async function fetchJson(url, ttlMs, validoAte = 0) {
       const data = JSON.parse(texto);
       guardar(url, data, texto.length);
       falhaAte.delete(url);
-      if (doTse) pausaMs = 0;
+      if (doTse) {
+        pausaMs = 0;
+        ajustarTaxa(false);
+      }
       return data;
     } catch (err) {
       if (!(err instanceof ErroTse) || err.status === 502) {
@@ -285,11 +369,28 @@ async function fimDaVotacao(eleicao) {
   return ms > Date.now() ? ms : 0;
 }
 
-export async function getResultado(params, ttlMs = 20_000) {
-  let raw = await fetchJson(resultadoUrl(params), ttlMs, await fimDaVotacao(params.eleicao));
+export async function getResultado(params, ttlMs = 20_000, prioridade = PRIORIDADE.alta) {
+  return deRaw(await fetchJson(resultadoUrl(params), ttlMs, await fimDaVotacao(params.eleicao), prioridade), params);
+}
+
+function deRaw(raw, params) {
   if (!raw || !raw.carg?.length) return null;
-  if (DEMO) raw = applyDemo(raw);
-  return normalizar(raw, params);
+  return normalizar(DEMO ? applyDemo(raw) : raw, params);
+}
+
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Vários resultados de uma vez sem prender a resposta na fila (mapas e busca): espera no máximo
+ * `esperaMs` pelo que precisa ser consultado e devolve o que houver — o dado em cache (mesmo
+ * vencido) ou null. O que não chegou a tempo segue na fila e entra na próxima atualização.
+ */
+export async function getResultadosRapidos(lista, ttlMs, prioridade, esperaMs = 4_000) {
+  const fim = await fimDaVotacao(lista[0]?.eleicao);
+  const pendentes = lista.map((params) =>
+    fetchJson(resultadoUrl(params), ttlMs, fim, prioridade).catch(() => undefined));
+  await Promise.race([Promise.allSettled(pendentes), dormir(esperaMs)]);
+  return lista.map((params) => deRaw(cache.get(resultadoUrl(params))?.data, params));
 }
 
 function normalizar(raw, { eleicao, uf }) {
@@ -365,6 +466,7 @@ export function resumo(r) {
 export async function getAbrangencia(eleicao, uf) {
   const raw = await fetchJson(
     `${TSE_BASE}/${CICLO}/${eleicao}/dados/${uf}/${uf}-e${pad(eleicao, 6)}-ab.json`, 30_000, await fimDaVotacao(eleicao),
+    PRIORIDADE.media,
   );
   const out = {};
   for (const a of raw?.abr ?? []) {

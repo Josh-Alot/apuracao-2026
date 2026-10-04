@@ -5,7 +5,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  getConfig, getMunicipios, getResultado, getAbrangencia, resumo, mapLimit, fetchJson, UFS,
+  getConfig, getMunicipios, getResultado, getResultadosRapidos, getAbrangencia, resumo, fetchJson, UFS,
+  PRIORIDADE, estadoFila,
 } from './tse.mjs';
 import { assinar } from './aovivo.mjs';
 import { getCandidato } from './candidatos.mjs';
@@ -63,14 +64,14 @@ async function mapa(q) {
 
   if (u === 'br') {
     const ufs = c.ufs;
-    const rs = await mapLimit(ufs, 10, (x) => getResultado({ ...base, uf: x }));
+    const rs = await getResultadosRapidos(ufs.map((x) => ({ ...base, uf: x })), 30_000, PRIORIDADE.media);
     return Object.fromEntries(ufs.map((x, i) => [x, resumo(rs[i])]));
   }
 
   const municipios = (await getMunicipios(c.eleicao))?.[u]?.municipios ?? [];
   if (mun) {
     const zonas = municipios.find((m) => m.cd === mun)?.zonas ?? [];
-    const rs = await mapLimit(zonas, 10, (z) => getResultado({ ...base, uf: u, mun, zona: z }, 45_000));
+    const rs = await getResultadosRapidos(zonas.map((z) => ({ ...base, uf: u, mun, zona: z })), 60_000, PRIORIDADE.baixa);
     return Object.fromEntries(zonas.map((z, i) => [z, resumo(rs[i])]));
   }
 
@@ -78,7 +79,9 @@ async function mapa(q) {
   // estadual usamos só o % apurado, que vem de um único arquivo de abrangência.
   if (c.tipo === 'proporcional') return getAbrangencia(c.eleicao, u);
 
-  const rs = await mapLimit(municipios, 16, (m) => getResultado({ ...base, uf: u, mun: m.cd }, 60_000));
+  // Um arquivo por município (853 em MG): entram na fila com prioridade baixa e o mapa vai se
+  // completando a cada atualização, em vez de disparar centenas de consultas de uma vez.
+  const rs = await getResultadosRapidos(municipios.map((m) => ({ ...base, uf: u, mun: m.cd })), 3 * 60_000, PRIORIDADE.baixa);
   return Object.fromEntries(municipios.map((m, i) => [m.cd, resumo(rs[i])]));
 }
 
@@ -100,8 +103,10 @@ async function indiceBusca(cargoId, ufFiltro) {
       if (c.escopo === 'br') alvos.push({ c, uf: ufFiltro || 'br' });
       else for (const u of c.ufs) if (!ufFiltro || u === ufFiltro) alvos.push({ c, uf: u });
     }
-    const rs = await mapLimit(alvos, 12, ({ c, uf: u }) =>
-      getResultado({ eleicao: c.eleicao, cargo: c.cargo, uf: u }, 60_000));
+    // A busca não precisa de votos ao segundo: usa o que estiver em cache e renova devagar.
+    const rs = await getResultadosRapidos(
+      alvos.map(({ c, uf: u }) => ({ eleicao: c.eleicao, cargo: c.cargo, uf: u })), 2 * 60_000, PRIORIDADE.baixa,
+    );
     const out = [];
     alvos.forEach(({ c, uf: u }, i) => {
       const r = rs[i];
@@ -184,7 +189,15 @@ const rotas = {
   '/api/resultado': resultado,
   '/api/mapa': mapa,
   '/api/busca': busca,
+  // Diagnóstico: fila de consultas ao TSE, cache e memória.
+  '/api/saude': () => ({ fila: estadoFila(), memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20) }),
 };
+
+// No log do Render: estado da fila a cada minuto, quando há algo esperando.
+setInterval(() => {
+  const f = estadoFila();
+  if (f.alta + f.media + f.baixa) console.log('fila TSE', JSON.stringify(f));
+}, 60_000).unref();
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
