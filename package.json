@@ -8,7 +8,7 @@
     "dev": "concurrently -k -n api,web -c blue,green \"node --watch server/index.mjs\" \"vite\"",
     "demo": "DEMO=1 npm run dev",
     "build": "tsc --noEmit && vite build",
-    "start": "node server/index.mjs",
+    "start": "node --max-old-space-size=384 server/index.mjs",
     "typecheck": "tsc --noEmit",
     "candidatos": "node server/scripts/candidatos.mjs"
   },

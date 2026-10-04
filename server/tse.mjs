@@ -34,8 +34,37 @@ export const UFS = [
 
 // ---------- cache em memória com deduplicação de requisições ----------
 
-const cache = new Map(); // url -> { ts, data }
+// O cache é limitado (LRU pelo tamanho do JSON): sem limite, navegar pelos mapas estaduais guarda
+// milhares de arquivos de município e estoura os 512 MB do Render gratuito (o processo trava e o
+// health check falha). Em memória o JSON ocupa ~6x o tamanho do texto: 40 MB de texto ≈ 250 MB.
+const CACHE_MAX_BYTES = Number(process.env.CACHE_MB || 40) * 1024 * 1024;
+const cache = new Map(); // url -> { ts, data, bytes } (ordem de inserção = do menos ao mais recente)
+let cacheBytes = 0;
 const inflight = new Map(); // url -> Promise
+
+function guardar(url, data, bytes) {
+  const antigo = cache.get(url);
+  if (antigo) {
+    cacheBytes -= antigo.bytes;
+    cache.delete(url);
+  }
+  cache.set(url, { ts: Date.now(), data, bytes });
+  cacheBytes += bytes;
+  for (const [u, e] of cache) {
+    if (cacheBytes <= CACHE_MAX_BYTES) break;
+    cache.delete(u);
+    cacheBytes -= e.bytes;
+  }
+}
+
+function lerCache(url) {
+  const hit = cache.get(url);
+  if (hit) { // marca como usado agora (vai para o fim da fila de descarte)
+    cache.delete(url);
+    cache.set(url, hit);
+  }
+  return hit;
+}
 
 /** Erro de consulta ao TSE que já foi registrado no log de forma resumida (sem pilha). */
 export class ErroTse extends Error {
@@ -61,7 +90,7 @@ function pausarTse(res) {
 
 /** Busca JSON com cache: vale por `ttlMs` ou, se informado, até o instante `validoAte` (ms). */
 export async function fetchJson(url, ttlMs, validoAte = 0) {
-  const hit = cache.get(url);
+  const hit = lerCache(url);
   if (hit && (Date.now() - hit.ts < ttlMs || Date.now() < validoAte)) return hit.data;
   if (inflight.has(url)) return inflight.get(url);
   const doTse = url.startsWith(TSE_BASE);
@@ -75,7 +104,7 @@ export async function fetchJson(url, ttlMs, validoAte = 0) {
     try {
       const res = await fetch(url, { headers: { 'user-agent': 'apuracao-2026/0.1' } });
       if (res.status === 404 || res.status === 403) {
-        cache.set(url, { ts: Date.now(), data: null });
+        guardar(url, null, 0);
         return null;
       }
       if (res.status === 429 && doTse) {
@@ -83,8 +112,9 @@ export async function fetchJson(url, ttlMs, validoAte = 0) {
         throw new ErroTse('TSE limitou as consultas (HTTP 429); tentando de novo em instantes');
       }
       if (!res.ok) throw new ErroTse(`HTTP ${res.status} em ${url}`, 502);
-      const data = await res.json();
-      cache.set(url, { ts: Date.now(), data });
+      const texto = await res.text();
+      const data = JSON.parse(texto);
+      guardar(url, data, texto.length);
       falhaAte.delete(url);
       if (doTse) pausaMs = 0;
       return data;
