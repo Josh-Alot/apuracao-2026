@@ -36,9 +36,10 @@ export const UFS = [
 const cache = new Map(); // url -> { ts, data }
 const inflight = new Map(); // url -> Promise
 
-export async function fetchJson(url, ttlMs) {
+/** Busca JSON com cache: vale por `ttlMs` ou, se informado, até o instante `validoAte` (ms). */
+export async function fetchJson(url, ttlMs, validoAte = 0) {
   const hit = cache.get(url);
-  if (hit && Date.now() - hit.ts < ttlMs) return hit.data;
+  if (hit && (Date.now() - hit.ts < ttlMs || Date.now() < validoAte)) return hit.data;
   if (inflight.has(url)) return inflight.get(url);
 
   const p = (async () => {
@@ -167,11 +168,42 @@ export async function getMunicipios(eleicao) {
 
 // ---------- resultados ----------
 
+/**
+ * Situação do candidato a partir do texto `st` do TSE. Não dá para confiar só em `e` ("s"/"n"):
+ * quem vai ao 2º turno também vem com e = "s". Valores vistos nas eleições de 2024:
+ * majoritário — "Eleito", "2º turno", "Não eleito";
+ * proporcional — "Eleito por QP" (quociente partidário), "Eleito por média", "Suplente", "Não eleito".
+ * Vazio = ainda indefinido (apuração em andamento). Textos desconhecidos seguem como "outro".
+ */
+function classificar(st, e) {
+  const t = (st || '').trim();
+  if (!t) return { status: e === 's' ? 'eleito' : null, detalhe: null };
+  if (/2.?\s*turno/i.test(t)) return { status: 'segundo-turno', detalhe: null };
+  if (/^n[aã]o eleit/i.test(t)) return { status: 'nao-eleito', detalhe: null };
+  if (/^eleit/i.test(t)) {
+    const m = t.match(/por\s+(.+)$/i);
+    return { status: 'eleito', detalhe: m ? `por ${m[1]}` : null };
+  }
+  if (/suplente/i.test(t)) return { status: 'suplente', detalhe: null };
+  return { status: 'outro', detalhe: t };
+}
+
 const int = (s) => (s == null || s === '' ? 0 : parseInt(s, 10) || 0);
 const pct = (s) => (s == null || s === '' ? 0 : parseFloat(String(s).replace(',', '.')) || 0);
 
+/**
+ * Até o fechamento das urnas o TSE só publica arquivos zerados (nem o exterior é divulgado antes).
+ * Então cada arquivo de resultado é buscado no máximo uma vez e guardado até lá — a consulta
+ * recorrente ao TSE só começa às 17h de Brasília. Devolve 0 quando a apuração já abriu (ou no demo).
+ */
+async function fimDaVotacao(eleicao) {
+  const fim = (await getConfig()).cargos.find((c) => c.eleicao === eleicao)?.encerramento;
+  const ms = fim ? Date.parse(fim) : 0;
+  return ms > Date.now() ? ms : 0;
+}
+
 export async function getResultado(params, ttlMs = 20_000) {
-  let raw = await fetchJson(resultadoUrl(params), ttlMs);
+  let raw = await fetchJson(resultadoUrl(params), ttlMs, await fimDaVotacao(params.eleicao));
   if (!raw || !raw.carg?.length) return null;
   if (DEMO) raw = applyDemo(raw);
   return normalizar(raw, params);
@@ -193,8 +225,10 @@ function normalizar(raw, { eleicao, uf }) {
           coligacao: agr.tp === 'c' ? agr.com : null,
           votos: int(c.vap),
           pct: pct(c.pvap),
-          eleito: c.e === 's',
+          ...classificar(c.st, c.e),
           situacao: c.st || null,
+          // Para onde vão os votos: "Válido", "Válido (legenda)", "Anulado", "Anulado sub judice".
+          destinoVotos: c.dvt || null,
           vices: (c.vs ?? []).map((v) => ({ tipo: v.tp, nome: v.nmu, partido: v.sgp })),
           foto: fotoUrl(eleicao, fotoUf, c.sqcand),
         });
@@ -246,7 +280,9 @@ export function resumo(r) {
 
 /** Percentual de seções totalizadas por município, a partir do arquivo de abrangência (1 requisição por UF). */
 export async function getAbrangencia(eleicao, uf) {
-  const raw = await fetchJson(`${TSE_BASE}/${CICLO}/${eleicao}/dados/${uf}/${uf}-e${pad(eleicao, 6)}-ab.json`, 30_000);
+  const raw = await fetchJson(
+    `${TSE_BASE}/${CICLO}/${eleicao}/dados/${uf}/${uf}-e${pad(eleicao, 6)}-ab.json`, 30_000, await fimDaVotacao(eleicao),
+  );
   const out = {};
   for (const a of raw?.abr ?? []) {
     if (a.tpabr !== 'mun') continue;

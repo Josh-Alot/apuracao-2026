@@ -80,6 +80,10 @@ Base: `https://resultados.tse.jus.br/oficial`
   comparecimento, abstenção; `v.vv/vb/tvn` válidos/brancos/nulos; `carg[0].agr[].par[].cand[]`
   com `n` (número), `nmu` (nome de urna), `vap`/`pvap` (votos/%), `e` (eleito `s`/`n`), `st` (situação).
   Números vêm como string; percentuais com vírgula decimal.
+- Situação do candidato: use o texto `st`, NÃO só o `e` — quem vai ao 2º turno também vem com `e = "s"`.
+  Valores vistos (2024): majoritário "Eleito" / "2º turno" / "Não eleito"; proporcional "Eleito por QP" /
+  "Eleito por média" / "Suplente" / "Não eleito"; vazio = indefinido. `classificar()` em `tse.mjs` vira
+  `status` + `detalhe`. `dvt` = destino dos votos: "Válido", "Válido (legenda)", "Anulado", "Anulado sub judice".
 - Não existe arquivo agregado "vencedor por município": o mapa estadual faz 1 requisição por
   município (SP = 645), com concorrência limitada (`mapLimit`) e cache de 60 s. Por isso, cargos
   proporcionais (arquivos de centenas de KB) usam só o `-ab.json` no mapa estadual.
@@ -95,6 +99,9 @@ Base: `https://resultados.tse.jus.br/oficial`
   mapa é consultado a cada 30 s; desligado, resultados a cada 30 s e mapa a cada 60 s (`ATUALIZA_*_MS` em `App.tsx`);
   o servidor guarda cache de 20 s (UF/BR), 45 s (zonas) e 60 s (municípios). O TSE não tem intervalo
   fixo — publica conforme as urnas são totalizadas. Se mudar os intervalos, os avisos se ajustam sozinhos.
+- Antes do fechamento das urnas (17h de Brasília) o TSE não divulga nada (nem o exterior): o servidor busca
+  cada arquivo de resultado no máximo uma vez e guarda até o fechamento (`fimDaVotacao` + `validoAte` no
+  `fetchJson`), e o front não abre "ao vivo" nem polling (`apuracaoAberta` no `App.tsx`); às 17h liga sozinho.
 - Seja educado com o TSE: mantenha cache/TTL e limites de concorrência ao adicionar chamadas.
   Os TTLs ficam em `getResultado(params, ttlMs)` e `fetchJson`.
 - A projeção do mapa é plana de propósito (ver comentário em `Mapa.tsx`): as malhas do IBGE não seguem

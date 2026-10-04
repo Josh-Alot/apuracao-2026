@@ -10,6 +10,8 @@ interface Props {
   rotulo?: string;
   /** Presente quando os dados chegam pelo stream "ao vivo" em vez de consultas periódicas. */
   aoVivo?: AoVivo | null;
+  /** Antes da apuração: quando as consultas ao TSE começam (ISO). */
+  inicio?: string | null;
 }
 
 const EXPLICACAO =
@@ -19,7 +21,7 @@ const EXPLICACAO =
 const fmtIntervalo = (ms: number) => (ms >= 60_000 ? `${ms / 60_000} min` : `${ms / 1000} s`);
 
 /** "Atualiza a cada 30 s · próxima em 12 s", com contagem regressiva por segundo. */
-export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'Atualização automática', aoVivo }: Props) {
+export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'Atualização automática', aoVivo, inicio }: Props) {
   const [agora, setAgora] = useState(Date.now);
   const relogio = !!proxima || !!aoVivo;
   useEffect(() => {
@@ -41,6 +43,15 @@ export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'A
     );
   }
 
+  if (!proxima && inicio) {
+    const hora = new Date(inicio).toLocaleTimeString('pt-BR', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+      .replace(':00', 'h').replace(':', 'h');
+    return (
+      <span className="proxima pausada" title="O TSE só divulga resultados após o fechamento das urnas; até lá esta página não consulta o TSE.">
+        Atualização automática começa às {hora} (Brasília)
+      </span>
+    );
+  }
   if (!proxima) {
     return <span className="proxima pausada" title={EXPLICACAO}>Atualização automática pausada</span>;
   }

@@ -38,8 +38,14 @@ export interface Candidato {
   coligacao: string | null;
   votos: number;
   pct: number;
-  eleito: boolean;
+  /** Classificado no servidor a partir do texto do TSE; null = ainda indefinido. */
+  status: 'eleito' | 'segundo-turno' | 'suplente' | 'nao-eleito' | 'outro' | null;
+  /** "por QP" / "por média" (eleitos no proporcional) ou o texto original quando status = 'outro'. */
+  detalhe: string | null;
+  /** Texto original do TSE (campo `st`). */
   situacao: string | null;
+  /** Destino dos votos (campo `dvt`): "Válido", "Válido (legenda)", "Anulado", "Anulado sub judice". */
+  destinoVotos: string | null;
   vices?: { tipo: string; nome: string; partido: string }[];
   foto: string;
 }

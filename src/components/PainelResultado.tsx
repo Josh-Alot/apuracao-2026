@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Candidato, Resultado } from '../types';
 import { EsqueletoPainel } from './Carregando';
 import { Num } from './Num';
+import { SeloSituacao } from './SeloSituacao';
 import { ProximaAtualizacao } from './ProximaAtualizacao';
 import type { AoVivo } from '../api';
 import { corPartido, fmt, fmtPct, semAcento, titulo } from '../util';
@@ -17,11 +18,12 @@ interface Props {
   proxima: number | null;
   intervalo: number;
   aoVivo?: AoVivo | null;
+  inicioAtualizacao?: string | null;
 }
 
 const PAGINA = 60;
 
-export function PainelResultado({ resultado: r, erro, carregando, titulo: tituloLocal, filtroInicial, proxima, intervalo, aoVivo }: Props) {
+export function PainelResultado({ resultado: r, erro, carregando, titulo: tituloLocal, filtroInicial, proxima, intervalo, aoVivo, inicioAtualizacao }: Props) {
   const [filtro, setFiltro] = useState(filtroInicial ?? '');
   const [limite, setLimite] = useState(PAGINA);
 
@@ -57,7 +59,7 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
             {r.atualizado && ` · atualizado em ${r.atualizado}`}
           </div>
           <div className={`pequeno muted ${carregando ? 'indicador-atualizando' : ''}`}>
-            <ProximaAtualizacao proxima={proxima} intervalo={intervalo} carregando={carregando} aoVivo={aoVivo} />
+            <ProximaAtualizacao proxima={proxima} intervalo={intervalo} carregando={carregando} aoVivo={aoVivo} inicio={inicioAtualizacao} />
           </div>
         </div>
         {r.totalizado && <span className="selo">Totalização final</span>}
@@ -117,8 +119,7 @@ function LinhaCandidato({ c, pos, maxPct }: { c: Candidato; pos: number; maxPct:
           <strong>{titulo(c.nomeUrna)}</strong>
           <span className="numero">{c.numero}</span>
           <span className="partido" style={{ borderColor: cor, color: cor }}>{c.partido}</span>
-          {c.eleito && <span className="selo selo-eleito">Eleito(a)</span>}
-          {c.situacao && !c.eleito && <span className="selo">{c.situacao}</span>}
+          <SeloSituacao c={c} />
         </div>
         {c.vices && c.vices.length > 0 && (
           <div className="muted pequeno">

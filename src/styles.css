@@ -511,3 +511,10 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
   background: color-mix(in srgb, var(--ao-vivo) 8%, transparent);
 }
 :root .aviso-votacao strong { font-family: var(--fonte-titulo); font-size: 1.25rem; color: var(--ao-vivo); }
+
+/* ---------- situação do candidato ---------- */
+.selo-2turno { color: var(--ao-vivo); }
+.selo-suplente { color: var(--muted); }
+.selo-nao-eleito { color: var(--muted); border-color: transparent !important; padding-left: 0; }
+.selo-anulado { color: var(--erro); }
+.selo[title] { cursor: help; }

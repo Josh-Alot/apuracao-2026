@@ -68,7 +68,11 @@ export default function App() {
   const uf = rota.uf && cargo && !cargo.ufs.includes(rota.uf) ? undefined : rota.uf;
   const local: Local = uf ? { uf, mun: rota.mun, zona: rota.mun ? rota.zona : undefined } : {};
 
-  const intervaloMapa = auto ? ATUALIZA_MAPA_AO_VIVO_MS : ATUALIZA_MAPA_MS;
+  // Antes das 17h (fechamento das urnas) o TSE não divulga nada: carrega uma vez e não fica consultando.
+  // O relógio anda a cada 15 s, então "ao vivo"/atualização periódica ligam sozinhos às 17h.
+  const agora = useAgora(!!cargo?.encerramento);
+  const apuracaoAberta = !cargo?.encerramento || agora >= Date.parse(cargo.encerramento);
+  const intervaloMapa = !apuracaoAberta ? 0 : auto ? ATUALIZA_MAPA_AO_VIVO_MS : ATUALIZA_MAPA_MS;
 
   const { data: municipios } = useApi<Municipios>(cargo ? `/api/municipios?cargo=${cargo.eleicao}-${cargo.cargo}` : null);
   const temMalha = !!uf && uf !== 'zz';
@@ -85,8 +89,8 @@ export default function App() {
   const precisaUf = cargo?.escopo === 'uf' && !uf;
   const resultado = useApi<Resultado>(
     cargo && !precisaUf ? urlResultado(cargo.id, local) : null,
-    auto ? 0 : ATUALIZA_RESULTADO_MS,
-    auto && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
+    !apuracaoAberta || auto ? 0 : ATUALIZA_RESULTADO_MS,
+    apuracaoAberta && auto && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
   );
 
   // Fase da eleição (antes / votando / aguardando boletins / apurando) para o aviso do topo.
@@ -94,7 +98,6 @@ export default function App() {
     0, ...Object.values((uf ? mapaUf.data : mapaBr.data) ?? {}).map((x) => x?.pctApurado ?? 0),
   );
   const temDadoApuracao = !!(resultado.data || (uf ? mapaUf.data : mapaBr.data));
-  const agora = useAgora(!!cargo?.encerramento);
   const fase = cargo ? faseVotacao(cargo, agora, temDadoApuracao ? pctApurado : null) : 'apurando';
 
   const munsUf = useMemo(() => (uf && municipios?.[uf]?.municipios) || [], [uf, municipios]);
@@ -222,6 +225,7 @@ export default function App() {
               proxima={(uf ? mapaUf : mapaBr).proxima}
               intervalo={intervaloMapa}
               carregando={(uf ? mapaUf : mapaBr).carregando}
+              inicio={apuracaoAberta ? null : cargo.encerramento}
             />
           </p>
 
@@ -272,6 +276,7 @@ export default function App() {
               proxima={resultado.proxima}
               intervalo={ATUALIZA_RESULTADO_MS}
               aoVivo={resultado.aoVivo}
+              inicioAtualizacao={apuracaoAberta ? null : cargo.encerramento}
             />
           )}
         </aside>

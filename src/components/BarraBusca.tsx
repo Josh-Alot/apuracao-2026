@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getJson, qs } from '../api';
 import { Esq } from './Carregando';
 import { Num } from './Num';
+import { SeloSituacao } from './SeloSituacao';
 import type { Cargo, ItemBusca } from '../types';
 import { UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../util';
 
@@ -112,6 +113,7 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
                       <span className="busca-info">
                         <strong>{titulo(i.nomeUrna)}</strong> <span className="numero">{i.numero}</span>{' '}
                         <span className="partido" style={{ color: corPartido(i.partido), borderColor: corPartido(i.partido) }}>{i.partido}</span>
+                        <SeloSituacao c={i} />
                         <span className="muted pequeno">
                           {i.cargoNome} · {i.uf === 'br' ? 'Brasil' : UF_NOMES[i.uf]} · {fmtPct(i.pctApurado)} apurado
                         </span>

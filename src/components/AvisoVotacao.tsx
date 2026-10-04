@@ -65,7 +65,8 @@ export function AvisoVotacao({ cargo, fase, agora }: Props) {
           <strong>Votação em andamento.</strong>
           <span>
             As urnas fecham às {fim} (horário de Brasília) — faltam <b>{falta(Date.parse(cargo.encerramento) - agora)}</b>.
-            Até lá o TSE não divulga resultados, por isso os números abaixo estão zerados.
+            Até lá o TSE não divulga resultados — nem os do exterior —, por isso os números abaixo estão zerados.
+            A atualização automática começa às {fim}.
           </span>
         </>
       )}
