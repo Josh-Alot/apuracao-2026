@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import type { Cargo } from '../types';
 
-export type FaseVotacao = 'antes' | 'votando' | 'aguardando' | 'indisponivel' | 'apurando';
+export type FaseVotacao = 'antes' | 'votando' | 'carregando' | 'aguardando' | 'indisponivel' | 'apurando';
 
 /**
  * Em que momento da eleição estamos, pelo relógio e pelo % já apurado.
  * `tseIndisponivel`: depois do fechamento, nenhum dado chegou porque a consulta ao TSE falhou.
+ * `carregando`: os dados da aba ainda estão a caminho — não dá para saber se há boletins.
  */
-export function faseVotacao(cargo: Cargo, agora: number, pctApurado: number | null, tseIndisponivel = false): FaseVotacao {
+export function faseVotacao(
+  cargo: Cargo, agora: number, pctApurado: number | null, tseIndisponivel = false, carregando = false,
+): FaseVotacao {
   if (!cargo.abertura || !cargo.encerramento) return 'apurando';
   if (agora < Date.parse(cargo.abertura)) return 'antes';
   if (agora < Date.parse(cargo.encerramento)) return 'votando';
   if (pctApurado) return 'apurando';
+  if (carregando) return 'carregando';
   return tseIndisponivel ? 'indisponivel' : 'aguardando';
 }
 
@@ -49,7 +53,7 @@ interface Props {
 
 /** Faixa de aviso exibida enquanto não há resultados a divulgar. */
 export function AvisoVotacao({ cargo, fase, agora }: Props) {
-  if (fase === 'apurando' || !cargo.abertura || !cargo.encerramento) return null;
+  if (fase === 'apurando' || fase === 'carregando' || !cargo.abertura || !cargo.encerramento) return null;
   const turno = `${cargo.turno}º turno`;
   const fim = hora(cargo.encerramento);
 

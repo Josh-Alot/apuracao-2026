@@ -85,10 +85,11 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
     const carregar = async () => {
       ctrl.abort();
       ctrl = new AbortController();
+      const sinal = ctrl.signal;
       setCarregando(true);
       setProxima(intervalo > 0 ? Date.now() + intervalo : null);
       try {
-        const d = await getJson<T>(url, ctrl.signal);
+        const d = await getJson<T>(url, sinal);
         if (urlAtual.current === url) {
           setData(d);
           setErro(null);
@@ -102,11 +103,16 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
         }
       } finally {
         primeira = false;
-        if (urlAtual.current === url) setCarregando(false);
+        // Cancelada (troca de aba, nova consulta): quem a substituiu é que encerra o "carregando".
+        if (!sinal.aborted && urlAtual.current === url) setCarregando(false);
       }
     };
     // Só limpa ao trocar de URL; ligar/desligar o "ao vivo" mantém o que já está na tela.
-    if (urlComDados.current !== url) setData(null);
+    // O erro da URL anterior também sai, senão a aba nova "herda" a falha enquanto carrega.
+    if (urlComDados.current !== url) {
+      setData(null);
+      setErro(null);
+    }
 
     if (sseUrl) {
       setProxima(null);

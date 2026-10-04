@@ -102,7 +102,12 @@ export default function App() {
   const temDadoApuracao = !!(resultado.data || regioesComDado.length);
   // Sem nenhum dado e com erro na consulta: o TSE não respondeu (429, fora do ar), não é falta de boletim.
   const tseIndisponivel = !temDadoApuracao && !!(resultado.erro || mapaAtual.erro || Object.keys(mapaAtual.data ?? {}).length);
-  const fase = cargo ? faseVotacao(cargo, agora, temDadoApuracao ? pctApurado : null, tseIndisponivel) : 'apurando';
+  // Sem dado e sem erro = ainda carregando (ex.: acabou de trocar de aba): sem faixa. "Urnas fechadas"
+  // só quando o TSE de fato respondeu com 0% apurado.
+  const carregandoApuracao = !temDadoApuracao && !tseIndisponivel;
+  const fase = cargo
+    ? faseVotacao(cargo, agora, temDadoApuracao ? pctApurado : null, tseIndisponivel, carregandoApuracao)
+    : 'apurando';
 
   const munsUf = useMemo(() => (uf && municipios?.[uf]?.municipios) || [], [uf, municipios]);
   const porIbge = useMemo(() => new Map(munsUf.filter((m) => m.ibge).map((m) => [m.ibge!, m])), [munsUf]);
