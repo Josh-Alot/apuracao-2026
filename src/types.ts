@@ -148,3 +148,18 @@ export interface Local {
 }
 
 export type ModoMapa = 'lider' | 'apurado';
+
+/** Cadeiras por partido numa casa legislativa (/api/composicao). */
+export interface Composicao {
+  /** 'br' (Senado, Câmara) ou a UF (bancada federal da UF, assembleia). */
+  abrangencia: string;
+  vagas: number;
+  /** Cadeiras com eleito definido (oficial ou projetado); o resto aparece como "a definir". */
+  atribuidas: number;
+  /** Antes da situação oficial do TSE: eleitos projetados pelas vagas de cada chapa / mais votados. */
+  projecao: boolean;
+  pctApurado: number;
+  /** UFs cujo resultado ainda não chegou do TSE (as vagas delas ficam de fora). */
+  faltando: number;
+  partidos: { sigla: string; cadeiras: number }[];
+}

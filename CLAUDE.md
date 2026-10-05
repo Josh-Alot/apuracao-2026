@@ -48,6 +48,9 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
     ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
     BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF/partido; só o partido lista
                        todos os candidatos dele, agrupados por cargo, em páginas ("Mostrar mais")
+    Hemiciclo.tsx      Composição da casa legislativa (uma bolinha por cadeira, cor do partido) abaixo do mapa,
+                       via /api/composicao: Senado (sempre o Brasil, 54 cadeiras em disputa), Câmara (UF ou
+                       Brasil), Assembleia/Câmara Legislativa (UF). Sem `st` oficial, usa os eleitos projetados
     ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
     Carregando.tsx     Barra fina no topo (conta requisições ativas em getJson) + esqueletos de página/painel/mapa
     AvisoVotacao.tsx   Faixa "votação ainda não começou / em andamento (contagem regressiva) / urnas fechadas"

@@ -90,6 +90,74 @@ async function mapa(q) {
   return Object.fromEntries(municipios.map((m, i) => [m.cd, resumo(rs[i])]));
 }
 
+// ---------- composição das casas legislativas ----------
+
+/**
+ * Eleitos de um resultado de UF (Senado ou proporcional). Com a situação oficial do TSE (`st`)
+ * usa os eleitos oficiais; antes dela, projeta: no proporcional pelas vagas de cada chapa
+ * (`chapa`, calculado em `tse.mjs`), no Senado pelos `vagas` mais votados.
+ */
+function eleitosDe(r) {
+  const oficiais = r.candidatos.filter((c) => c.status === 'eleito');
+  if (oficiais.length || r.candidatos.some((c) => c.status === 'suplente' || c.status === 'nao-eleito')) {
+    return { eleitos: oficiais, projecao: false };
+  }
+  const validos = r.candidatos.filter((c) => c.votos > 0 && c.destinoVotos === 'Válido');
+  const eleitos = r.cargo.cd === '5'
+    ? validos.slice(0, r.cargo.vagas) // candidatos já vêm por votos
+    : validos.filter((c) => c.chapa && c.chapa.suplente == null);
+  return { eleitos, projecao: eleitos.length > 0 };
+}
+
+/**
+ * Cadeiras por partido. Senado: sempre o Brasil (as cadeiras em disputa na eleição); Dep. Federal:
+ * a bancada da UF ou, no Brasil, a Câmara inteira; Dep. Estadual/Distrital: a assembleia da UF.
+ */
+async function composicao(q) {
+  const c = await cargoDe(q.get('cargo'));
+  if (c.cargo !== '5' && c.tipo !== 'proporcional') throw new HttpError(400, 'cargo sem casa legislativa');
+  const pedida = uf(q.get('uf') || 'br');
+  const nacional = c.cargo === '5' || pedida === 'br';
+  if (nacional && c.cargo !== '5' && c.cargo !== '6') throw new HttpError(400, 'escolha uma UF');
+  const ufs = (nacional ? c.ufs : [pedida]).filter((x) => x !== 'zz');
+  const base = { eleicao: c.eleicao, cargo: c.cargo };
+  // Uma UF: o mesmo arquivo do painel (já em cache). Brasil: os mesmos 27 arquivos do mapa nacional.
+  const rs = nacional
+    ? await getResultadosRapidos(ufs.map((x) => ({ ...base, uf: x })), 30_000, PRIORIDADE.media)
+    : [await getResultado({ ...base, uf: ufs[0] })];
+
+  const cadeiras = new Map();
+  let vagas = 0;
+  let atribuidas = 0;
+  let projecao = false;
+  let somaPct = 0;
+  let faltando = 0;
+  for (const r of rs) {
+    if (!r) { faltando++; continue; }
+    vagas += r.cargo.vagas;
+    somaPct += r.secoes.pct;
+    const e = eleitosDe(r);
+    projecao ||= e.projecao;
+    for (const cand of e.eleitos) {
+      cadeiras.set(cand.partido, (cadeiras.get(cand.partido) ?? 0) + 1);
+      atribuidas++;
+    }
+  }
+  const partidos = [...cadeiras].map(([sigla, n]) => ({ sigla, cadeiras: n }))
+    .sort((a, b) => b.cadeiras - a.cadeiras || a.sigla.localeCompare(b.sigla, 'pt-BR'));
+  const lidos = rs.length - faltando;
+  return {
+    abrangencia: nacional ? 'br' : pedida,
+    vagas,
+    atribuidas,
+    projecao,
+    pctApurado: lidos ? Math.round((100 * somaPct) / lidos) / 100 : 0,
+    // UFs cujo resultado ainda não chegou do TSE (as vagas delas ainda não entram na conta).
+    faltando,
+    partidos,
+  };
+}
+
 // ---------- busca de candidatos ----------
 
 const indices = new Map(); // chave -> { ts, ttl, promise }
@@ -222,6 +290,7 @@ const rotas = {
   '/api/resultado': resultado,
   '/api/mapa': mapa,
   '/api/busca': busca,
+  '/api/composicao': composicao,
   // Diagnóstico: fila de consultas ao TSE, cache e memória.
   '/api/saude': () => ({ fila: estadoFila(), arquivo: estadoArquivo(), memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20) }),
 };

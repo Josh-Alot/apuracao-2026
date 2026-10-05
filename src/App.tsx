@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import { RETENTAR_MS, urlAoVivo, urlMapa, urlResultado, useApi } from './api';
-import type { Config, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado } from './types';
+import type { Composicao, Config, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado } from './types';
 import { UF_NOMES, titulo } from './util';
 import { Mapa } from './components/Mapa';
 import { PainelResultado } from './components/PainelResultado';
@@ -11,6 +11,7 @@ import { BarraTopo, EsqueletoPagina } from './components/Carregando';
 import { ProximaAtualizacao } from './components/ProximaAtualizacao';
 import { AvisoVotacao, faseVotacao, useAgora } from './components/AvisoVotacao';
 import { BotaoTema } from './components/BotaoTema';
+import { Hemiciclo } from './components/Hemiciclo';
 
 /** "04/10/2026" → "Domingo, 4 de outubro de 2026" */
 function dataPorExtenso(ddmmaaaa: string) {
@@ -105,6 +106,15 @@ export default function App() {
     !tempoReal || auto ? 0 : ATUALIZA_RESULTADO_MS,
     tempoReal && auto && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
     encerrada ? nuncaIncompleto : undefined,
+  );
+
+  // Composição da casa legislativa: Senado sempre nacional; Dep. Federal da UF ou do Brasil; assembleias da UF.
+  const casa = cargo ? casaLegislativa(cargo.cargo, uf) : null;
+  const composicao = useApi<Composicao>(
+    cargo && casa ? `/api/composicao?cargo=${cargo.id}${casa.nacional ? '' : `&uf=${uf}`}` : null,
+    tempoReal ? intervaloMapa : 0,
+    null,
+    encerrada ? (d: Composicao) => d.faltando > 0 : undefined,
   );
 
   // Fase da eleição (antes / votando / aguardando boletins / apurando) para o aviso do topo.
@@ -278,6 +288,17 @@ export default function App() {
             </p>
           )}
 
+          {casa && (
+            <Hemiciclo
+              dados={composicao.data}
+              erro={composicao.erro}
+              carregando={composicao.carregando}
+              titulo={casa.titulo}
+              subtitulo={casa.subtitulo}
+              maioria={casa.casaInteira && composicao.data ? Math.floor(composicao.data.vagas / 2) + 1 : undefined}
+            />
+          )}
+
           {munAtual && munAtual.zonas.length > 0 && (
             <ListaRegioes
               titulo={`Zonas eleitorais (${munAtual.zonas.length})`}
@@ -325,6 +346,29 @@ export default function App() {
       </footer>
     </div>
   );
+}
+
+/** Casa legislativa do cargo na abrangência atual (null se o cargo não elege uma). */
+interface Casa { nacional: boolean; casaInteira: boolean; titulo: string; subtitulo?: string }
+
+function casaLegislativa(cargo: string, uf: string | undefined): Casa | null {
+  const nomeUf = uf ? UF_NOMES[uf] : '';
+  if (cargo === '5') {
+    return {
+      nacional: true, casaInteira: false, titulo: 'Senado Federal: eleitos em 2026',
+      subtitulo: '2 das 3 cadeiras de cada UF (54 de 81); as outras 27 seguem até 2031',
+    };
+  }
+  if (uf === 'zz') return null;
+  if (cargo === '6') {
+    return uf
+      ? { nacional: false, casaInteira: false, titulo: `Câmara dos Deputados: ${nomeUf}`, subtitulo: 'Bancada do estado; a Câmara inteira aparece no nível Brasil' }
+      : { nacional: true, casaInteira: true, titulo: 'Câmara dos Deputados' };
+  }
+  if (!uf) return null;
+  if (cargo === '7') return { nacional: false, casaInteira: true, titulo: `Assembleia Legislativa: ${nomeUf}` };
+  if (cargo === '8') return { nacional: false, casaInteira: true, titulo: 'Câmara Legislativa do Distrito Federal' };
+  return null;
 }
 
 function SeletorMunicipio({ municipios, onEscolher }: { municipios: { cd: string; nome: string }[]; onEscolher: (cd: string) => void }) {

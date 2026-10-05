@@ -657,3 +657,22 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
   .foto.foto-grande { width: 72px; height: 72px; font-size: 1.6rem; }
   .modal-dados { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---------- composição da casa legislativa (hemiciclo) ---------- */
+.hemiciclo { border-top: 2px solid var(--texto); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.hemiciclo-topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.hemiciclo-topo h3 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; }
+.hemiciclo svg { width: 100%; max-width: 640px; height: auto; display: block; margin: 0 auto; }
+/* Contorno discreto: cores escuras (PL, UP) não somem no tema escuro, nem as claras no creme. */
+.cadeira { stroke: rgb(128 128 128 / 0.35); stroke-width: 0.004; transition: fill 0.4s, opacity 0.2s; }
+.hemiciclo-total { font-family: var(--fonte-titulo); font-weight: 700; font-size: 0.2px; fill: var(--texto); }
+.hemiciclo-rotulo { font-size: 0.04px; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.003px; }
+.hemiciclo-legenda {
+  list-style: none; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--borda);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 16px; font-size: 0.85rem;
+}
+.hemiciclo-legenda li { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--borda); transition: opacity 0.2s; }
+.hemiciclo-legenda li.apagado { opacity: 0.35; }
+.hemiciclo-legenda .partido { flex: 1; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.hemiciclo-legenda strong { font-family: var(--fonte-titulo); font-size: 1.05rem; }
+.hemiciclo p { margin: 0; }
