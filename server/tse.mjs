@@ -709,6 +709,23 @@ export function resumo(r) {
   };
 }
 
+/**
+ * Apuração encerrada: 100% das seções totalizadas em todas as UFs da eleição, pelo arquivo de
+ * abrangência nacional (`br-e<ele6>-ab.json`, 1 consulta por eleição, em cache por 5 min). Antes do
+ * fechamento das urnas (ou no demo) nem consulta. Na dúvida (TSE fora), responde false — o front
+ * continua "ao vivo", como antes.
+ */
+export async function apuracaoEncerrada(eleicao) {
+  if (DEMO || (await fimDaVotacao(eleicao))) return false;
+  try {
+    const raw = await fetchJson(`${TSE_BASE}/${CICLO}/${eleicao}/dados/br/br-e${pad(eleicao, 6)}-ab.json`, 5 * 60_000);
+    const ufs = raw?.abr?.filter((a) => a.tpabr === 'uf') ?? [];
+    return ufs.length > 0 && ufs.every((a) => pct(a.s?.pst) >= 100);
+  } catch {
+    return false;
+  }
+}
+
 /** Percentual de seções totalizadas por município, a partir do arquivo de abrangência (1 requisição por UF). */
 export async function getAbrangencia(eleicao, uf) {
   const raw = await fetchJson(

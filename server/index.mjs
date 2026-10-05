@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   getConfig, getMunicipios, getResultado, getResultadosRapidos, getAbrangencia, resumo, fetchJson, UFS,
-  PRIORIDADE, estadoFila,
+  PRIORIDADE, estadoFila, apuracaoEncerrada,
 } from './tse.mjs';
 import { assinar } from './aovivo.mjs';
 import { getCandidato } from './candidatos.mjs';
@@ -202,10 +202,18 @@ async function geo(alvo) {
   return data;
 }
 
+/** Configuração + `encerrada` por cargo: com a apuração encerrada o front não fica consultando o TSE. */
+async function configComSituacao() {
+  const cfg = await getConfig();
+  const eleicoes = [...new Set(cfg.cargos.map((c) => c.eleicao))];
+  const encerradas = new Map(await Promise.all(eleicoes.map(async (e) => [e, await apuracaoEncerrada(e)])));
+  return { ...cfg, cargos: cfg.cargos.map((c) => ({ ...c, encerrada: encerradas.get(c.eleicao) })) };
+}
+
 // ---------- roteamento ----------
 
 const rotas = {
-  '/api/config': () => getConfig(),
+  '/api/config': configComSituacao,
   '/api/municipios': async (q) => {
     const c = await cargoDe(q.get('cargo'));
     return getMunicipios(c.eleicao);

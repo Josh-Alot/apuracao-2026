@@ -20,11 +20,12 @@ interface Props {
   intervalo: number;
   aoVivo?: AoVivo | null;
   inicioAtualizacao?: string | null;
+  encerrada?: boolean;
 }
 
 const PAGINA = 60;
 
-export function PainelResultado({ resultado: r, erro, carregando, titulo: tituloLocal, filtroInicial, proxima, intervalo, aoVivo, inicioAtualizacao }: Props) {
+export function PainelResultado({ resultado: r, erro, carregando, titulo: tituloLocal, filtroInicial, proxima, intervalo, aoVivo, inicioAtualizacao, encerrada }: Props) {
   const [filtro, setFiltro] = useState(filtroInicial ?? '');
   const [limite, setLimite] = useState(PAGINA);
   /** Candidato com a ficha aberta (sq). */
@@ -63,7 +64,7 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
             {r.atualizado && ` · publicado pelo TSE em ${r.atualizado} (Brasília)`}
           </div>
           <div className={`pequeno muted ${carregando ? 'indicador-atualizando' : ''}`}>
-            <ProximaAtualizacao proxima={proxima} intervalo={intervalo} carregando={carregando} aoVivo={aoVivo} inicio={inicioAtualizacao} />
+            <ProximaAtualizacao proxima={proxima} intervalo={intervalo} carregando={carregando} aoVivo={aoVivo} inicio={inicioAtualizacao} encerrada={encerrada} />
           </div>
         </div>
         {r.totalizado && <span className="selo">Totalização final</span>}

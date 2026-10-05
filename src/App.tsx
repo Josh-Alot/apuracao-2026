@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
-import { urlAoVivo, urlMapa, urlResultado, useApi } from './api';
+import { RETENTAR_MS, urlAoVivo, urlMapa, urlResultado, useApi } from './api';
 import type { Config, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado } from './types';
 import { UF_NOMES, titulo } from './util';
 import { Mapa } from './components/Mapa';
@@ -26,6 +26,11 @@ function dataPorExtenso(ddmmaaaa: string) {
 const ATUALIZA_RESULTADO_MS = 30_000;
 const ATUALIZA_MAPA_MS = 60_000;
 const ATUALIZA_MAPA_AO_VIVO_MS = 30_000;
+
+// Apuração encerrada: o mapa só é consultado de novo enquanto houver região que ainda não chegou;
+// o resultado, só se a consulta falhar.
+const mapaIncompleto = (d: MapaDados) => Object.values(d).some((x) => x == null);
+const nuncaIncompleto = () => false;
 
 // ---------- rota no hash: #/<cargoId>/<uf>/<mun>/<zona> ----------
 
@@ -73,25 +78,33 @@ export default function App() {
   // O relógio anda a cada 15 s, então "ao vivo"/atualização periódica ligam sozinhos às 17h.
   const agora = useAgora(!!cargo?.encerramento);
   const apuracaoAberta = !cargo?.encerramento || agora >= Date.parse(cargo.encerramento);
-  const intervaloMapa = !apuracaoAberta ? 0 : auto ? ATUALIZA_MAPA_AO_VIVO_MS : ATUALIZA_MAPA_MS;
+  // Com 100% das seções totalizadas os números não mudam mais: sem "ao vivo" nem atualização periódica,
+  // os dados vêm ao abrir a página e a cada navegação.
+  const encerrada = !!cargo?.encerrada;
+  const tempoReal = apuracaoAberta && !encerrada;
+  const intervaloMapa = !tempoReal ? 0 : auto ? ATUALIZA_MAPA_AO_VIVO_MS : ATUALIZA_MAPA_MS;
+  const completarMapa = encerrada ? mapaIncompleto : undefined;
 
   const { data: municipios } = useApi<Municipios>(cargo ? `/api/municipios?cargo=${cargo.eleicao}-${cargo.cargo}` : null);
   const temMalha = !!uf && uf !== 'zz';
   const { data: geo } = useApi<FeatureCollection>(cargo ? `/api/geo/${temMalha ? uf : 'br'}` : null);
 
-  const mapaBr = useApi<MapaDados>(cargo && !uf ? urlMapa(cargo.id, 'br') : null, intervaloMapa);
-  const mapaUf = useApi<MapaDados>(cargo && uf ? urlMapa(cargo.id, uf) : null, intervaloMapa);
+  const mapaBr = useApi<MapaDados>(cargo && !uf ? urlMapa(cargo.id, 'br') : null, intervaloMapa, null, completarMapa);
+  const mapaUf = useApi<MapaDados>(cargo && uf ? urlMapa(cargo.id, uf) : null, intervaloMapa, null, completarMapa);
   const mapaZonas = useApi<MapaDados>(
     cargo && uf && local.mun ? urlMapa(cargo.id, uf, local.mun) : null,
     intervaloMapa,
+    null,
+    completarMapa,
   );
 
   // Cargos estaduais não têm resultado nacional: no nível Brasil mostramos o resumo por estado.
   const precisaUf = cargo?.escopo === 'uf' && !uf;
   const resultado = useApi<Resultado>(
     cargo && !precisaUf ? urlResultado(cargo.id, local) : null,
-    !apuracaoAberta || auto ? 0 : ATUALIZA_RESULTADO_MS,
-    apuracaoAberta && auto && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
+    !tempoReal || auto ? 0 : ATUALIZA_RESULTADO_MS,
+    tempoReal && auto && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
+    encerrada ? nuncaIncompleto : undefined,
   );
 
   // Fase da eleição (antes / votando / aguardando boletins / apurando) para o aviso do topo.
@@ -153,6 +166,7 @@ export default function App() {
             <span>Eleições Gerais · {cargo.turno}º turno</span>
             {fase === 'votando' ? <span className="ao-vivo">Votação em andamento</span>
               : fase === 'antes' ? <span>Votação ainda não começou</span>
+              : encerrada ? <span>Apuração encerrada</span>
               : auto ? <span className="ao-vivo">Ao vivo</span> : <span>Atualização periódica</span>}
             <span>Dados oficiais do TSE</span>
             <BotaoTema />
@@ -195,14 +209,16 @@ export default function App() {
                 <button className={modo === 'lider' ? 'ativo' : ''} onClick={() => setModo('lider')}>Líder</button>
                 <button className={modo === 'apurado' ? 'ativo' : ''} onClick={() => setModo('apurado')}>% apurado</button>
               </div>
-              <label
-                className="auto"
-                title={auto
-                  ? 'Ao vivo: os resultados chegam assim que o TSE publica (verificação a cada 5 s). Desmarque para atualizar a cada 30 s.'
-                  : 'Atualização periódica: resultados a cada 30 s e mapa a cada 1 min. Marque para receber ao vivo.'}
-              >
-                <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> ao vivo
-              </label>
+              {!encerrada && (
+                <label
+                  className="auto"
+                  title={auto
+                    ? 'Ao vivo: os resultados chegam assim que o TSE publica (verificação a cada 5 s). Desmarque para atualizar a cada 30 s.'
+                    : 'Atualização periódica: resultados a cada 30 s e mapa a cada 1 min. Marque para receber ao vivo.'}
+                >
+                  <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> ao vivo
+                </label>
+              )}
             </div>
           </div>
 
@@ -212,7 +228,7 @@ export default function App() {
             regioes={regioesTotal}
             semDado={regioesTotal - regioesComDado.length}
             rotulo={uf === 'zz' ? 'cidades' : uf ? 'municípios' : 'UFs'}
-            intervalo={intervaloMapa}
+            intervalo={encerrada ? RETENTAR_MS : intervaloMapa}
           />
 
           {uf === 'zz' ? (
@@ -246,6 +262,7 @@ export default function App() {
               intervalo={intervaloMapa}
               carregando={(uf ? mapaUf : mapaBr).carregando}
               inicio={apuracaoAberta ? null : cargo.encerramento}
+              encerrada={encerrada}
             />
           </p>
 
@@ -297,6 +314,7 @@ export default function App() {
               intervalo={ATUALIZA_RESULTADO_MS}
               aoVivo={resultado.aoVivo}
               inicioAtualizacao={apuracaoAberta ? null : cargo.encerramento}
+              encerrada={encerrada}
             />
           )}
         </aside>

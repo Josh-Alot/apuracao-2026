@@ -12,6 +12,8 @@ interface Props {
   aoVivo?: AoVivo | null;
   /** Antes da apuração: quando as consultas ao TSE começam (ISO). */
   inicio?: string | null;
+  /** Apuração encerrada: sem atualização automática; `proxima` = nova tentativa (falha ou dado incompleto). */
+  encerrada?: boolean;
 }
 
 const EXPLICACAO =
@@ -21,7 +23,7 @@ const EXPLICACAO =
 const fmtIntervalo = (ms: number) => (ms >= 60_000 ? `${ms / 60_000} min` : `${ms / 1000} s`);
 
 /** "Atualiza a cada 30 s · próxima em 12 s", com contagem regressiva por segundo. */
-export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'Atualização automática', aoVivo, inicio }: Props) {
+export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'Atualização automática', aoVivo, inicio, encerrada }: Props) {
   const [agora, setAgora] = useState(Date.now);
   const relogio = !!proxima || !!aoVivo;
   useEffect(() => {
@@ -39,6 +41,22 @@ export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'A
       <span className="proxima proxima-ao-vivo" title={`Conectado: o servidor verifica o TSE a cada ${s} s e envia os números assim que mudam.`}>
         <i className="ponto-ao-vivo" aria-hidden />
         Ao vivo · TSE verificado {ha === null ? 'agora' : ha <= 1 ? 'agora mesmo' : `há ${ha} s`}
+      </span>
+    );
+  }
+
+  if (encerrada) {
+    if (!proxima) {
+      return (
+        <span className="proxima pausada" title="Todas as seções foram totalizadas: os números não mudam mais. A página consulta o TSE só ao abrir e ao navegar.">
+          Apuração encerrada · sem atualização automática
+        </span>
+      );
+    }
+    const resta = Math.max(0, Math.ceil((proxima - agora) / 1000));
+    return (
+      <span className="proxima" title="Parte dos dados ainda não chegou do TSE; a página tenta de novo até completar.">
+        {carregando ? 'consultando o TSE…' : `Completando · nova consulta em ${resta} s`}
       </span>
     );
   }

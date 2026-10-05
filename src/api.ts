@@ -130,13 +130,20 @@ export interface AoVivo {
   conectado: boolean;
 }
 
+/** Sem atualização periódica (apuração encerrada): espera para repetir uma busca que falhou ou veio incompleta. */
+export const RETENTAR_MS = 15_000;
+
 /**
  * Busca `url` e, se `intervalo` > 0, refaz a busca periodicamente.
+ * Com `incompleto` e sem `intervalo`, repete a busca (a cada RETENTAR_MS) só enquanto ela falhar ou
+ * `incompleto(dado)` — ex.: o mapa, cujas regiões o servidor completa aos poucos.
  * Com `sseUrl`, em vez de consultar periodicamente, assina o stream "ao vivo" do servidor,
  * que empurra o dado sempre que o TSE publica algo novo.
  * Mantém o dado anterior enquanto recarrega ou troca de modo (evita "piscar" a tela).
  */
-export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | null = null) {
+export function useApi<T>(
+  url: string | null, intervalo = 0, sseUrl: string | null = null, incompleto?: (d: T) => boolean,
+) {
   const [aoVivo, setAoVivo] = useState<AoVivo | null>(null);
   const [data, setData] = useState<T | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -145,6 +152,8 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
   const [proxima, setProxima] = useState<number | null>(null);
   const urlAtual = useRef(url);
   const urlComDados = useRef<string | null>(null);
+  const incompletoAtual = useRef(incompleto);
+  incompletoAtual.current = incompleto;
 
   useEffect(() => {
     urlAtual.current = url;
@@ -158,14 +167,18 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
     let ctrl = new AbortController();
     let primeira = true;
     let deCache = false; // a tela abriu com o dado do cache do cliente (ainda não confirmado pelo servidor)
+    let retentar: ReturnType<typeof setTimeout> | undefined;
     const carregar = async () => {
       ctrl.abort();
+      clearTimeout(retentar);
       ctrl = new AbortController();
       const sinal = ctrl.signal;
+      let deNovo = false;
       setCarregando(true);
       setProxima(intervalo > 0 ? Date.now() + intervalo : null);
       try {
         const d = await getJson<T>(url, sinal);
+        deNovo = !!incompletoAtual.current?.(d);
         guardarCacheCliente(url, d);
         if (urlAtual.current === url) {
           setData(d);
@@ -174,6 +187,7 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
         }
       } catch (e) {
         if ((e as Error).name === 'AbortError') return;
+        deNovo = !!incompletoAtual.current;
         if (urlAtual.current === url) {
           setErro((e as Error).message);
           if (primeira && !deCache) setData(null); // com dado do cache, melhor mantê-lo junto do erro
@@ -182,6 +196,10 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
         primeira = false;
         // Cancelada (troca de aba, nova consulta): quem a substituiu é que encerra o "carregando".
         if (!sinal.aborted && urlAtual.current === url) setCarregando(false);
+        if (deNovo && !intervalo && !sinal.aborted) {
+          retentar = setTimeout(carregar, RETENTAR_MS);
+          setProxima(Date.now() + RETENTAR_MS);
+        }
       }
     };
     // Só troca o dado ao mudar de URL; ligar/desligar o "ao vivo" mantém o que já está na tela.
@@ -234,6 +252,7 @@ export function useApi<T>(url: string | null, intervalo = 0, sseUrl: string | nu
     return () => {
       ctrl.abort();
       clearInterval(id);
+      clearTimeout(retentar);
     };
   }, [url, intervalo, sseUrl]);
 

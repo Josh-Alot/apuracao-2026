@@ -138,6 +138,11 @@ bens); rode `npm run candidatos` de novo e faça commit. A API DivulgaCandContas
 - Antes do fechamento das urnas (17h de Brasília) o TSE não divulga nada (nem o exterior): o servidor busca
   cada arquivo de resultado no máximo uma vez e guarda até o fechamento (`fimDaVotacao` + `validoAte` no
   `fetchJson`), e o front não abre "ao vivo" nem polling (`apuracaoAberta` no `App.tsx`); às 17h liga sozinho.
+- Apuração encerrada: `/api/config` marca `encerrada` por cargo quando o `br-e<ele6>-ab.json` (1 arquivo por
+  eleição, % de seções por UF) mostra 100% em todas as UFs (`apuracaoEncerrada()` em `tse.mjs`, cache de 5 min).
+  O front então não abre "ao vivo" nem polling: busca ao abrir a página e ao navegar, e só repete
+  (`RETENTAR_MS`, 15 s, parâmetro `incompleto` do `useApi`) enquanto o mapa vier com regiões faltando ou a
+  consulta falhar. A config é lida uma vez: aba aberta durante a apuração segue "ao vivo" até recarregar.
 - Cache do cliente (`useApi` em `src/api.ts`): ao trocar de tela, o último dado daquela URL aparece na hora
   (atenuado, "atualizando") e é substituído quando chega o novo; espelhado no sessionStorage (respostas até
   150 KB) para o F5, descartado após 30 min. As respostas 200 da API levam ETag + `no-cache` (304 se não mudou).

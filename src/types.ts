@@ -8,6 +8,8 @@ export interface Cargo {
   /** Início/fim da votação (ISO, horário de Brasília); null no modo demo. */
   abertura: string | null;
   encerramento: string | null;
+  /** 100% das seções totalizadas: sem "ao vivo" nem atualização periódica (só ao carregar/navegar). */
+  encerrada: boolean;
   tipo: 'majoritario' | 'proporcional';
   escopo: 'br' | 'uf';
   ufs: string[];
