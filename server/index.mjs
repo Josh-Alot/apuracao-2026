@@ -11,6 +11,7 @@ import {
 } from './tse.mjs';
 import { assinar } from './aovivo.mjs';
 import { getCandidato } from './candidatos.mjs';
+import { estadoArquivo } from './arquivo.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -222,7 +223,7 @@ const rotas = {
   '/api/mapa': mapa,
   '/api/busca': busca,
   // Diagnóstico: fila de consultas ao TSE, cache e memória.
-  '/api/saude': () => ({ fila: estadoFila(), memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20) }),
+  '/api/saude': () => ({ fila: estadoFila(), arquivo: estadoArquivo(), memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20) }),
 };
 
 // No log do Render: estado da fila a cada minuto, quando há algo esperando.

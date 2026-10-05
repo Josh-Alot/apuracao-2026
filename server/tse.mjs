@@ -3,6 +3,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { applyDemo, demoProgresso } from './demo.mjs';
+import { ARQUIVO_FORCADO, doArquivo } from './arquivo.mjs';
 
 export const TSE_BASE = 'https://resultados.tse.jus.br/oficial';
 export const CICLO = process.env.CICLO || 'ele2026';
@@ -199,6 +200,23 @@ export function estadoFila() {
   return { rps: Math.round(rps * 100) / 100, alta: filas[0].length, media: filas[1].length, baixa: filas[2].length, cache: cache.size, cacheMB: Math.round(cacheBytes / 2 ** 20) };
 }
 
+// Arquivo próprio (arquivo/, `npm run arquivar`): com ARQUIVO=1 é a única fonte do que ele cobre;
+// sem ela, entra quando o TSE falha ou não tem mais o arquivo, e o TSE é tentado de novo após 60 s.
+const ARQUIVO_TTL_MS = 60_000;
+
+/** Dado do arquivo próprio para a URL (guardado no cache), ou undefined se o arquivo não a cobre. */
+async function doArquivoEmCache(url) {
+  const data = await doArquivo(url, TSE_BASE).catch((err) => {
+    console.warn(`Falha ao ler o arquivo próprio para ${url}: ${err.message}`);
+    return undefined;
+  });
+  if (data !== undefined) {
+    const expira = ARQUIVO_FORCADO ? Infinity : Date.now() + ARQUIVO_TTL_MS;
+    guardar(url, data, JSON.stringify(data).length, { expira });
+  }
+  return data;
+}
+
 /**
  * Busca JSON com cache: vale por `ttlMs` ou, se informado, até o instante `validoAte` (ms).
  * Consultas ao TSE entram na fila com a `prioridade` dada.
@@ -211,9 +229,22 @@ export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDA
     return inflight.get(url);
   }
   const doTse = url.startsWith(TSE_BASE);
+  if (doTse && ARQUIVO_FORCADO) {
+    const data = await doArquivoEmCache(url);
+    if (data !== undefined) return data;
+  }
+  return fetchSemArquivo(url, hit, prioridade, doTse && !ARQUIVO_FORCADO);
+}
+
+async function fetchSemArquivo(url, hit, prioridade, comArquivo) {
+  const doTse = url.startsWith(TSE_BASE);
   const espera = Math.max(doTse ? pausaAte : 0, falhaAte.get(url) ?? 0) - Date.now();
   if (espera > 0) {
     if (hit) return hit.data;
+    if (comArquivo) {
+      const data = await doArquivoEmCache(url);
+      if (data !== undefined) return data;
+    }
     throw new ErroTse(`Consulta ao ${doTse ? 'TSE' : 'serviço externo'} pausada após falha; nova tentativa em ${Math.ceil(espera / 1000)} s`);
   }
 
@@ -238,6 +269,9 @@ export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDA
         return hit.data;
       }
       if (res.status === 404 || res.status === 403) {
+        // O TSE pode tirar os arquivos do ar no futuro: o arquivo próprio continua respondendo.
+        const data = comArquivo ? await doArquivoEmCache(url) : undefined;
+        if (data !== undefined) return data;
         guardar(url, null, 0);
         return null;
       }
@@ -262,6 +296,10 @@ export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDA
         if (!(err instanceof ErroTse)) console.warn(`Falha ao consultar ${url}: ${err.message}`);
       }
       if (hit) return hit.data; // devolve dado antigo se o TSE oscilar
+      if (comArquivo) {
+        const data = await doArquivoEmCache(url);
+        if (data !== undefined) return data;
+      }
       throw err instanceof ErroTse ? err : new ErroTse(`Falha ao consultar o TSE: ${err.message}`, 502);
     } finally {
       inflight.delete(url);

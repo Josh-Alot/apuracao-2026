@@ -10,7 +10,8 @@
     "build": "tsc --noEmit && vite build",
     "start": "node --max-old-space-size=384 server/index.mjs",
     "typecheck": "tsc --noEmit",
-    "candidatos": "node server/scripts/candidatos.mjs"
+    "candidatos": "node server/scripts/candidatos.mjs",
+    "arquivar": "node server/scripts/arquivar.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",

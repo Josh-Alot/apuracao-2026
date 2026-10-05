@@ -14,12 +14,15 @@ npm run dev        # API (porta 3001) + Vite (porta 5173, proxy /api → 3001)
 npm run demo       # igual ao dev, mas com votos sintéticos (DEMO=1) — útil antes das 17h de Brasília
 npm run typecheck
 npm run candidatos # regera dados/candidatos-2026.tsv.gz (perfil e bens, Dados Abertos do TSE)
+npm run arquivar   # guarda os resultados finais em arquivo/ (ver "Arquivo próprio" abaixo)
 npm run build && npm start   # produção: o servidor Node serve dist/ e /api na porta 3001
 ```
 
 Variáveis de ambiente do servidor: `PORT` (3001), `DEMO=1`, `DEMO_MINUTOS` (15; tempo até a demo
 chegar a 100%), `AO_VIVO_MS` (5000; verificação do TSE no modo ao vivo), `CICLO` (`ele2026`; trocar para testar com outro ciclo), `ENCERRAMENTO` (ISO 8601;
-sobrescreve o fechamento das urnas para testar o aviso, ex. `ENCERRAMENTO=2026-10-04T13:00:00-03:00`).
+sobrescreve o fechamento das urnas para testar o aviso, ex. `ENCERRAMENTO=2026-10-04T13:00:00-03:00`),
+`ARQUIVO=1` (usa só o arquivo próprio para o que ele cobre, sem consultar o TSE), `ARQUIVO_MB` (16; unidades
+do arquivo abertas em memória).
 
 ## Arquitetura
 
@@ -29,9 +32,12 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   aovivo.mjs       Stream SSE /api/ao-vivo: 1 vigia por resultado consulta o TSE a cada 5 s e empurra só quando muda
   tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
   demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais)
+  arquivo.mjs      Arquivo próprio: formato compacto (compacta/remonta) e leitura pelas URLs do TSE
   candidatos.mjs   /api/candidato/:sq — perfil e bens; lê dados/candidatos-2026.tsv.gz no 1º pedido (buffer + índice)
   scripts/candidatos.mjs  `npm run candidatos`: baixa os CSVs dos Dados Abertos e gera o .tsv.gz
+  scripts/arquivar.mjs    `npm run arquivar`: baixa os resultados finais e grava em arquivo/
 dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz)
+arquivo/           Resultados finais arquivados e versionados (<ciclo>-<turno>turno/)
 src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths SVG
   App.tsx          Estado da navegação (no hash da URL), polling e composição das telas
   api.ts           useApi(url, intervalo) — fetch + polling mantendo o dado anterior
@@ -117,6 +123,28 @@ O arquivo de resultados só traz nome, número, nascimento, partido, vices e vot
 campos vazios como `#NULO`/`#NE`. A chave `SQ_CANDIDATO` é o `sqcand` dos resultados. Os CSVs trazem **CPF,
 título de eleitor e e-mail: nunca incluir** no arquivo gerado. O TSE atualiza os CSVs (situação do registro,
 bens); rode `npm run candidatos` de novo e faça commit. A API DivulgaCandContas responde 403 (Akamai) a robôs.
+
+## Arquivo próprio dos resultados (`arquivo/`)
+
+O TSE promete manter os arquivos no ar até `dtlim` (04/10/2034), mas guardamos uma cópia. `npm run arquivar`
+(opções `--turno 1`, `--uf sp,mg`, `--cargo 6,7`, `--forcar`, `--rps 8`, `--conc 8`) baixa Brasil, UFs,
+municípios e zonas de todos os cargos (~59 mil arquivos, ~2 h a 8 consultas/s) e grava em
+`arquivo/ele2026-1turno/`: `ele-c.json`, `manifesto.json` e, por eleição, `mun-cm.json.gz`, `<uf>-ab.json.gz` e
+uma unidade `<uf>-c<cargo4>.json.gz` por cargo e UF (Presidente também tem `br`).
+
+- Formato (`server/arquivo.mjs`): a unidade guarda o JSON da UF exatamente como veio (`modelo`) e, por
+  município/zona (chave = abrangência da URL, ex. `sp71072-z0001`), só o que muda: `vap` por candidato
+  (na ordem do modelo), diferenças de agremiação/partido, os blocos `s`/`e`/`v` como listas e as exceções do
+  `pvap`. `pvapn` é descartado. O TSE ordena agremiações e candidatos de um jeito em cada região;
+  a remontagem segue o modelo.
+- O script confere cada região: o JSON remontado tem que ser igual ao original (sem ordem e sem `pvapn`);
+  se não for, a unidade falha e não é gravada.
+- Retomável: unidade final (`tf = "s"` na UF e em todas as regiões) é pulada; rode de novo até o
+  `manifesto.json` não ter mais unidade com `final: false` (deputados podem levar dias por recursos/sub judice).
+  O gzip não guarda data, então unidade sem mudança não gera diff no git.
+- No servidor (`fetchJson`): o arquivo entra quando o TSE falha, está pausado ou responde 404/403, e o TSE
+  é tentado de novo após 60 s; com `ARQUIVO=1` é a fonte única do que cobre. `/api/saude` mostra `arquivo`.
+  Fotos dos candidatos e malhas do IBGE não fazem parte do arquivo.
 
 ## Convenções e cuidados
 
