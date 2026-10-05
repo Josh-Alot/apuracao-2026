@@ -140,7 +140,8 @@ for (const eleicao of new Set(cargos.map((c) => c.eleicao))) {
   await gravar(`${eleicao}/mun-cm.json.gz`, cm);
   municipios[eleicao] = Object.fromEntries(cm.abr.map((a) => [a.cd.toLowerCase(), a.mu]));
   const ufs = new Set(cargos.filter((c) => c.eleicao === eleicao).flatMap((c) => c.ufs));
-  for (const uf of ufs) {
+  // "br": % de seções por UF, usado para saber se a apuração da eleição está encerrada.
+  for (const uf of ['br', ...ufs]) {
     if (SO_UFS && !SO_UFS.has(uf)) continue;
     const ab = await baixar(`${TSE_BASE}/${CICLO}/${eleicao}/dados/${uf}/${uf}-e${pad(eleicao, 6)}-ab.json`);
     if (ab) await gravar(`${eleicao}/${uf}-ab.json.gz`, ab);

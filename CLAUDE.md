@@ -129,7 +129,7 @@ bens); rode `npm run candidatos` de novo e faça commit. A API DivulgaCandContas
 O TSE promete manter os arquivos no ar até `dtlim` (04/10/2034), mas guardamos uma cópia. `npm run arquivar`
 (opções `--turno 1`, `--uf sp,mg`, `--cargo 6,7`, `--forcar`, `--rps 8`, `--conc 8`) baixa Brasil, UFs,
 municípios e zonas de todos os cargos (~59 mil arquivos, ~2 h a 8 consultas/s) e grava em
-`arquivo/ele2026-1turno/`: `ele-c.json`, `manifesto.json` e, por eleição, `mun-cm.json.gz`, `<uf>-ab.json.gz` e
+`arquivo/ele2026-1turno/`: `ele-c.json`, `manifesto.json` e, por eleição, `mun-cm.json.gz`, `<uf>-ab.json.gz` (inclusive `br`) e
 uma unidade `<uf>-c<cargo4>.json.gz` por cargo e UF (Presidente também tem `br`).
 
 - Formato (`server/arquivo.mjs`): a unidade guarda o JSON da UF exatamente como veio (`modelo`) e, por
@@ -143,7 +143,9 @@ uma unidade `<uf>-c<cargo4>.json.gz` por cargo e UF (Presidente também tem `br`
   `manifesto.json` não ter mais unidade com `final: false` (deputados podem levar dias por recursos/sub judice).
   O gzip não guarda data, então unidade sem mudança não gera diff no git.
 - No servidor (`fetchJson`): o arquivo entra quando o TSE falha, está pausado ou responde 404/403, e o TSE
-  é tentado de novo após 60 s; com `ARQUIVO=1` é a fonte única do que cobre. `/api/saude` mostra `arquivo`.
+  é tentado de novo após 60 s; com `ARQUIVO=1` é a fonte única do que cobre, menos o `ele-c.json` (sempre do
+  TSE, para o 2º turno aparecer; o arquivado só se o TSE falhar). O 2º turno usa outros códigos de eleição
+  (6258/6260), que o arquivo do 1º turno não cobre: vem do TSE mesmo com `ARQUIVO=1`. `/api/saude` mostra `arquivo`.
   Fotos dos candidatos e malhas do IBGE não fazem parte do arquivo.
 
 ## Convenções e cuidados

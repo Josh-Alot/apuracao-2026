@@ -202,7 +202,10 @@ export function estadoFila() {
 
 // Arquivo próprio (arquivo/, `npm run arquivar`): com ARQUIVO=1 é a única fonte do que ele cobre;
 // sem ela, entra quando o TSE falha ou não tem mais o arquivo, e o TSE é tentado de novo após 60 s.
+// A configuração geral é exceção: vem sempre do TSE (é ela que traz o 2º turno e eleições novas) e o
+// arquivo só entra se o TSE falhar.
 const ARQUIVO_TTL_MS = 60_000;
+const CONFIG_URL = `${TSE_BASE}/comum/config/ele-c.json`;
 
 /** Dado do arquivo próprio para a URL (guardado no cache), ou undefined se o arquivo não a cobre. */
 async function doArquivoEmCache(url) {
@@ -229,11 +232,12 @@ export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDA
     return inflight.get(url);
   }
   const doTse = url.startsWith(TSE_BASE);
-  if (doTse && ARQUIVO_FORCADO) {
+  const forcado = doTse && ARQUIVO_FORCADO && url !== CONFIG_URL;
+  if (forcado) {
     const data = await doArquivoEmCache(url);
     if (data !== undefined) return data;
   }
-  return fetchSemArquivo(url, hit, prioridade, doTse && !ARQUIVO_FORCADO);
+  return fetchSemArquivo(url, hit, prioridade, doTse && !forcado);
 }
 
 async function fetchSemArquivo(url, hit, prioridade, comArquivo) {
@@ -351,7 +355,7 @@ let configReserva = null;
 
 async function configTse() {
   try {
-    const raw = await fetchJson(`${TSE_BASE}/comum/config/ele-c.json`, 5 * 60_000);
+    const raw = await fetchJson(CONFIG_URL, 5 * 60_000);
     if (raw) return raw;
   } catch { /* usa a cópia local abaixo */ }
   configReserva ??= readFile(CONFIG_RESERVA, 'utf8').then(JSON.parse);
