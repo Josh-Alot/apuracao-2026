@@ -24,6 +24,26 @@ sobrescreve o fechamento das urnas para testar o aviso, ex. `ENCERRAMENTO=2026-1
 `ARQUIVO=1` (usa só o arquivo próprio para o que ele cobre, sem consultar o TSE), `ARQUIVO_MB` (16; unidades
 do arquivo abertas em memória).
 
+### Feature toggles (`server/flags.mjs`)
+
+O que vai ao público sem depender de deploy. Cada flag aceita `FLAG_<NOME>` = `on` | `off` | data ISO 8601
+(liga sozinha nesse horário, sem reiniciar). As flags valem **no servidor** (rota recusa o pedido; cargo
+escondido responde como desconhecido), e o front recebe as efetivas em `/api/config` → `flags`.
+
+| Flag | Variável | Padrão | O que faz |
+|---|---|---|---|
+| `segundoTurno` | `FLAG_SEGUNDO_TURNO` | `2026-10-25T00:00:00-03:00` | esconde as eleições com `t=2` (o TSE as publica dias antes) |
+| `hemiciclo` | `FLAG_HEMICICLO` | `on` | composição das casas (`/api/composicao`) |
+| `busca` | `FLAG_BUSCA` | `on` | kill switch da busca (a rota mais pesada) |
+| `aoVivo` | `FLAG_AO_VIVO` | `on` | kill switch do SSE; desligado, o front atualiza a cada 30 s |
+
+Com `ADMIN_TOKEN` definido:
+- **Prévia**: abrir `/api/preview?token=<ADMIN_TOKEN>` grava um cookie e esse navegador vê tudo ligado (selo
+  "PRÉVIA · sair" no topo); `/api/preview?sair` desliga.
+- **Mudar sem reiniciar** (mudar variável no Render reinicia e esvazia o cache — evitar durante a apuração):
+  `curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "https://…/api/flags?busca=off"` (valores: `on`, `off`,
+  data ISO ou `padrao`); `GET /api/flags` mostra a situação. Vale em memória até o próximo reinício.
+
 ## Arquitetura
 
 ```
@@ -33,6 +53,7 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
   demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais)
   arquivo.mjs      Arquivo próprio: formato compacto (compacta/remonta) e leitura pelas URLs do TSE
+  flags.mjs        Feature toggles (FLAG_*), prévia por cookie e /api/flags (ADMIN_TOKEN)
   candidatos.mjs   /api/candidato/:sq — perfil e bens; lê dados/candidatos-2026.tsv.gz no 1º pedido (buffer + índice)
   scripts/candidatos.mjs  `npm run candidatos`: baixa os CSVs dos Dados Abertos e gera o .tsv.gz
   scripts/arquivar.mjs    `npm run arquivar`: baixa os resultados finais e grava em arquivo/

@@ -62,6 +62,9 @@ export default function App() {
 
   const { data: config, erro: erroConfig } = useApi<Config>('/api/config');
   const cargo = config?.cargos.find((c) => c.id === rota.cargo) ?? config?.cargos[0];
+  const flags = config?.flags;
+  // Com o "ao vivo" desligado no servidor (kill switch), tudo passa a ser atualização periódica.
+  const aoVivo = auto && !!flags?.aoVivo;
 
   const ir = useCallback(
     (l: Local, cargoId = cargo?.id) => {
@@ -83,7 +86,7 @@ export default function App() {
   // os dados vêm ao abrir a página e a cada navegação.
   const encerrada = !!cargo?.encerrada;
   const tempoReal = apuracaoAberta && !encerrada;
-  const intervaloMapa = !tempoReal ? 0 : auto ? ATUALIZA_MAPA_AO_VIVO_MS : ATUALIZA_MAPA_MS;
+  const intervaloMapa = !tempoReal ? 0 : aoVivo ? ATUALIZA_MAPA_AO_VIVO_MS : ATUALIZA_MAPA_MS;
   const completarMapa = encerrada ? mapaIncompleto : undefined;
 
   const { data: municipios } = useApi<Municipios>(cargo ? `/api/municipios?cargo=${cargo.eleicao}-${cargo.cargo}` : null);
@@ -103,13 +106,13 @@ export default function App() {
   const precisaUf = cargo?.escopo === 'uf' && !uf;
   const resultado = useApi<Resultado>(
     cargo && !precisaUf ? urlResultado(cargo.id, local) : null,
-    !tempoReal || auto ? 0 : ATUALIZA_RESULTADO_MS,
-    tempoReal && auto && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
+    !tempoReal || aoVivo ? 0 : ATUALIZA_RESULTADO_MS,
+    tempoReal && aoVivo && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
     encerrada ? nuncaIncompleto : undefined,
   );
 
   // Composição da casa legislativa: Senado sempre nacional; Dep. Federal da UF ou do Brasil; assembleias da UF.
-  const casa = cargo ? casaLegislativa(cargo.cargo, uf) : null;
+  const casa = cargo && flags?.hemiciclo ? casaLegislativa(cargo.cargo, uf) : null;
   const composicao = useApi<Composicao>(
     cargo && casa ? `/api/composicao?cargo=${cargo.id}${casa.nacional ? '' : `&uf=${uf}`}` : null,
     tempoReal ? intervaloMapa : 0,
@@ -169,20 +172,25 @@ export default function App() {
       <header className="topo">
         <div className="marca">
           <h1>Apuração 2026</h1>
-          <span className="muted pequeno">Dados oficiais do TSE · 1º turno em {cargo.data}</span>
+          <span className="muted pequeno">Dados oficiais do TSE · {cargo.turno}º turno em {cargo.data}</span>
           {config.demo && <span className="selo selo-demo" title="Votos sintéticos sobre os candidatos reais">MODO DEMO</span>}
+          {config.flags.previa && (
+            <a className="selo selo-demo" href="/api/preview?sair" title="Todas as flags ligadas só neste navegador. Clique para sair da prévia.">
+              PRÉVIA · sair
+            </a>
+          )}
           <div className="dataline">
             <span>{dataPorExtenso(cargo.data)}</span>
             <span>Eleições Gerais · {cargo.turno}º turno</span>
             {fase === 'votando' ? <span className="ao-vivo">Votação em andamento</span>
               : fase === 'antes' ? <span>Votação ainda não começou</span>
               : encerrada ? <span>Apuração encerrada</span>
-              : auto ? <span className="ao-vivo">Ao vivo</span> : <span>Atualização periódica</span>}
+              : aoVivo ? <span className="ao-vivo">Ao vivo</span> : <span>Atualização periódica</span>}
             <span>Dados oficiais do TSE</span>
             <BotaoTema />
           </div>
         </div>
-        <BarraBusca cargos={config.cargos} onEscolher={escolherBusca} />
+        {config.flags.busca && <BarraBusca cargos={config.cargos} onEscolher={escolherBusca} />}
       </header>
 
       <AvisoVotacao cargo={cargo} fase={fase} agora={agora} />
@@ -219,7 +227,7 @@ export default function App() {
                 <button className={modo === 'lider' ? 'ativo' : ''} onClick={() => setModo('lider')}>Líder</button>
                 <button className={modo === 'apurado' ? 'ativo' : ''} onClick={() => setModo('apurado')}>% apurado</button>
               </div>
-              {!encerrada && (
+              {!encerrada && config.flags.aoVivo && (
                 <label
                   className="auto"
                   title={auto

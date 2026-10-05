@@ -15,10 +15,22 @@ export interface Cargo {
   ufs: string[];
 }
 
+/** Feature toggles efetivas para este navegador (server/flags.mjs); o servidor também as aplica. */
+export interface Flags {
+  segundoTurno: boolean;
+  hemiciclo: boolean;
+  busca: boolean;
+  aoVivo: boolean;
+  /** Prévia (cookie de administração): tudo ligado só neste navegador. */
+  previa: boolean;
+}
+
 export interface Config {
   ciclo: string;
   demo: boolean;
+  /** Só os cargos liberados pelas flags, o turno mais recente primeiro. */
   cargos: Cargo[];
+  flags: Flags;
 }
 
 export interface Municipio {
