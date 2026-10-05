@@ -569,6 +569,16 @@ function situacaoMatematica(raw, candidatos, grupos) {
 }
 
 /**
+ * QE (Código Eleitoral, art. 106): votos válidos (nominais + legenda) ÷ vagas, desprezada a fração
+ * igual ou inferior a meio e arredondada para 1 a superior. Em inteiros, porque `Math.round` sobe o
+ * meio exato. Só é usado se o arquivo do TSE não trouxer `carg.qe`.
+ */
+function quocienteEleitoral(validos, vagas) {
+  const q = Math.floor(validos / vagas);
+  return 2 * (validos - q * vagas) > vagas ? q + 1 : q;
+}
+
+/**
  * Proporcional: ordem de suplência na chapa (partido isolado ou federação) e o "efeito puxador" —
  * eleito com menos votos que o quociente eleitoral (QE), numa chapa em que alguém passou do QE
  * (o puxador). Com a situação oficial do TSE (`st`) usa eleitos e suplentes oficiais; antes dela,
@@ -579,7 +589,7 @@ function situacaoMatematica(raw, candidatos, grupos) {
 function chapas(raw, candidatos, grupos) {
   const carg = raw.carg[0];
   const out = new Map();
-  const qe = int(carg.qe) || Math.round(int(raw.v?.vv) / (int(carg.nv) || 1));
+  const qe = int(carg.qe) || quocienteEleitoral(int(raw.v?.vv), int(carg.nv) || 1);
   if (!qe) return out;
   const oficial = candidatos.some((c) => c.status === 'eleito' || c.status === 'suplente');
   const porChapa = new Map(); // agremiação → candidatos
