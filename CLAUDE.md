@@ -75,7 +75,8 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
                        Brasil), Assembleia/Câmara Legislativa (UF). Sem `st` oficial, usa os eleitos projetados.
                        Cadeiras na ordem dos `eleitos` da API (partido por bancada, depois votos); a lista abaixo
                        mostra cada cadeira e seu dono, agrupada por partido: cabeçalho do partido destaca a
-                       bancada, linha/bolinha destaca a cadeira e abre a ficha do eleito sobre o plenário
+                       bancada, linha/bolinha destaca a cadeira e abre a ficha do eleito sobre o plenário;
+                       clique fixa a cadeira em foco até um clique fora do componente ou ESC
     ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
     Carregando.tsx     Barra fina no topo (conta requisições ativas em getJson) + esqueletos de página/painel/mapa
     AvisoVotacao.tsx   Faixa "votação ainda não começou / em andamento (contagem regressiva) / urnas fechadas"

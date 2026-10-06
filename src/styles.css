@@ -664,7 +664,7 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 .hemiciclo-topo h3 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; }
 .hemiciclo svg { width: 100%; max-width: 640px; height: auto; display: block; margin: 0 auto; }
 /* Contorno discreto: cores escuras (PL, UP) não somem no tema escuro, nem as claras no creme. */
-.cadeira { stroke: rgb(128 128 128 / 0.35); stroke-width: 0.004; transition: fill 0.4s, opacity 0.2s; }
+.cadeira { stroke: rgb(128 128 128 / 0.35); stroke-width: 0.004; transition: fill 0.4s, opacity 0.2s; cursor: pointer; }
 .hemiciclo-total { font-family: var(--fonte-titulo); font-weight: 700; font-size: 0.2px; fill: var(--texto); }
 .hemiciclo-rotulo { font-size: 0.04px; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.003px; }
 .cadeira.realce { stroke: var(--texto); stroke-width: 0.012; }
@@ -684,7 +684,7 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 .hemiciclo-lista h4 .partido { flex: 1; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
 .hemiciclo-lista h4 strong { font-family: var(--fonte-titulo); font-size: 1.05rem; }
 .hemiciclo-lista ol { list-style: none; margin: 0; padding: 0; }
-.hemiciclo-lista li { display: flex; align-items: baseline; gap: 8px; padding: 3px 4px; border-bottom: 1px solid var(--borda); cursor: default; }
+.hemiciclo-lista li { display: flex; align-items: baseline; gap: 8px; padding: 3px 4px; border-bottom: 1px solid var(--borda); cursor: pointer; }
 .hemiciclo-lista li.ativo { background: var(--destaque-suave); }
 .hemiciclo-lista li:focus-visible { outline: 2px solid var(--texto); outline-offset: -2px; }
 .cadeira-num { width: 2.6em; flex: none; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.75rem; }

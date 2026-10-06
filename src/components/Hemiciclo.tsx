@@ -68,7 +68,11 @@ const A_DEFINIR = '';
 
 /** Composição de uma casa legislativa em hemiciclo: uma bolinha por cadeira, na cor do partido. */
 export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria }: Props) {
+  // `foco` acompanha o mouse; `fixo` é a cadeira clicada, que fica em foco (por cima do mouse) até um clique
+  // fora do componente ou ESC.
   const [foco, setFoco] = useState<Foco>(null);
+  const [fixo, setFixo] = useState<Foco>(null);
+  const secao = useRef<HTMLElement>(null);
   const lista = useRef<HTMLDivElement>(null);
   const vagas = dados?.vagas ?? 0;
   const { cadeiras, diametro } = useMemo(() => distribuir(vagas), [vagas]);
@@ -93,12 +97,28 @@ export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria 
     return out;
   }, [ocupantes]);
 
-  const cadeiraFoco = foco && 'cadeira' in foco ? foco.cadeira : null;
-  const partidoFoco = foco && 'partido' in foco ? foco.partido : cadeiraFoco != null ? sigla(cadeiraFoco) : null;
+  const atual = fixo ?? foco;
+  const cadeiraFoco = atual && 'cadeira' in atual ? atual.cadeira : null;
+  const partidoFoco = atual && 'partido' in atual ? atual.partido : cadeiraFoco != null ? sigla(cadeiraFoco) : null;
+
+  useEffect(() => {
+    if (!fixo) return;
+    const fora = (ev: PointerEvent) => { if (!secao.current?.contains(ev.target as Node)) setFixo(null); };
+    const esc = (ev: KeyboardEvent) => { if (ev.key === 'Escape') setFixo(null); };
+    document.addEventListener('pointerdown', fora);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', fora);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [fixo]);
+
+  // Outra casa (troca de cargo/UF): a cadeira fixada não vale mais.
+  useEffect(() => setFixo(null), [dados?.abrangencia, vagas]);
 
   // Cadeira apontada no hemiciclo: rola a lista (só ela, não a página) até o dono aparecer.
   useEffect(() => {
-    if (cadeiraFoco == null || (foco && 'daLista' in foco && foco.daLista)) return;
+    if (cadeiraFoco == null || (atual && 'daLista' in atual && atual.daLista)) return;
     const caixa = lista.current;
     const li = caixa?.querySelector<HTMLElement>(`[data-cadeira="${cadeiraFoco}"]`);
     if (!caixa || !li) return;
@@ -106,7 +126,7 @@ export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria 
     const topo = li.offsetTop - caixa.offsetTop;
     if (topo - cabecalho < caixa.scrollTop) caixa.scrollTop = topo - cabecalho;
     else if (topo + li.offsetHeight > caixa.scrollTop + caixa.clientHeight) caixa.scrollTop = topo + li.offsetHeight - caixa.clientHeight;
-  }, [cadeiraFoco, foco]);
+  }, [cadeiraFoco, atual]);
 
   const aDefinir = vagas - (dados?.atribuidas ?? 0);
   const raio = diametro * 0.42;
@@ -121,7 +141,7 @@ export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria 
   const posFoco = cadeiraFoco != null ? cadeiras[cadeiraFoco] : null;
 
   return (
-    <section className={`hemiciclo ${carregando && dados ? 'atualizando' : ''}`} aria-busy={carregando}>
+    <section ref={secao} className={`hemiciclo ${carregando && dados ? 'atualizando' : ''}`} aria-busy={carregando}>
       <div className="hemiciclo-topo">
         <h3>{titulo}</h3>
         {subtitulo && <span className="muted pequeno">{subtitulo}</span>}
@@ -148,7 +168,7 @@ export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria 
                     fill={cor(s)}
                     opacity={apagada ? (partidoFoco === s ? 0.7 : 0.15) : 1}
                     onMouseEnter={() => setFoco({ cadeira: i, daLista: false })}
-                    onClick={() => setFoco(cadeiraFoco === i ? null : { cadeira: i, daLista: false })}
+                    onClick={() => setFixo({ cadeira: i, daLista: false })}
                   />
                 );
               })}
@@ -192,6 +212,7 @@ export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria 
                           className={cadeiraFoco === i ? 'ativo' : ''}
                           onMouseEnter={() => setFoco({ cadeira: i, daLista: true })}
                           onFocus={() => setFoco({ cadeira: i, daLista: true })}
+                          onClick={() => setFixo({ cadeira: i, daLista: true })}
                           onBlur={() => setFoco(null)}
                         >
                           <span className="cadeira-num" title="Cadeira no plenário, da esquerda para a direita">{i + 1}</span>
