@@ -130,6 +130,7 @@ async function composicao(q, flags) {
     : [await getResultado({ ...base, uf: ufs[0] })];
 
   const cadeiras = new Map();
+  const eleitos = [];
   let vagas = 0;
   let atribuidas = 0;
   let projecao = false;
@@ -141,13 +142,23 @@ async function composicao(q, flags) {
     somaPct += r.secoes.pct;
     const e = eleitosDe(r);
     projecao ||= e.projecao;
+    const colocacao = new Map(r.candidatos.map((cand, i) => [cand.sq, i + 1]));
     for (const cand of e.eleitos) {
       cadeiras.set(cand.partido, (cadeiras.get(cand.partido) ?? 0) + 1);
       atribuidas++;
+      eleitos.push({
+        sq: cand.sq, numero: cand.numero, nome: cand.nomeUrna, partido: cand.partido, uf: r.abrangencia.cd,
+        votos: cand.votos, pct: cand.pct, colocacao: colocacao.get(cand.sq), detalhe: cand.detalhe, foto: cand.foto,
+      });
     }
   }
   const partidos = [...cadeiras].map(([sigla, n]) => ({ sigla, cadeiras: n }))
     .sort((a, b) => b.cadeiras - a.cadeiras || a.sigla.localeCompare(b.sigla, 'pt-BR'));
+  // Cadeiras na ordem do plenário: partidos como acima e, dentro do partido, pela colocação na eleição
+  // (votos; no Brasil, a votação nominal de cada um no seu estado).
+  const ordemPartido = new Map(partidos.map((p, i) => [p.sigla, i]));
+  eleitos.sort((a, b) => ordemPartido.get(a.partido) - ordemPartido.get(b.partido) || b.votos - a.votos
+    || a.colocacao - b.colocacao);
   const lidos = rs.length - faltando;
   return {
     abrangencia: nacional ? 'br' : pedida,
@@ -158,6 +169,7 @@ async function composicao(q, flags) {
     // UFs cujo resultado ainda não chegou do TSE (as vagas delas ainda não entram na conta).
     faltando,
     partidos,
+    eleitos,
   };
 }
 

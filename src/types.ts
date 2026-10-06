@@ -174,4 +174,22 @@ export interface Composicao {
   /** UFs cujo resultado ainda não chegou do TSE (as vagas delas ficam de fora). */
   faltando: number;
   partidos: { sigla: string; cadeiras: number }[];
+  /** Donos das cadeiras, na ordem do plenário: por partido (como `partidos`) e, no partido, por colocação. */
+  eleitos: Eleito[];
+}
+
+/** Ocupante de uma cadeira na composição da casa. */
+export interface Eleito {
+  sq: string;
+  numero: string;
+  nome: string;
+  partido: string;
+  uf: string;
+  votos: number;
+  pct: number;
+  /** Colocação entre todos os candidatos ao cargo na UF. */
+  colocacao: number;
+  /** "por QP" / "por média" (proporcional, situação oficial). */
+  detalhe: string | null;
+  foto: string;
 }

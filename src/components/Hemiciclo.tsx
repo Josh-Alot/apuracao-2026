@@ -1,6 +1,6 @@
-import { type CSSProperties, useMemo, useState } from 'react';
-import type { Composicao } from '../types';
-import { corPartido, fmt, fmtPct } from '../util';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import type { Composicao, Eleito } from '../types';
+import { corPartido, fmt, fmtPct, titulo as nomeProprio } from '../util';
 import { Esq } from './Carregando';
 
 interface Props {
@@ -61,29 +61,64 @@ function distribuir(n: number): { cadeiras: Cadeira[]; diametro: number } {
   return { cadeiras, diametro: melhor.diametro };
 }
 
+/** O que está em foco: um partido (cabeçalho da lista) ou uma cadeira (bolinha ou linha da lista). */
+type Foco = { partido: string } | { cadeira: number; daLista: boolean } | null;
+
 const A_DEFINIR = '';
 
 /** Composição de uma casa legislativa em hemiciclo: uma bolinha por cadeira, na cor do partido. */
 export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria }: Props) {
-  const [destaque, setDestaque] = useState<string | null>(null);
+  const [foco, setFoco] = useState<Foco>(null);
+  const lista = useRef<HTMLDivElement>(null);
   const vagas = dados?.vagas ?? 0;
   const { cadeiras, diametro } = useMemo(() => distribuir(vagas), [vagas]);
 
-  // Partidos por número de cadeiras (o servidor já ordena); as vagas sem eleito ficam no fim, à direita.
+  // Donos das cadeiras na ordem do plenário (o servidor já ordena por partido e colocação); as vagas sem
+  // eleito ficam no fim, à direita.
   const ocupantes = useMemo(() => {
-    const out: string[] = [];
-    for (const p of dados?.partidos ?? []) for (let i = 0; i < p.cadeiras; i++) out.push(p.sigla);
-    while (out.length < vagas) out.push(A_DEFINIR);
+    const out: (Eleito | null)[] = [...(dados?.eleitos ?? [])];
+    while (out.length < vagas) out.push(null);
     return out;
   }, [dados, vagas]);
+  const sigla = (i: number) => ocupantes[i]?.partido ?? A_DEFINIR;
+
+  // Lista agrupada por partido, com o número da cadeira (posição no plenário, da esquerda para a direita).
+  const grupos = useMemo(() => {
+    const out: { sigla: string; cadeiras: number[] }[] = [];
+    ocupantes.forEach((e, i) => {
+      const s = e?.partido ?? A_DEFINIR;
+      if (out.at(-1)?.sigla !== s) out.push({ sigla: s, cadeiras: [] });
+      out.at(-1)!.cadeiras.push(i);
+    });
+    return out;
+  }, [ocupantes]);
+
+  const cadeiraFoco = foco && 'cadeira' in foco ? foco.cadeira : null;
+  const partidoFoco = foco && 'partido' in foco ? foco.partido : cadeiraFoco != null ? sigla(cadeiraFoco) : null;
+
+  // Cadeira apontada no hemiciclo: rola a lista (só ela, não a página) até o dono aparecer.
+  useEffect(() => {
+    if (cadeiraFoco == null || (foco && 'daLista' in foco && foco.daLista)) return;
+    const caixa = lista.current;
+    const li = caixa?.querySelector<HTMLElement>(`[data-cadeira="${cadeiraFoco}"]`);
+    if (!caixa || !li) return;
+    const cabecalho = li.closest('section')?.querySelector('h4')?.offsetHeight ?? 0;
+    const topo = li.offsetTop - caixa.offsetTop;
+    if (topo - cabecalho < caixa.scrollTop) caixa.scrollTop = topo - cabecalho;
+    else if (topo + li.offsetHeight > caixa.scrollTop + caixa.clientHeight) caixa.scrollTop = topo + li.offsetHeight - caixa.clientHeight;
+  }, [cadeiraFoco, foco]);
 
   const aDefinir = vagas - (dados?.atribuidas ?? 0);
   const raio = diametro * 0.42;
   const margem = raio + 0.02;
-  const cor = (sigla: string) => (sigla === A_DEFINIR ? 'var(--sem-dado)' : corPartido(sigla));
+  const largura = 2 + 2 * margem;
+  const altura = 1 + 2 * margem;
+  const cor = (s: string) => (s === A_DEFINIR ? 'var(--sem-dado)' : corPartido(s));
   const resumoAcessivel = dados
     ? `${titulo}: ${dados.partidos.map((p) => `${p.sigla} ${p.cadeiras}`).join(', ')}${aDefinir > 0 ? `, ${aDefinir} a definir` : ''}.`
     : titulo;
+  const noFoco = cadeiraFoco != null ? ocupantes[cadeiraFoco] : null;
+  const posFoco = cadeiraFoco != null ? cadeiras[cadeiraFoco] : null;
 
   return (
     <section className={`hemiciclo ${carregando && dados ? 'atualizando' : ''}`} aria-busy={carregando}>
@@ -97,56 +132,80 @@ export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria 
 
       {dados && vagas > 0 && (
         <>
-          <svg
-            viewBox={`${-1 - margem} ${-margem} ${2 + 2 * margem} ${1 + 2 * margem}`}
-            role="img"
-            aria-label={resumoAcessivel}
-            onMouseLeave={() => setDestaque(null)}
-          >
-            {cadeiras.map((c, i) => {
-              const sigla = ocupantes[i];
-              const apagada = destaque != null && destaque !== sigla;
-              return (
-                <circle
-                  key={i}
-                  className="cadeira"
-                  cx={c.x}
-                  cy={1 - c.y}
-                  r={raio}
-                  fill={cor(sigla)}
-                  opacity={apagada ? 0.18 : 1}
-                  onMouseEnter={() => setDestaque(sigla)}
-                >
-                  <title>{sigla === A_DEFINIR ? 'A definir' : sigla}</title>
-                </circle>
-              );
-            })}
-            <text x="0" y={1 - 0.1} textAnchor="middle" className="hemiciclo-total">{fmt(vagas)}</text>
-            <text x="0" y={1 - 0.01} textAnchor="middle" className="hemiciclo-rotulo">
-              {maioria ? `cadeiras · maioria ${fmt(maioria)}` : 'cadeiras'}
-            </text>
-          </svg>
+          <div className="hemiciclo-plenario" onMouseLeave={() => setFoco(null)}>
+            <svg viewBox={`${-1 - margem} ${-margem} ${largura} ${altura}`} role="img" aria-label={resumoAcessivel}>
+              {cadeiras.map((c, i) => {
+                const s = sigla(i);
+                const realce = cadeiraFoco === i;
+                const apagada = cadeiraFoco != null ? !realce : partidoFoco != null && partidoFoco !== s;
+                return (
+                  <circle
+                    key={i}
+                    className={`cadeira ${realce ? 'realce' : ''}`}
+                    cx={c.x}
+                    cy={1 - c.y}
+                    r={realce ? raio * 1.25 : raio}
+                    fill={cor(s)}
+                    opacity={apagada ? (partidoFoco === s ? 0.7 : 0.15) : 1}
+                    onMouseEnter={() => setFoco({ cadeira: i, daLista: false })}
+                    onClick={() => setFoco(cadeiraFoco === i ? null : { cadeira: i, daLista: false })}
+                  />
+                );
+              })}
+              <text x="0" y={1 - 0.1} textAnchor="middle" className="hemiciclo-total">{fmt(vagas)}</text>
+              <text x="0" y={1 - 0.01} textAnchor="middle" className="hemiciclo-rotulo">
+                {maioria ? `cadeiras · maioria ${fmt(maioria)}` : 'cadeiras'}
+              </text>
+            </svg>
 
-          <ul className="hemiciclo-legenda" onMouseLeave={() => setDestaque(null)}>
-            {dados.partidos.map((p) => (
-              <li
-                key={p.sigla}
-                className={destaque && destaque !== p.sigla ? 'apagado' : ''}
-                onMouseEnter={() => setDestaque(p.sigla)}
-              >
-                <span className="bolinha" style={{ background: corPartido(p.sigla), marginRight: 0 }} />
-                <span className="partido" style={{ '--cor': corPartido(p.sigla) } as CSSProperties}>{p.sigla}</span>
-                <strong className="num">{p.cadeiras}</strong>
-              </li>
-            ))}
-            {aDefinir > 0 && (
-              <li className={destaque != null && destaque !== A_DEFINIR ? 'apagado' : ''} onMouseEnter={() => setDestaque(A_DEFINIR)}>
-                <span className="bolinha" style={{ background: 'var(--sem-dado)', marginRight: 0 }} />
-                <span className="muted" style={{ flex: 1 }}>A definir</span>
-                <strong className="num">{aDefinir}</strong>
-              </li>
+            {posFoco && cadeiraFoco != null && (
+              <FichaCadeira
+                e={noFoco}
+                numero={cadeiraFoco + 1}
+                projecao={dados.projecao}
+                nacional={dados.abrangencia === 'br'}
+                x={(posFoco.x + 1 + margem) / largura}
+                y={(1 - posFoco.y + margem) / altura}
+              />
             )}
-          </ul>
+          </div>
+
+          <div className="hemiciclo-lista" ref={lista} onMouseLeave={() => setFoco(null)}>
+            {grupos.map((g) => (
+              <section key={g.sigla || 'a-definir'} className={partidoFoco != null && partidoFoco !== g.sigla ? 'apagado' : ''}>
+                <h4 onMouseEnter={() => setFoco({ partido: g.sigla })}>
+                  <span className="bolinha" style={{ background: cor(g.sigla), marginRight: 0 }} />
+                  {g.sigla === A_DEFINIR
+                    ? <span className="muted partido">A definir</span>
+                    : <span className="partido" style={{ '--cor': corPartido(g.sigla) } as CSSProperties}>{g.sigla}</span>}
+                  <strong className="num">{g.cadeiras.length}</strong>
+                </h4>
+                {g.sigla !== A_DEFINIR && (
+                  <ol>
+                    {g.cadeiras.map((i) => {
+                      const e = ocupantes[i]!;
+                      return (
+                        <li
+                          key={i}
+                          data-cadeira={i}
+                          tabIndex={0}
+                          className={cadeiraFoco === i ? 'ativo' : ''}
+                          onMouseEnter={() => setFoco({ cadeira: i, daLista: true })}
+                          onFocus={() => setFoco({ cadeira: i, daLista: true })}
+                          onBlur={() => setFoco(null)}
+                        >
+                          <span className="cadeira-num" title="Cadeira no plenário, da esquerda para a direita">{i + 1}</span>
+                          <span className="cadeira-nome">{nomeProprio(e.nome)}</span>
+                          {dados.abrangencia === 'br' && <span className="muted cadeira-uf">{e.uf.toUpperCase()}</span>}
+                          <span className="num muted">{fmt(e.votos)}</span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </section>
+            ))}
+          </div>
 
           <p className="muted pequeno">
             {dados.atribuidas === 0
@@ -159,5 +218,42 @@ export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria 
         </>
       )}
     </section>
+  );
+}
+
+/** Quem ocupa a cadeira em foco, sobre o hemiciclo (x/y em fração da área do desenho). */
+function FichaCadeira({ e, numero, projecao, nacional, x, y }: {
+  e: Eleito | null; numero: number; projecao: boolean; nacional: boolean; x: number; y: number;
+}) {
+  // Acima da bolinha; nas fileiras de cima, abaixo. Nas pontas, a ficha cresce para dentro.
+  const abaixo = y < 0.4;
+  const dx = x < 0.25 ? '-12%' : x > 0.75 ? '-88%' : '-50%';
+  const dy = abaixo ? '14px' : 'calc(-100% - 14px)';
+  return (
+    <div className="tooltip ficha-cadeira" style={{ left: `${x * 100}%`, top: `${y * 100}%`, transform: `translate(${dx}, ${dy})` }}>
+      {e ? (
+        <>
+          <div className="ficha-cadeira-topo">
+            <img src={e.foto} alt="" loading="lazy" onError={(ev) => { ev.currentTarget.style.visibility = 'hidden'; }} />
+            <div>
+              <strong>{nomeProprio(e.nome)}</strong>
+              <span className="partido" style={{ '--cor': corPartido(e.partido) } as CSSProperties}>{e.partido}</span>
+              {' '}<span className="muted">{e.numero}{nacional ? ` · ${e.uf.toUpperCase()}` : ''}</span>
+            </div>
+          </div>
+          <div>{fmt(e.votos)} votos ({fmtPct(e.pct)})</div>
+          <div className="muted">
+            {e.colocacao}º mais votado{nacional ? ` em ${e.uf.toUpperCase()}` : ''}
+            {e.detalhe ? ` · eleito ${e.detalhe}` : projecao ? ' · projeção' : ''}
+          </div>
+          <div className="muted pequeno">Cadeira {numero}</div>
+        </>
+      ) : (
+        <>
+          <strong>Cadeira {numero}</strong>
+          <div className="muted">A definir</div>
+        </>
+      )}
+    </div>
   );
 }

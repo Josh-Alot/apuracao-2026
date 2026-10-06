@@ -667,12 +667,28 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 .cadeira { stroke: rgb(128 128 128 / 0.35); stroke-width: 0.004; transition: fill 0.4s, opacity 0.2s; }
 .hemiciclo-total { font-family: var(--fonte-titulo); font-weight: 700; font-size: 0.2px; fill: var(--texto); }
 .hemiciclo-rotulo { font-size: 0.04px; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.003px; }
-.hemiciclo-legenda {
-  list-style: none; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--borda);
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 16px; font-size: 0.85rem;
+.cadeira.realce { stroke: var(--texto); stroke-width: 0.012; }
+.hemiciclo-plenario { position: relative; width: 100%; max-width: 640px; margin: 0 auto; }
+.ficha-cadeira { width: 240px; }
+.ficha-cadeira-topo { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.ficha-cadeira-topo img { width: 40px; height: 52px; object-fit: cover; flex: none; background: var(--sem-dado); }
+.ficha-cadeira-topo strong { margin-bottom: 0; }
+/* Donos das cadeiras, por partido: o cabeçalho fica preso no topo enquanto a lista do partido rola. */
+.hemiciclo-lista { max-height: 360px; overflow-y: auto; border-top: 1px solid var(--borda); font-size: 0.85rem; overscroll-behavior: contain; }
+.hemiciclo-lista section { transition: opacity 0.2s; }
+.hemiciclo-lista section.apagado { opacity: 0.35; }
+.hemiciclo-lista h4 {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; margin: 0;
+  padding: 6px 0 4px; background: var(--bg); border-bottom: 1px solid var(--texto); cursor: default;
 }
-.hemiciclo-legenda li { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--borda); transition: opacity 0.2s; }
-.hemiciclo-legenda li.apagado { opacity: 0.35; }
-.hemiciclo-legenda .partido { flex: 1; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
-.hemiciclo-legenda strong { font-family: var(--fonte-titulo); font-size: 1.05rem; }
+.hemiciclo-lista h4 .partido { flex: 1; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.hemiciclo-lista h4 strong { font-family: var(--fonte-titulo); font-size: 1.05rem; }
+.hemiciclo-lista ol { list-style: none; margin: 0; padding: 0; }
+.hemiciclo-lista li { display: flex; align-items: baseline; gap: 8px; padding: 3px 4px; border-bottom: 1px solid var(--borda); cursor: default; }
+.hemiciclo-lista li.ativo { background: var(--destaque-suave); }
+.hemiciclo-lista li:focus-visible { outline: 2px solid var(--texto); outline-offset: -2px; }
+.cadeira-num { width: 2.6em; flex: none; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.75rem; }
+.hemiciclo-lista li.ativo .cadeira-num { color: var(--texto); font-weight: 700; }
+.cadeira-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cadeira-uf { font-size: 0.72rem; letter-spacing: 0.05em; }
 .hemiciclo p { margin: 0; }
