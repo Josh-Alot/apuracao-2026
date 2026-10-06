@@ -164,6 +164,19 @@ Base: `https://resultados.tse.jus.br/oficial`
   siglas das UFs no mapa do Brasil; cartão do exterior. Cores dos finalistas: as dos partidos, salvo quando têm
   a mesma matiz (`coresDuelo()` em `util.ts` troca a do segundo por uma reserva).
 
+### Dia do 2º turno (25/10/2026) e depois
+
+Valem as mesmas regras do 1º turno, que são por cargo/eleição (nada a configurar além das flags):
+- até 8h: faixa "a votação do 2º turno ainda não começou"; 8h–17h: "votação em andamento" com contagem regressiva.
+  Até 17h cada arquivo do TSE é buscado no máximo uma vez (os candidatos e os zeros) e guardado até o fechamento;
+  o front não abre "ao vivo" nem polling (`fimDaVotacao`, `apuracaoAberta`).
+- 17h: o "ao vivo" liga sozinho; com 100% das seções em todas as UFs da eleição (`br-e006258-ab.json` /
+  `br-e006260-ab.json`), `encerrada` desliga a consulta ativa daquela eleição.
+- No 2º turno só existe o selo "matematicamente eleito" (maioria absoluta); "2º turno garantido" é só do 1º turno.
+- No dia seguinte (ou quando o `manifesto.json` ficar todo final): `npm run arquivar -- --turno 2` grava
+  `arquivo/ele2026-2turno/`; depois do commit e do deploy, 6258/6260 saem só do arquivo (`eleicaoFinal`), sem
+  consultar o TSE. O script recusa rodar com `SIMULACAO_2TURNO=1`.
+
 ### Simulação do 2º turno (`simulacao/`)
 
 Enquanto o TSE não publica o 2º turno, `npm run simular-2turno` monta um a partir dos CSVs dos Dados Abertos do 2º

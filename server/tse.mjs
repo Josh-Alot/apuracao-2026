@@ -562,7 +562,8 @@ function situacaoMatematica(raw, candidatos, grupos) {
     // Presidente e Governador: maioria absoluta dos votos válidos no 1º turno.
     const tetoValidos = validos + subJudice + faltam;
     for (const c of candidatos) if (podeSerEleito(c) && 2 * c.votos > tetoValidos) out.set(c.sq, 'eleito');
-    if (out.size) return out;
+    // No 2º turno não há outro turno a garantir: só a maioria absoluta acima conta.
+    if (out.size || raw.t === '2') return out;
 
     // 2º turno garantido: (1) ninguém mais pode ter maioria — dando a cada um todos os votos que
     // faltam (que também entram nos válidos); um sub judice validado soma os votos dele aos válidos —

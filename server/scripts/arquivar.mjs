@@ -122,6 +122,12 @@ const tempo = (ms) => {
   return s >= 3600 ? `${Math.floor(s / 3600)}h${pad(Math.floor((s % 3600) / 60), 2)}` : `${Math.floor(s / 60)}min${pad(s % 60, 2)}`;
 };
 
+// Com a simulação ligada, a configuração do 2º turno é a simulada (server/simulacao.mjs), não a do TSE.
+if (process.env.SIMULACAO_2TURNO === '1') {
+  console.error('Desligue SIMULACAO_2TURNO para arquivar: com ela, a configuração do 2º turno não é a do TSE.');
+  process.exit(1);
+}
+
 const inicio = Date.now();
 const manifesto = await lerManifesto();
 const cfg = await getConfig();
