@@ -5,264 +5,264 @@
  "unidades": {
   "6257/ac-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 45,
    "faltando": 0,
-   "bytes": 8129,
-   "tse": "05/10/2026 02:59:25",
-   "arquivado": "2026-10-05T12:30:03.522Z"
+   "bytes": 7798,
+   "tse": "05/10/2026 12:51:40",
+   "arquivado": "2026-10-06T12:11:18.710Z"
   },
   "6257/al-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 209,
    "faltando": 0,
-   "bytes": 27049,
-   "tse": "05/10/2026 02:59:27",
-   "arquivado": "2026-10-05T12:30:29.897Z"
+   "bytes": 25661,
+   "tse": "05/10/2026 12:51:41",
+   "arquivado": "2026-10-06T12:11:45.120Z"
   },
   "6257/am-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 136,
    "faltando": 0,
-   "bytes": 19721,
-   "tse": "05/10/2026 02:59:27",
-   "arquivado": "2026-10-05T12:30:51.826Z"
+   "bytes": 18678,
+   "tse": "05/10/2026 12:51:41",
+   "arquivado": "2026-10-06T12:12:07.226Z"
   },
   "6257/ap-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 34,
    "faltando": 0,
-   "bytes": 7013,
-   "tse": "05/10/2026 02:59:26",
-   "arquivado": "2026-10-05T12:30:34.505Z"
+   "bytes": 6790,
+   "tse": "05/10/2026 12:51:40",
+   "arquivado": "2026-10-06T12:11:49.829Z"
   },
   "6257/ba-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 867,
    "faltando": 0,
-   "bytes": 106471,
-   "tse": "05/10/2026 02:59:42",
-   "arquivado": "2026-10-05T12:32:40.655Z"
+   "bytes": 100255,
+   "tse": "05/10/2026 12:51:55",
+   "arquivado": "2026-10-06T12:13:55.990Z"
   },
   "6257/br-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 0,
    "faltando": 0,
-   "bytes": 2420,
-   "tse": "05/10/2026 02:59:31",
-   "arquivado": "2026-10-05T15:14:33.662Z"
+   "bytes": 2460,
+   "tse": "05/10/2026 12:51:47",
+   "arquivado": "2026-10-06T12:11:12.648Z"
   },
   "6257/ce-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 389,
    "faltando": 0,
-   "bytes": 50543,
-   "tse": "05/10/2026 02:59:30",
-   "arquivado": "2026-10-05T12:33:29.954Z"
+   "bytes": 48060,
+   "tse": "05/10/2026 12:51:44",
+   "arquivado": "2026-10-06T12:14:44.945Z"
   },
   "6257/df-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 20,
    "faltando": 0,
-   "bytes": 7341,
-   "tse": "05/10/2026 02:59:26",
-   "arquivado": "2026-10-05T12:33:32.487Z"
+   "bytes": 7114,
+   "tse": "05/10/2026 12:51:40",
+   "arquivado": "2026-10-06T12:14:47.473Z"
   },
   "6257/es-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 163,
    "faltando": 0,
-   "bytes": 24104,
-   "tse": "05/10/2026 02:59:27",
-   "arquivado": "2026-10-05T12:33:53.225Z"
+   "bytes": 22858,
+   "tse": "05/10/2026 12:51:41",
+   "arquivado": "2026-10-06T12:15:08.197Z"
   },
   "6257/go-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 505,
    "faltando": 0,
-   "bytes": 59195,
-   "tse": "05/10/2026 02:59:30",
-   "arquivado": "2026-10-05T12:34:56.703Z"
+   "bytes": 55646,
+   "tse": "05/10/2026 12:51:44",
+   "arquivado": "2026-10-06T12:16:11.809Z"
   },
   "6257/ma-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 440,
    "faltando": 0,
-   "bytes": 53150,
-   "tse": "05/10/2026 02:59:31",
-   "arquivado": "2026-10-05T12:35:51.891Z"
+   "bytes": 50213,
+   "tse": "05/10/2026 12:51:45",
+   "arquivado": "2026-10-06T12:17:07.191Z"
   },
   "6257/mg-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 1751,
    "faltando": 0,
-   "bytes": 207212,
-   "tse": "05/10/2026 02:59:46",
-   "arquivado": "2026-10-05T12:40:29.031Z"
+   "bytes": 196122,
+   "tse": "05/10/2026 12:52:05",
+   "arquivado": "2026-10-06T12:21:44.517Z"
   },
   "6257/ms-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 167,
    "faltando": 0,
-   "bytes": 23583,
-   "tse": "05/10/2026 02:59:27",
-   "arquivado": "2026-10-05T12:36:49.713Z"
+   "bytes": 22383,
+   "tse": "05/10/2026 12:51:41",
+   "arquivado": "2026-10-06T12:18:05.129Z"
   },
   "6257/mt-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 289,
    "faltando": 0,
-   "bytes": 35405,
-   "tse": "05/10/2026 02:59:28",
-   "arquivado": "2026-10-05T12:36:28.464Z"
+   "bytes": 33349,
+   "tse": "05/10/2026 12:51:42",
+   "arquivado": "2026-10-06T12:17:43.840Z"
   },
   "6257/pa-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 304,
    "faltando": 0,
-   "bytes": 41097,
-   "tse": "05/10/2026 02:59:32",
-   "arquivado": "2026-10-05T12:41:07.381Z"
+   "bytes": 39084,
+   "tse": "05/10/2026 12:51:45",
+   "arquivado": "2026-10-06T12:22:23.050Z"
   },
   "6257/pb-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 453,
    "faltando": 0,
-   "bytes": 52684,
-   "tse": "05/10/2026 02:59:29",
-   "arquivado": "2026-10-05T12:42:04.422Z"
+   "bytes": 49437,
+   "tse": "05/10/2026 12:51:44",
+   "arquivado": "2026-10-06T12:23:20.133Z"
   },
   "6257/pe-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 394,
    "faltando": 0,
-   "bytes": 51848,
-   "tse": "05/10/2026 02:59:30",
-   "arquivado": "2026-10-05T12:44:36.886Z"
+   "bytes": 49248,
+   "tse": "05/10/2026 12:51:44",
+   "arquivado": "2026-10-06T12:25:52.413Z"
   },
   "6257/pi-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 454,
    "faltando": 0,
-   "bytes": 51183,
-   "tse": "05/10/2026 02:59:30",
-   "arquivado": "2026-10-05T12:45:34.026Z"
+   "bytes": 48191,
+   "tse": "05/10/2026 12:51:46",
+   "arquivado": "2026-10-06T12:26:49.383Z"
   },
   "6257/pr-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 820,
    "faltando": 0,
-   "bytes": 97665,
-   "tse": "05/10/2026 02:59:36",
-   "arquivado": "2026-10-05T12:43:47.314Z"
+   "bytes": 91949,
+   "tse": "05/10/2026 12:51:50",
+   "arquivado": "2026-10-06T12:25:02.926Z"
   },
   "6257/rj-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 275,
    "faltando": 0,
-   "bytes": 51298,
-   "tse": "05/10/2026 02:59:29",
-   "arquivado": "2026-10-05T12:46:08.837Z"
+   "bytes": 49209,
+   "tse": "05/10/2026 12:51:43",
+   "arquivado": "2026-10-06T12:27:23.826Z"
   },
   "6257/rn-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 339,
    "faltando": 0,
-   "bytes": 39844,
-   "tse": "05/10/2026 02:59:29",
-   "arquivado": "2026-10-05T12:46:51.533Z"
+   "bytes": 37525,
+   "tse": "05/10/2026 12:51:43",
+   "arquivado": "2026-10-06T12:28:06.661Z"
   },
   "6257/ro-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 108,
    "faltando": 0,
-   "bytes": 15892,
-   "tse": "05/10/2026 02:59:26",
-   "arquivado": "2026-10-05T12:49:12.910Z"
+   "bytes": 15042,
+   "tse": "05/10/2026 12:51:40",
+   "arquivado": "2026-10-06T12:30:28.297Z"
   },
   "6257/rr-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 31,
    "faltando": 0,
-   "bytes": 6501,
-   "tse": "05/10/2026 02:59:26",
-   "arquivado": "2026-10-05T12:49:16.829Z"
+   "bytes": 6257,
+   "tse": "05/10/2026 12:51:40",
+   "arquivado": "2026-10-06T12:30:32.557Z"
   },
   "6257/rs-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 1019,
    "faltando": 0,
-   "bytes": 118793,
-   "tse": "05/10/2026 02:59:38",
-   "arquivado": "2026-10-05T12:48:59.294Z"
+   "bytes": 111828,
+   "tse": "05/10/2026 12:51:50",
+   "arquivado": "2026-10-06T12:30:14.363Z"
   },
   "6257/sc-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 610,
    "faltando": 0,
-   "bytes": 74863,
-   "tse": "05/10/2026 02:59:31",
-   "arquivado": "2026-10-05T12:50:33.687Z"
+   "bytes": 70555,
+   "tse": "05/10/2026 12:51:45",
+   "arquivado": "2026-10-06T12:31:49.149Z"
   },
   "6257/se-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 152,
    "faltando": 0,
-   "bytes": 20254,
-   "tse": "05/10/2026 02:59:26",
-   "arquivado": "2026-10-05T12:53:51.459Z"
+   "bytes": 19281,
+   "tse": "05/10/2026 12:51:41",
+   "arquivado": "2026-10-06T12:35:06.626Z"
   },
   "6257/sp-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 1424,
    "faltando": 0,
-   "bytes": 192673,
-   "tse": "05/10/2026 02:59:41",
-   "arquivado": "2026-10-05T12:53:32.150Z"
+   "bytes": 183508,
+   "tse": "05/10/2026 12:51:59",
+   "arquivado": "2026-10-06T12:34:47.576Z"
   },
   "6257/to-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 279,
    "faltando": 0,
-   "bytes": 31399,
-   "tse": "05/10/2026 02:59:27",
-   "arquivado": "2026-10-05T12:54:26.601Z"
+   "bytes": 29247,
+   "tse": "05/10/2026 12:51:42",
+   "arquivado": "2026-10-06T12:35:42.153Z"
   },
   "6257/zz-c0001": {
    "cargo": "Presidente",
-   "final": false,
+   "final": true,
    "regioes": 372,
    "faltando": 0,
-   "bytes": 31085,
-   "tse": "05/10/2026 02:59:27",
-   "arquivado": "2026-10-05T12:55:13.157Z"
+   "bytes": 28811,
+   "tse": "05/10/2026 12:51:41",
+   "arquivado": "2026-10-06T12:36:28.714Z"
   },
   "6259/ac-c0003": {
    "cargo": "Governador",
@@ -293,12 +293,12 @@
   },
   "6259/ac-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 45,
    "faltando": 0,
    "bytes": 34188,
    "tse": "04/10/2026 21:08:28",
-   "arquivado": "2026-10-05T14:08:30.351Z"
+   "arquivado": "2026-10-06T12:55:12.757Z"
   },
   "6259/al-c0003": {
    "cargo": "Governador",
@@ -428,21 +428,21 @@
   },
   "6259/ba-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 867,
    "faltando": 0,
-   "bytes": 527341,
-   "tse": "05/10/2026 00:52:46",
-   "arquivado": "2026-10-05T13:46:37.589Z"
+   "bytes": 351196,
+   "tse": "05/10/2026 11:42:25",
+   "arquivado": "2026-10-06T12:38:32.467Z"
   },
   "6259/ba-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 867,
    "faltando": 0,
-   "bytes": 370683,
-   "tse": "05/10/2026 00:51:56",
-   "arquivado": "2026-10-05T14:11:08.079Z"
+   "bytes": 370408,
+   "tse": "05/10/2026 11:42:33",
+   "arquivado": "2026-10-06T12:57:02.472Z"
   },
   "6259/ce-c0003": {
    "cargo": "Governador",
@@ -464,21 +464,21 @@
   },
   "6259/ce-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 389,
    "faltando": 0,
    "bytes": 198596,
    "tse": "04/10/2026 23:11:37",
-   "arquivado": "2026-10-05T13:47:26.692Z"
+   "arquivado": "2026-10-06T12:39:21.558Z"
   },
   "6259/ce-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 389,
    "faltando": 0,
    "bytes": 213229,
    "tse": "04/10/2026 23:11:39",
-   "arquivado": "2026-10-05T14:11:57.099Z"
+   "arquivado": "2026-10-06T12:57:51.660Z"
   },
   "6259/df-c0003": {
    "cargo": "Governador",
@@ -545,12 +545,12 @@
   },
   "6259/es-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 163,
    "faltando": 0,
    "bytes": 123117,
    "tse": "04/10/2026 20:57:10",
-   "arquivado": "2026-10-05T14:12:17.886Z"
+   "arquivado": "2026-10-06T12:58:12.517Z"
   },
   "6259/go-c0003": {
    "cargo": "Governador",
@@ -572,21 +572,21 @@
   },
   "6259/go-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 505,
    "faltando": 0,
    "bytes": 219446,
    "tse": "04/10/2026 22:39:26",
-   "arquivado": "2026-10-05T13:48:51.044Z"
+   "arquivado": "2026-10-06T12:40:25.246Z"
   },
   "6259/go-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 505,
    "faltando": 0,
    "bytes": 326387,
    "tse": "04/10/2026 22:39:31",
-   "arquivado": "2026-10-05T14:13:21.671Z"
+   "arquivado": "2026-10-06T12:59:16.313Z"
   },
   "6259/ma-c0003": {
    "cargo": "Governador",
@@ -608,21 +608,21 @@
   },
   "6259/ma-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 440,
    "faltando": 0,
    "bytes": 190010,
    "tse": "05/10/2026 02:02:00",
-   "arquivado": "2026-10-05T13:49:46.479Z"
+   "arquivado": "2026-10-06T12:41:20.804Z"
   },
   "6259/ma-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 440,
    "faltando": 0,
    "bytes": 177445,
    "tse": "05/10/2026 02:01:58",
-   "arquivado": "2026-10-05T14:14:17.099Z"
+   "arquivado": "2026-10-06T13:00:11.797Z"
   },
   "6259/mg-c0003": {
    "cargo": "Governador",
@@ -644,21 +644,21 @@
   },
   "6259/mg-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 1751,
    "faltando": 0,
-   "bytes": 748955,
-   "tse": "05/10/2026 00:53:12",
-   "arquivado": "2026-10-05T13:54:24.891Z"
+   "bytes": 743714,
+   "tse": "05/10/2026 11:48:31",
+   "arquivado": "2026-10-06T12:45:02.065Z"
   },
   "6259/mg-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 1751,
    "faltando": 0,
-   "bytes": 745406,
-   "tse": "05/10/2026 00:53:34",
-   "arquivado": "2026-10-05T14:18:55.877Z"
+   "bytes": 735197,
+   "tse": "05/10/2026 11:48:52",
+   "arquivado": "2026-10-06T13:03:53.479Z"
   },
   "6259/ms-c0003": {
    "cargo": "Governador",
@@ -761,12 +761,12 @@
   },
   "6259/pa-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 304,
    "faltando": 0,
-   "bytes": 174200,
-   "tse": "04/10/2026 23:56:36",
-   "arquivado": "2026-10-05T14:19:34.487Z"
+   "bytes": 143948,
+   "tse": "05/10/2026 11:42:33",
+   "arquivado": "2026-10-06T13:04:31.930Z"
   },
   "6259/pb-c0003": {
    "cargo": "Governador",
@@ -824,21 +824,21 @@
   },
   "6259/pe-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 394,
    "faltando": 0,
    "bytes": 219916,
    "tse": "04/10/2026 22:55:58",
-   "arquivado": "2026-10-05T13:58:33.446Z"
+   "arquivado": "2026-10-06T12:47:35.175Z"
   },
   "6259/pe-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 394,
    "faltando": 0,
    "bytes": 260681,
    "tse": "04/10/2026 22:56:01",
-   "arquivado": "2026-10-05T14:23:05.135Z"
+   "arquivado": "2026-10-06T13:07:06.162Z"
   },
   "6259/pi-c0003": {
    "cargo": "Governador",
@@ -896,21 +896,21 @@
   },
   "6259/pr-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 820,
    "faltando": 0,
-   "bytes": 426481,
-   "tse": "04/10/2026 22:44:48",
-   "arquivado": "2026-10-05T13:57:43.716Z"
+   "bytes": 329585,
+   "tse": "05/10/2026 11:47:02",
+   "arquivado": "2026-10-06T12:46:45.406Z"
   },
   "6259/pr-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 820,
    "faltando": 0,
-   "bytes": 350070,
-   "tse": "04/10/2026 22:44:15",
-   "arquivado": "2026-10-05T14:22:15.279Z"
+   "bytes": 347493,
+   "tse": "05/10/2026 11:47:12",
+   "arquivado": "2026-10-06T13:06:15.961Z"
   },
   "6259/rj-c0003": {
    "cargo": "Governador",
@@ -968,21 +968,21 @@
   },
   "6259/rn-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 339,
    "faltando": 0,
    "bytes": 91280,
    "tse": "04/10/2026 23:02:12",
-   "arquivado": "2026-10-05T14:00:48.207Z"
+   "arquivado": "2026-10-06T12:48:21.540Z"
   },
   "6259/rn-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 339,
    "faltando": 0,
    "bytes": 119678,
    "tse": "04/10/2026 23:02:13",
-   "arquivado": "2026-10-05T14:25:20.408Z"
+   "arquivado": "2026-10-06T13:07:48.894Z"
   },
   "6259/ro-c0003": {
    "cargo": "Governador",
@@ -1076,12 +1076,12 @@
   },
   "6259/rs-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 1019,
    "faltando": 0,
    "bytes": 509479,
    "tse": "04/10/2026 21:13:15",
-   "arquivado": "2026-10-05T14:02:56.426Z"
+   "arquivado": "2026-10-06T12:50:29.805Z"
   },
   "6259/rs-c0007": {
    "cargo": "Deputado Estadual",
@@ -1112,21 +1112,21 @@
   },
   "6259/sc-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 610,
    "faltando": 0,
    "bytes": 259929,
    "tse": "04/10/2026 21:56:38",
-   "arquivado": "2026-10-05T14:04:26.875Z"
+   "arquivado": "2026-10-06T12:51:46.787Z"
   },
   "6259/sc-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 610,
    "faltando": 0,
    "bytes": 313980,
    "tse": "04/10/2026 21:56:42",
-   "arquivado": "2026-10-05T14:29:00.273Z"
+   "arquivado": "2026-10-06T13:09:05.947Z"
   },
   "6259/se-c0003": {
    "cargo": "Governador",
@@ -1148,21 +1148,21 @@
   },
   "6259/se-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 152,
    "faltando": 0,
    "bytes": 61767,
    "tse": "04/10/2026 22:08:20",
-   "arquivado": "2026-10-05T14:07:49.111Z"
+   "arquivado": "2026-10-06T12:55:06.704Z"
   },
   "6259/se-c0007": {
    "cargo": "Deputado Estadual",
-   "final": false,
+   "final": true,
    "regioes": 152,
    "faltando": 0,
    "bytes": 81455,
    "tse": "04/10/2026 22:08:20",
-   "arquivado": "2026-10-05T15:10:40.584Z"
+   "arquivado": "2026-10-06T13:09:25.554Z"
   },
   "6259/sp-c0003": {
    "cargo": "Governador",
@@ -1184,12 +1184,12 @@
   },
   "6259/sp-c0006": {
    "cargo": "Deputado Federal",
-   "final": false,
+   "final": true,
    "regioes": 1424,
    "faltando": 0,
-   "bytes": 3307599,
-   "tse": "04/10/2026 23:00:41",
-   "arquivado": "2026-10-05T14:07:29.595Z"
+   "bytes": 891669,
+   "tse": "05/10/2026 11:47:48",
+   "arquivado": "2026-10-06T12:54:47.282Z"
   },
   "6259/sp-c0007": {
    "cargo": "Deputado Estadual",

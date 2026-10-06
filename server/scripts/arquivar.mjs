@@ -193,6 +193,7 @@ for (const { c, uf, chave, regioes } of unidades) {
     u.faltando.sort();
     u.regioes = ordenado(u.regioes);
     const bytes = await gravar(`${chave}.json.gz`, u);
+    await gravar(`${chave}-uf.json.gz`, modelo); // só a UF, para o servidor não abrir a unidade inteira
     const final = unidadeFinal(u);
     manifesto.unidades[chave] = {
       cargo: c.nome, final, regioes: Object.keys(u.regioes).length, faltando: u.faltando.length,

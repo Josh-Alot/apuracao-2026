@@ -3,7 +3,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { applyDemo, demoProgresso } from './demo.mjs';
-import { ARQUIVO_FORCADO, doArquivo } from './arquivo.mjs';
+import { ARQUIVO_FORCADO, doArquivo, eleicaoFinal } from './arquivo.mjs';
 
 export const TSE_BASE = 'https://resultados.tse.jus.br/oficial';
 export const CICLO = process.env.CICLO || 'ele2026';
@@ -200,21 +200,22 @@ export function estadoFila() {
   return { rps: Math.round(rps * 100) / 100, alta: filas[0].length, media: filas[1].length, baixa: filas[2].length, cache: cache.size, cacheMB: Math.round(cacheBytes / 2 ** 20) };
 }
 
-// Arquivo próprio (arquivo/, `npm run arquivar`): com ARQUIVO=1 é a única fonte do que ele cobre;
-// sem ela, entra quando o TSE falha ou não tem mais o arquivo, e o TSE é tentado de novo após 60 s.
+// Arquivo próprio (arquivo/, `npm run arquivar`): é a única fonte do que ele cobre com ARQUIVO=1 ou
+// quando a eleição está toda final no manifesto (`eleicaoFinal`); fora isso, entra quando o TSE falha ou
+// não tem mais o arquivo, e o TSE é tentado de novo após 60 s.
 // A configuração geral é exceção: vem sempre do TSE (é ela que traz o 2º turno e eleições novas) e o
 // arquivo só entra se o TSE falhar.
 const ARQUIVO_TTL_MS = 60_000;
 const CONFIG_URL = `${TSE_BASE}/comum/config/ele-c.json`;
 
 /** Dado do arquivo próprio para a URL (guardado no cache), ou undefined se o arquivo não a cobre. */
-async function doArquivoEmCache(url) {
+async function doArquivoEmCache(url, fonteUnica = false) {
   const data = await doArquivo(url, TSE_BASE).catch((err) => {
     console.warn(`Falha ao ler o arquivo próprio para ${url}: ${err.message}`);
     return undefined;
   });
   if (data !== undefined) {
-    const expira = ARQUIVO_FORCADO ? Infinity : Date.now() + ARQUIVO_TTL_MS;
+    const expira = fonteUnica ? Infinity : Date.now() + ARQUIVO_TTL_MS;
     guardar(url, data, JSON.stringify(data).length, { expira });
   }
   return data;
@@ -232,9 +233,9 @@ export async function fetchJson(url, ttlMs, validoAte = 0, prioridade = PRIORIDA
     return inflight.get(url);
   }
   const doTse = url.startsWith(TSE_BASE);
-  const forcado = doTse && ARQUIVO_FORCADO && url !== CONFIG_URL;
+  const forcado = doTse && url !== CONFIG_URL && (ARQUIVO_FORCADO || eleicaoFinal(url, TSE_BASE));
   if (forcado) {
-    const data = await doArquivoEmCache(url);
+    const data = await doArquivoEmCache(url, true);
     if (data !== undefined) return data;
   }
   return fetchSemArquivo(url, hit, prioridade, doTse && !forcado);

@@ -6,7 +6,8 @@
 // s/e/v. `expandir()` remonta o JSON do TSE de qualquer região; o script de arquivamento confere cada
 // região remontada contra o original (só o `pvapn`, que o app não usa, fica de fora).
 //
-// O servidor usa o arquivo quando o TSE falha, pausa ou não tem mais o arquivo, e sempre com ARQUIVO=1.
+// O servidor usa o arquivo quando o TSE falha, pausa ou não tem mais o arquivo, e sempre com ARQUIVO=1
+// ou quando a eleição está toda final no manifesto (`eleicaoFinal`).
 
 import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -208,9 +209,17 @@ export function expandir(u, abr) {
   return r ? decodificarRegiao(u.modelo, indiceDe(u), r) : null;
 }
 
-/** Todas as seções totalizadas e marcadas como final pelo TSE (tf = "s"), na UF e em cada região. */
+/**
+ * UF marcada como final pelo TSE (tf = "s") e cada região final ou com todas as seções totalizadas. Em várias
+ * UFs de deputados (2026) o TSE fechou a UF e não gerou de novo os municípios/zonas, que ficaram com tf = "n"
+ * para sempre — com 100% das seções e somando exatamente os votos da UF final.
+ */
 export function unidadeFinal(u) {
-  return u.modelo.tf === 's' && Object.values(u.regioes).every((r) => (r.t?.tf ?? u.modelo.tf) === 's');
+  if (u.modelo.tf !== 's') return false;
+  return Object.keys(u.regioes).every((abr) => {
+    const r = expandir(u, abr);
+    return r.tf === 's' || (r.s?.ts !== undefined && r.s.st === r.s.ts);
+  });
 }
 
 // ---------- leitura no servidor ----------
@@ -222,15 +231,19 @@ const abertos = new Map(); // caminho → { dado, bytes }
 let abertosBytes = 0;
 const abrindo = new Map(); // caminho → Promise
 
-let pastas = null; // eleição → URL da pasta; e a pasta com ele-c.json mais recente
+let pastas = null; // eleição → URL da pasta; eleições com todas as unidades finais; ele-c.json mais recente
 function mapearPastas() {
   if (pastas) return pastas;
-  pastas = { eleicao: new Map(), config: null };
+  pastas = { eleicao: new Map(), finais: new Set(), config: null };
   let turnos = [];
   try { turnos = fs.readdirSync(RAIZ_ARQUIVO).filter((d) => /-\d+turno$/.test(d)).sort(); } catch { return pastas; }
   for (const t of turnos) {
     const base = new URL(`${t}/`, RAIZ_ARQUIVO);
     for (const e of fs.readdirSync(base)) if (/^\d+$/.test(e)) pastas.eleicao.set(`${t.split('-')[0]}/${e}`, new URL(`${e}/`, base));
+    let unidades = {};
+    try { unidades = JSON.parse(fs.readFileSync(new URL('manifesto.json', base), 'utf8')).unidades ?? {}; } catch {}
+    const porEleicao = Map.groupBy(Object.entries(unidades), ([k]) => k.split('/')[0]);
+    for (const [e, us] of porEleicao) if (us.every(([, u]) => u.final)) pastas.finais.add(`${t.split('-')[0]}/${e}`);
     if (fs.existsSync(new URL('ele-c.json', base))) pastas.config = new URL('ele-c.json', base);
   }
   return pastas;
@@ -263,8 +276,19 @@ async function abrir(arquivo) {
   return p;
 }
 
+/**
+ * A URL do TSE é de uma eleição arquivada com todas as unidades finais no manifesto? Então o arquivo
+ * é a fonte dela, mesmo sem ARQUIVO=1: o resultado não muda mais e não há por que consultar o TSE.
+ */
+export function eleicaoFinal(url, base) {
+  const m = url.startsWith(base) && /^\/([a-z]+\d+)\/(\d+)\//.exec(url.slice(base.length));
+  return Boolean(m && mapearPastas().finais.has(`${m[1]}/${m[2]}`));
+}
+
 let usados = 0;
-export const estadoArquivo = () => ({ forcado: ARQUIVO_FORCADO, usados, abertos: abertos.size, abertosMB: Math.round(abertosBytes / 2 ** 20) });
+export const estadoArquivo = () => ({
+  forcado: ARQUIVO_FORCADO, finais: [...mapearPastas().finais], usados, abertos: abertos.size, abertosMB: Math.round(abertosBytes / 2 ** 20),
+});
 
 /**
  * JSON arquivado para uma URL do TSE (`base` = TSE_BASE), ou undefined se o arquivo não a cobre.
@@ -289,8 +313,13 @@ export async function doArquivo(url, base) {
     } else {
       const r = /^([a-z]{2}(?:\d{5})?(?:-z\d{4})?)-c(\d{4})-e\d{6}-u$/.exec(nome);
       if (!r) return undefined;
-      const u = await abrir(new URL(`${uf}-c${r[2]}.json.gz`, pasta));
-      dado = u ? expandir(u, r[1]) : null;
+      // A UF sozinha vem do arquivo pequeno ao lado da unidade: a busca lê as ~140 UFs e abrir as unidades
+      // inteiras (até 7 MB de JSON cada, com todos os municípios e zonas) estourava os 512 MB do Render.
+      if (r[1] === uf) dado = await abrir(new URL(`${uf}-c${r[2]}-uf.json.gz`, pasta));
+      if (dado == null) {
+        const u = await abrir(new URL(`${uf}-c${r[2]}.json.gz`, pasta));
+        dado = u ? expandir(u, r[1]) : null;
+      }
     }
   }
   if (dado == null) return undefined;

@@ -21,7 +21,8 @@ npm run build && npm start   # produção: o servidor Node serve dist/ e /api na
 Variáveis de ambiente do servidor: `PORT` (3001), `DEMO=1`, `DEMO_MINUTOS` (15; tempo até a demo
 chegar a 100%), `AO_VIVO_MS` (5000; verificação do TSE no modo ao vivo), `CICLO` (`ele2026`; trocar para testar com outro ciclo), `ENCERRAMENTO` (ISO 8601;
 sobrescreve o fechamento das urnas para testar o aviso, ex. `ENCERRAMENTO=2026-10-04T13:00:00-03:00`),
-`ARQUIVO=1` (usa só o arquivo próprio para o que ele cobre, sem consultar o TSE), `ARQUIVO_MB` (16; unidades
+`ARQUIVO=1` (usa só o arquivo próprio para tudo o que ele cobre, sem consultar o TSE; eleições já todas finais no
+arquivo saem dele mesmo sem a variável), `ARQUIVO_MB` (16; unidades
 do arquivo abertas em memória).
 
 ### Feature toggles (`server/flags.mjs`)
@@ -154,7 +155,8 @@ O TSE promete manter os arquivos no ar até `dtlim` (04/10/2034), mas guardamos 
 (opções `--turno 1`, `--uf sp,mg`, `--cargo 6,7`, `--forcar`, `--rps 8`, `--conc 8`) baixa Brasil, UFs,
 municípios e zonas de todos os cargos (~59 mil arquivos, ~2 h a 8 consultas/s) e grava em
 `arquivo/ele2026-1turno/`: `ele-c.json`, `manifesto.json` e, por eleição, `mun-cm.json.gz`, `<uf>-ab.json.gz` (inclusive `br`) e
-uma unidade `<uf>-c<cargo4>.json.gz` por cargo e UF (Presidente também tem `br`).
+uma unidade `<uf>-c<cargo4>.json.gz` por cargo e UF (Presidente também tem `br`), com uma cópia só do JSON da UF
+em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades inteiras passava dos 512 MB do Render).
 
 - Formato (`server/arquivo.mjs`): a unidade guarda o JSON da UF exatamente como veio (`modelo`) e, por
   município/zona (chave = abrangência da URL, ex. `sp71072-z0001`), só o que muda: `vap` por candidato
@@ -166,7 +168,9 @@ uma unidade `<uf>-c<cargo4>.json.gz` por cargo e UF (Presidente também tem `br`
 - Retomável: unidade final (`tf = "s"` na UF e em todas as regiões) é pulada; rode de novo até o
   `manifesto.json` não ter mais unidade com `final: false` (deputados podem levar dias por recursos/sub judice).
   O gzip não guarda data, então unidade sem mudança não gera diff no git.
-- No servidor (`fetchJson`): o arquivo entra quando o TSE falha, está pausado ou responde 404/403, e o TSE
+- No servidor (`fetchJson`): eleição com **todas as unidades `final: true` no manifesto** (`eleicaoFinal()`)
+  sai só do arquivo, sem consultar o TSE e sem precisar de variável — o resultado não muda mais. Fora isso,
+  o arquivo entra quando o TSE falha, está pausado ou responde 404/403, e o TSE
   é tentado de novo após 60 s; com `ARQUIVO=1` é a fonte única do que cobre, menos o `ele-c.json` (sempre do
   TSE, para o 2º turno aparecer; o arquivado só se o TSE falhar). O 2º turno usa outros códigos de eleição
   (6258/6260), que o arquivo do 1º turno não cobre: vem do TSE mesmo com `ARQUIVO=1`. `/api/saude` mostra `arquivo`.
