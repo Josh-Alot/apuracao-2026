@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import { RETENTAR_MS, urlAoVivo, urlMapa, urlResultado, useApi } from './api';
-import type { Composicao, Config, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado } from './types';
-import { UF_NOMES, titulo } from './util';
+import type { Composicao, Config, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado, Resumo, ResumoCandidato } from './types';
+import { UF_NOMES, fmt, fmtPct, titulo } from './util';
 import { Mapa } from './components/Mapa';
 import { PainelResultado } from './components/PainelResultado';
 import { BarraBusca } from './components/BarraBusca';
@@ -12,6 +12,13 @@ import { ProximaAtualizacao } from './components/ProximaAtualizacao';
 import { AvisoVotacao, faseVotacao, useAgora } from './components/AvisoVotacao';
 import { BotaoTema } from './components/BotaoTema';
 import { Hemiciclo } from './components/Hemiciclo';
+import { Duelo, ListaDuelos, coresFinalistas, corDoLider, finalistas } from './components/Duelo';
+
+/** "25/10/2026" → "25 de outubro" */
+function diaMes(ddmmaaaa: string) {
+  const [d, m, a] = ddmmaaaa.split('/').map(Number);
+  return new Date(a, m - 1, d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+}
 
 /** "04/10/2026" → "Domingo, 4 de outubro de 2026" */
 function dataPorExtenso(ddmmaaaa: string) {
@@ -111,6 +118,13 @@ export default function App() {
     encerrada ? nuncaIncompleto : undefined,
   );
 
+  // 2º turno: os dois finalistas, com as cores usadas no placar e no mapa.
+  const segundoTurno = cargo?.turno === 2;
+  const par = segundoTurno ? finalistas(resultado.data) : null;
+  const chavePar = par?.map((c) => `${c.numero}${c.partido}`).join() ?? '';
+  const cores = useMemo(() => coresFinalistas(par), [chavePar]);
+  const corLider = useMemo(() => corDoLider(cores), [cores]);
+
   // Composição da casa legislativa: Senado sempre nacional; Dep. Federal da UF ou do Brasil; assembleias da UF.
   const casa = cargo && flags?.hemiciclo ? casaLegislativa(cargo.cargo, uf) : null;
   const composicao = useApi<Composicao>(
@@ -155,6 +169,15 @@ export default function App() {
     setFiltroCand(i.numero);
   };
 
+  const turnos = [...new Set(config?.cargos.map((c) => c.turno))].sort();
+  const cargosDoTurno = config?.cargos.filter((c) => c.turno === cargo?.turno) ?? [];
+  /** Troca de turno mantendo o cargo (e a UF) quando ele existe no outro turno. */
+  const irTurno = (t: number) => {
+    const doTurno = config!.cargos.filter((c) => c.turno === t);
+    const destino = doTurno.find((c) => c.cargo === cargo?.cargo) ?? doTurno[0];
+    ir(uf && destino.ufs.includes(uf) ? { uf } : {}, destino.id);
+  };
+
   if (erroConfig) return <div className="erro pad">Não foi possível carregar a configuração do TSE: {erroConfig}</div>;
   if (!config || !cargo) return <><BarraTopo /><EsqueletoPagina /></>;
 
@@ -174,6 +197,11 @@ export default function App() {
           <h1>Apuração 2026</h1>
           <span className="muted pequeno">Dados oficiais do TSE · {cargo.turno}º turno em {cargo.data}</span>
           {config.demo && <span className="selo selo-demo" title="Votos sintéticos sobre os candidatos reais">MODO DEMO</span>}
+          {cargo.simulado && (
+            <span className="selo selo-demo" title="Votos do 2º turno de 2022 aplicados aos candidatos que foram ao 2º turno de 2026">
+              SIMULAÇÃO
+            </span>
+          )}
           {config.flags.previa && (
             <a className="selo selo-demo" href="/api/preview?sair" title="Todas as flags ligadas só neste navegador. Clique para sair da prévia.">
               PRÉVIA · sair
@@ -186,26 +214,60 @@ export default function App() {
               : fase === 'antes' ? <span>Votação ainda não começou</span>
               : encerrada ? <span>Apuração encerrada</span>
               : aoVivo ? <span className="ao-vivo">Ao vivo</span> : <span>Atualização periódica</span>}
-            <span>Dados oficiais do TSE</span>
+            <span>{cargo.simulado ? 'Simulação com os votos de 2022' : 'Dados oficiais do TSE'}</span>
             <BotaoTema />
           </div>
         </div>
         {config.flags.busca && <BarraBusca cargos={config.cargos} onEscolher={escolherBusca} />}
       </header>
 
+      {turnos.length > 1 && (
+        <nav className="turnos" aria-label="Turno">
+          {turnos.map((t) => {
+            const c = config.cargos.find((x) => x.turno === t)!;
+            return (
+              <button key={t} className={t === cargo.turno ? 'ativo' : ''} aria-current={t === cargo.turno ? 'page' : undefined} onClick={() => irTurno(t)}>
+                <strong>{t}º turno</strong>
+                <span>{diaMes(c.data)}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
       <AvisoVotacao cargo={cargo} fase={fase} agora={agora} />
 
       <nav className="cargos" aria-label="Cargo">
-        {config.cargos.map((c) => (
+        {cargosDoTurno.map((c) => (
           <button
             key={c.id}
             className={c.id === cargo.id ? 'ativo' : ''}
             onClick={() => ir(uf && c.ufs.includes(uf) ? { uf } : {}, c.id)}
           >
-            {c.nome}
+            {turnos.length > 1 ? c.nome.replace(/ \(\d+º turno\)$/, '') : c.nome}
           </button>
         ))}
       </nav>
+
+      {cargo.simulado && (
+        <div className="aviso-mapa aviso-simulacao" role="note">
+          <strong>Simulação: o TSE ainda não divulgou o 2º turno</strong>
+          <p>
+            Os candidatos são os que foram ao 2º turno em 2026; os votos repetem, zona por zona, o 2º turno de
+            2022 sobre o eleitorado de 2026. Os números serão trocados pelos oficiais quando o TSE publicar.
+          </p>
+        </div>
+      )}
+
+      {segundoTurno && par && cores && resultado.data && (
+        <Duelo
+          resultado={resultado.data}
+          cores={cores}
+          local={tituloPainel}
+          carregando={resultado.carregando}
+          regioes={local.mun ? null : { dados: mapaAtual.data, rotulo: uf ? (uf === 'zz' ? 'cidades' : 'municípios') : 'UFs' }}
+        />
+      )}
 
       <main className="grade">
         <section className="coluna-mapa">
@@ -269,6 +331,9 @@ export default function App() {
               focar={local.mun}
               rotuloRegiao={uf ? 'municípios' : 'UFs'}
               legendaPorPartido={!uf && cargo.escopo === 'uf'}
+              segundoTurno={segundoTurno}
+              corLider={segundoTurno && !(!uf && cargo.escopo === 'uf') ? corLider : undefined}
+              rotulos={segundoTurno && !uf}
               onSelect={(k) => ir(uf ? { uf, mun: k } : { uf: k })}
             />
           )}
@@ -285,9 +350,13 @@ export default function App() {
           </p>
 
           {!uf && cargo.ufs.includes('zz') && (
-            <button className="botao-exterior" onClick={() => ir({ uf: 'zz' })}>
-              Ver votos no exterior →
-            </button>
+            segundoTurno && mapaBr.data?.zz?.lider ? (
+              <CartaoExterior dados={mapaBr.data.zz} corLider={corLider} onAbrir={() => ir({ uf: 'zz' })} />
+            ) : (
+              <button className="botao-exterior" onClick={() => ir({ uf: 'zz' })}>
+                Ver votos no exterior →
+              </button>
+            )
           )}
           {uf && cargo.tipo === 'proporcional' && !local.mun && (
             <p className="muted pequeno">
@@ -321,17 +390,25 @@ export default function App() {
 
         <aside className="coluna-painel">
           {precisaUf ? (
-            <section className="painel">
-              <h2>{cargo.nome}: escolha um estado</h2>
-              <p className="muted">Este cargo é disputado por UF. Clique no mapa ou na lista abaixo.</p>
-              <ListaRegioes
-                titulo="Líder em cada estado"
-                itens={cargo.ufs.map((u) => ({ chave: u, nome: UF_NOMES[u] }))}
-                dados={mapaBr.data}
-                carregando={mapaBr.carregando}
-                onSelect={(u) => ir({ uf: u })}
-              />
-            </section>
+            segundoTurno ? (
+              <section className={`painel ${mapaBr.carregando && mapaBr.data ? 'atualizando' : ''}`}>
+                <h2>{cargo.nome.replace(/ \(\d+º turno\)$/, '')}: {cargo.ufs.length} estados no 2º turno</h2>
+                <p className="muted">Nos demais estados o governador foi eleito no 1º turno. Clique numa disputa para ver o mapa por município.</p>
+                <ListaDuelos ufs={cargo.ufs} dados={mapaBr.data} onSelect={(u) => ir({ uf: u })} />
+              </section>
+            ) : (
+              <section className="painel">
+                <h2>{cargo.nome}: escolha um estado</h2>
+                <p className="muted">Este cargo é disputado por UF. Clique no mapa ou na lista abaixo.</p>
+                <ListaRegioes
+                  titulo="Líder em cada estado"
+                  itens={cargo.ufs.map((u) => ({ chave: u, nome: UF_NOMES[u] }))}
+                  dados={mapaBr.data}
+                  carregando={mapaBr.carregando}
+                  onSelect={(u) => ir({ uf: u })}
+                />
+              </section>
+            )
           ) : (
             <PainelResultado
               resultado={resultado.data}
@@ -353,6 +430,27 @@ export default function App() {
         Fonte: TSE (resultados.tse.jus.br) e IBGE (malhas). Projeto independente, sem vínculo com o TSE.
       </footer>
     </div>
+  );
+}
+
+/** Exterior no mapa do Brasil (2º turno): não tem malha, então vira um cartão ao lado da legenda. */
+function CartaoExterior({ dados, corLider, onAbrir }: {
+  dados: Resumo; corLider: (l: ResumoCandidato) => string; onAbrir: () => void;
+}) {
+  const cands = [dados.lider, dados.segundo].filter((c): c is ResumoCandidato => !!c);
+  return (
+    <button className="cartao-exterior" onClick={onAbrir} title="Ver votos por cidade no exterior">
+      <strong>Exterior</strong>
+      <span className="muted pequeno">{fmt(cands.reduce((t, c) => t + c.votos, 0))} votos válidos</span>
+      <span className="cartao-exterior-cands">
+        {cands.map((c) => (
+          <span key={c.numero}>
+            <span className="bolinha" style={{ background: corLider(c) }} />
+            {titulo(c.nome)}&nbsp;<b>{fmtPct(c.pct)}</b>
+          </span>
+        ))}
+      </span>
+    </button>
   );
 }
 

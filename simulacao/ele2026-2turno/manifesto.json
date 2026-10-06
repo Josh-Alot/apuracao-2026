@@ -1,0 +1,260 @@
+{
+ "ciclo": "ele2026",
+ "turno": 2,
+ "simulacao": true,
+ "fonte": "Dados Abertos do TSE, 2º turno de 2022",
+ "unidades": {
+  "6258/br-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 0,
+   "faltando": 0,
+   "bytes": 907
+  },
+  "6258/ac-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 45,
+   "faltando": 0,
+   "bytes": 3539
+  },
+  "6258/al-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 209,
+   "faltando": 0,
+   "bytes": 12567
+  },
+  "6258/ap-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 34,
+   "faltando": 0,
+   "bytes": 2990
+  },
+  "6258/am-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 136,
+   "faltando": 0,
+   "bytes": 9091
+  },
+  "6258/ba-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 867,
+   "faltando": 0,
+   "bytes": 50152
+  },
+  "6258/ce-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 389,
+   "faltando": 0,
+   "bytes": 23552
+  },
+  "6258/df-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 20,
+   "faltando": 0,
+   "bytes": 2909
+  },
+  "6258/es-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 163,
+   "faltando": 0,
+   "bytes": 10610
+  },
+  "6258/zz-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 372,
+   "faltando": 0,
+   "bytes": 14992
+  },
+  "6258/go-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 505,
+   "faltando": 0,
+   "bytes": 28268
+  },
+  "6258/ma-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 440,
+   "faltando": 0,
+   "bytes": 24827
+  },
+  "6258/mt-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 289,
+   "faltando": 0,
+   "bytes": 16572
+  },
+  "6258/ms-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 167,
+   "faltando": 0,
+   "bytes": 10773
+  },
+  "6258/mg-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 1751,
+   "faltando": 0,
+   "bytes": 97246
+  },
+  "6258/pr-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 820,
+   "faltando": 0,
+   "bytes": 45576
+  },
+  "6258/pb-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 453,
+   "faltando": 0,
+   "bytes": 25323
+  },
+  "6258/pa-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 304,
+   "faltando": 0,
+   "bytes": 18808
+  },
+  "6258/pe-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 394,
+   "faltando": 0,
+   "bytes": 24348
+  },
+  "6258/pi-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 454,
+   "faltando": 0,
+   "bytes": 24811
+  },
+  "6258/rj-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 275,
+   "faltando": 0,
+   "bytes": 21682
+  },
+  "6258/rn-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 339,
+   "faltando": 0,
+   "bytes": 19005
+  },
+  "6258/rs-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 1019,
+   "faltando": 0,
+   "bytes": 56123
+  },
+  "6258/ro-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 108,
+   "faltando": 0,
+   "bytes": 7107
+  },
+  "6258/rr-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 31,
+   "faltando": 0,
+   "bytes": 2778
+  },
+  "6258/sc-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 610,
+   "faltando": 0,
+   "bytes": 34556
+  },
+  "6258/se-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 152,
+   "faltando": 0,
+   "bytes": 9359
+  },
+  "6258/sp-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 1424,
+   "faltando": 0,
+   "bytes": 87084
+  },
+  "6258/to-c0001": {
+   "cargo": "Presidente",
+   "final": true,
+   "regioes": 279,
+   "faltando": 0,
+   "bytes": 15183
+  },
+  "6260/ac-c0003": {
+   "cargo": "Governador",
+   "final": true,
+   "regioes": 45,
+   "faltando": 0,
+   "bytes": 3506
+  },
+  "6260/am-c0003": {
+   "cargo": "Governador",
+   "final": true,
+   "regioes": 136,
+   "faltando": 0,
+   "bytes": 9177
+  },
+  "6260/df-c0003": {
+   "cargo": "Governador",
+   "final": true,
+   "regioes": 20,
+   "faltando": 0,
+   "bytes": 3026
+  },
+  "6260/es-c0003": {
+   "cargo": "Governador",
+   "final": true,
+   "regioes": 163,
+   "faltando": 0,
+   "bytes": 10695
+  },
+  "6260/rj-c0003": {
+   "cargo": "Governador",
+   "final": true,
+   "regioes": 275,
+   "faltando": 0,
+   "bytes": 21645
+  },
+  "6260/rn-c0003": {
+   "cargo": "Governador",
+   "final": true,
+   "regioes": 339,
+   "faltando": 0,
+   "bytes": 19023
+  },
+  "6260/to-c0003": {
+   "cargo": "Governador",
+   "final": true,
+   "regioes": 279,
+   "faltando": 0,
+   "bytes": 15182
+  }
+ }
+}

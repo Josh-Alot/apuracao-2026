@@ -15,6 +15,8 @@ npm run demo       # igual ao dev, mas com votos sintéticos (DEMO=1) — útil 
 npm run typecheck
 npm run candidatos # regera dados/candidatos-2026.tsv.gz (perfil e bens, Dados Abertos do TSE)
 npm run arquivar   # guarda os resultados finais em arquivo/ (ver "Arquivo próprio" abaixo)
+npm run simular-2turno  # regera a simulação do 2º turno em simulacao/ (ver "Simulação do 2º turno")
+npm run dev:2turno # dev com a simulação do 2º turno ligada (SIMULACAO_2TURNO=1 FLAG_SEGUNDO_TURNO=on)
 npm run build && npm start   # produção: o servidor Node serve dist/ e /api na porta 3001
 ```
 
@@ -23,7 +25,8 @@ chegar a 100%), `AO_VIVO_MS` (5000; verificação do TSE no modo ao vivo), `CICL
 sobrescreve o fechamento das urnas para testar o aviso, ex. `ENCERRAMENTO=2026-10-04T13:00:00-03:00`),
 `ARQUIVO=1` (usa só o arquivo próprio para tudo o que ele cobre, sem consultar o TSE; eleições já todas finais no
 arquivo saem dele mesmo sem a variável), `ARQUIVO_MB` (16; unidades
-do arquivo abertas em memória).
+do arquivo abertas em memória), `SIMULACAO_2TURNO=1` (serve o 2º turno simulado de `simulacao/`; nunca em produção
+aberta ao público).
 
 ### Feature toggles (`server/flags.mjs`)
 
@@ -52,14 +55,18 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   index.mjs        Rotas HTTP, busca, malhas do IBGE (cache em disco em .cache/geo), arquivos estáticos
   aovivo.mjs       Stream SSE /api/ao-vivo: 1 vigia por resultado consulta o TSE a cada 5 s e empurra só quando muda
   tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
-  demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais)
+  demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais); arquivo com votos (arquivo
+                   próprio, simulação) segue a proporção real e só mostra a situação ao chegar a 100%
   arquivo.mjs      Arquivo próprio: formato compacto (compacta/remonta) e leitura pelas URLs do TSE
   flags.mjs        Feature toggles (FLAG_*), prévia por cookie e /api/flags (ADMIN_TOKEN)
+  simulacao.mjs    Simulação do 2º turno (SIMULACAO_2TURNO=1): pleito acrescentado ao ele-c.json e fotos do 1º turno
   candidatos.mjs   /api/candidato/:sq — perfil e bens; lê dados/candidatos-2026.tsv.gz no 1º pedido (buffer + índice)
   scripts/candidatos.mjs  `npm run candidatos`: baixa os CSVs dos Dados Abertos e gera o .tsv.gz
   scripts/arquivar.mjs    `npm run arquivar`: baixa os resultados finais e grava em arquivo/
+  scripts/simular-2turno.mjs  `npm run simular-2turno`: gera simulacao/ a partir do 2º turno de 2022
 dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz)
 arquivo/           Resultados finais arquivados e versionados (<ciclo>-<turno>turno/)
+simulacao/         2º turno simulado (mesmo formato do arquivo/), versionado
 src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths SVG
   App.tsx          Estado da navegação (no hash da URL), polling e composição das telas
   api.ts           useApi(url, intervalo) — fetch + polling mantendo o dado anterior
@@ -70,6 +77,8 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
     ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
     BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF/partido; só o partido lista
                        todos os candidatos dele, agrupados por cargo, em páginas ("Mostrar mais")
+    Duelo.tsx          2º turno: placar dos dois finalistas acima do mapa (fotos, % dos válidos, barra com a marca
+                       dos 50%, regiões vencidas) e `ListaDuelos` (cargos estaduais no nível Brasil, uma linha por UF)
     Hemiciclo.tsx      Composição da casa legislativa (uma bolinha por cadeira, cor do partido) abaixo do mapa,
                        via /api/composicao: Senado (sempre o Brasil, 54 cadeiras em disputa), Câmara (UF ou
                        Brasil), Assembleia/Câmara Legislativa (UF). Sem `st` oficial, usa os eleitos projetados.
@@ -143,6 +152,33 @@ Base: `https://resultados.tse.jus.br/oficial`
   município (SP = 645), com concorrência limitada (`mapLimit`) e cache de 60 s. Por isso, cargos
   proporcionais (arquivos de centenas de KB) usam só o `-ab.json` no mapa estadual.
 - Zonas eleitorais **não têm malha geográfica pública**; por isso aparecem como lista, não no mapa.
+
+## 2º turno
+
+- Navegação: com os dois turnos na config, uma barra "1º turno / 2º turno" fica entre a busca e os cargos; a
+  barra de cargos mostra só os do turno escolhido. Trocar de turno mantém o cargo (e a UF) se ele existir no outro.
+- `getConfig()` liga o 2º turno ao 1º pelo `cdt2` (`primeiroTurno` no cargo). No `/api/mapa` do 2º turno cada
+  região traz também o 2º colocado (`segundo`) e `virou` (quem lidera ficou atrás do rival no 1º turno, lido do
+  arquivo próprio do 1º turno, sem consultar o TSE).
+- Mapa do 2º turno: cor do finalista clara = liderando (apuração < 100%), sólida = venceu, hachurada = virou;
+  siglas das UFs no mapa do Brasil; cartão do exterior. Cores dos finalistas: as dos partidos, salvo quando têm
+  a mesma matiz (`coresDuelo()` em `util.ts` troca a do segundo por uma reserva).
+
+### Simulação do 2º turno (`simulacao/`)
+
+Enquanto o TSE não publica o 2º turno, `npm run simular-2turno` monta um a partir dos CSVs dos Dados Abertos do 2º
+turno de 2022 (`detalhe_votacao_munzona` e `votacao_partido_munzona`; a API de resultados não tem mais 2022): em
+cada zona de 2026, eleitorado e seções do 1º turno de 2026 e as taxas (comparecimento, brancos, nulos, divisão dos
+válidos) da mesma zona em 2022 — ou do município/UF se a zona é nova. Município, UF e Brasil somam as zonas.
+Os finalistas vêm do `st` do 1º turno; quem herda cada votação de 2022 está nas tabelas `PRESIDENTE`/`GOVERNADOR`
+do script (AM e ES usam o governador de 2022; as demais UFs, o Presidente de 2022 na UF). O script falha se os
+finalistas do arquivo não baterem com as tabelas.
+
+Com `SIMULACAO_2TURNO=1` o servidor acrescenta o pleito de `simulacao.json` ao ele-c.json (eleições 6258/6260, os
+códigos que o TSE vai usar) e serve essas eleições só da pasta (como eleição final do arquivo), fotos do 1º turno,
+sem aviso de horário. A interface mostra o selo "SIMULAÇÃO" e uma nota. **Quando o TSE publicar o 2º turno,
+desligue a variável** (ligada, a simulação continua no lugar das eleições do TSE); confira então se o formato real
+bate com o simulado. `DEMO=1` junto da simulação mostra a apuração avançando sobre os votos simulados.
 
 ## Dados Abertos do TSE (perfil e bens dos candidatos)
 

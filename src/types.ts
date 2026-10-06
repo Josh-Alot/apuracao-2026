@@ -13,6 +13,10 @@ export interface Cargo {
   tipo: 'majoritario' | 'proporcional';
   escopo: 'br' | 'uf';
   ufs: string[];
+  /** Votos simulados (2º turno de 2022 sobre os candidatos de 2026), não do TSE. */
+  simulado: boolean;
+  /** 2º turno: id do mesmo cargo no 1º turno (o mapa compara os dois). */
+  primeiroTurno: string | null;
 }
 
 /** Feature toggles efetivas para este navegador (server/flags.mjs); o servidor também as aplica. */
@@ -138,9 +142,15 @@ export interface Resultado {
   candidatos: Candidato[];
 }
 
+export interface ResumoCandidato { numero: string; nome: string; partido: string; pct: number; votos: number }
+
 export interface Resumo {
   pctApurado: number;
-  lider: { numero: string; nome: string; partido: string; pct: number; votos: number } | null;
+  lider: ResumoCandidato | null;
+  /** Só no 2º turno: o outro finalista. */
+  segundo?: ResumoCandidato | null;
+  /** Só no 2º turno: quem lidera ficou atrás do rival no 1º turno nesta região. */
+  virou?: boolean;
 }
 
 export type MapaDados = Record<string, Resumo | null>;

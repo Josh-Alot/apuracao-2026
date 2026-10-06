@@ -692,3 +692,114 @@ h1, h2, h3 { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
 .cadeira-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cadeira-uf { font-size: 0.72rem; letter-spacing: 0.05em; }
 .hemiciclo p { margin: 0; }
+
+/* ---------- turnos: duas "edições" acima das seções de cargo ---------- */
+.turnos { display: flex; gap: 0; margin: 0 0 14px; border-bottom: 1px solid var(--texto); }
+.turnos button {
+  display: flex; align-items: baseline; gap: 10px; padding: 8px 20px 10px 0; margin-right: 20px;
+  border: 0; background: none; color: var(--muted);
+}
+.turnos button strong { font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+.turnos button span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.turnos button:hover { color: var(--texto); }
+.turnos button.ativo { color: var(--texto); box-shadow: inset 0 -4px 0 var(--texto); }
+.turnos button:focus-visible { outline: 2px solid var(--ao-vivo); outline-offset: 2px; }
+.turnos button strong, .turnos button span { white-space: nowrap; }
+@media (max-width: 480px) {
+  .turnos button { flex-direction: column; gap: 0; padding-right: 0; }
+  .turnos button strong { font-size: 1.25rem; }
+}
+
+.aviso-simulacao { margin-top: -10px; }
+
+/* ---------- placar do 2º turno ---------- */
+.duelo { margin: 0 auto 28px; max-width: 900px; transition: opacity 0.3s; }
+.duelo.atualizando { opacity: 0.75; }
+.duelo-topo {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "a meta b";
+  align-items: end; gap: 12px;
+}
+.duelo-lado { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.duelo-lado.lado-a { grid-area: a; }
+.duelo-lado.lado-b { grid-area: b; flex-direction: row-reverse; text-align: right; }
+.duelo-foto {
+  width: 88px; height: 88px; flex: none; border-radius: 50%; object-fit: cover; object-position: top;
+  background: var(--cor); border: 4px solid var(--cor);
+}
+.duelo-info { display: flex; flex-direction: column; min-width: 0; }
+.duelo-pct {
+  font-family: var(--fonte-titulo); font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1;
+  letter-spacing: -0.03em;
+}
+.duelo-nome { font-family: var(--fonte-titulo); font-size: clamp(1.1rem, 2.4vw, 1.5rem); font-weight: 600; line-height: 1.2; }
+.duelo-partido { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; }
+.duelo-check {
+  display: inline-grid; place-items: center; width: 1.1em; height: 1.1em; margin: 0 6px 0 0; border-radius: 50%;
+  background: var(--cor); color: #fff; font-family: var(--fonte-corpo); font-size: 0.8em; vertical-align: 0.05em;
+}
+.duelo-lado.lado-b .duelo-check { margin: 0 6px 0 0; }
+.duelo-meta {
+  grid-area: meta; display: flex; flex-direction: column; align-items: center; padding-bottom: 2px;
+  font-size: 0.75rem; line-height: 1.2; text-align: center; color: var(--muted);
+}
+.duelo-meta i { width: 0; height: 0; margin-top: 4px; border: 5px solid transparent; border-top-color: var(--texto); border-bottom: 0; }
+.duelo-barra { position: relative; display: flex; height: 22px; margin-top: 8px; background: var(--sem-dado); }
+.duelo-barra i { display: block; height: 100%; transition: width 0.6s ease; }
+.duelo-marca { position: absolute; left: 50%; top: -4px; bottom: -4px; border-left: 2px dotted var(--texto); }
+.duelo-rodape {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px 12px; margin-top: 6px;
+  font-size: 0.82rem; line-height: 1.3;
+}
+.duelo-rodape .lado-a { grid-column: 1; display: flex; flex-direction: column; }
+.duelo-rodape .lado-b { grid-column: 3; grid-row: 1; display: flex; flex-direction: column; text-align: right; }
+.duelo-apurado { grid-column: 2; grid-row: 1; text-align: center; white-space: nowrap; }
+@media (max-width: 640px) {
+  .duelo-topo { grid-template-areas: "a b" "meta meta"; grid-template-columns: 1fr 1fr; }
+  .duelo-lado { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .duelo-lado.lado-b { flex-direction: column; align-items: flex-end; }
+  .duelo-foto { width: 60px; height: 60px; border-width: 3px; }
+  .duelo-meta { display: none; }
+  .duelo-rodape { grid-template-columns: 1fr 1fr; }
+  .duelo-rodape .lado-b { grid-column: 2; }
+  .duelo-apurado { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* ---------- disputas estaduais do 2º turno (nível Brasil) ---------- */
+.lista-duelos { list-style: none; margin: 12px 0 0; padding: 0; }
+.lista-duelos li button {
+  display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px 0; text-align: left;
+  border: 0; border-top: 1px solid var(--borda); background: none;
+}
+.lista-duelos li button:hover .lista-duelos-uf { text-decoration: underline; }
+.lista-duelos-uf { display: flex; align-items: center; gap: 8px; font-family: var(--fonte-titulo); font-size: 1.1rem; font-weight: 600; }
+.lista-duelos-nomes { font-size: 0.88rem; }
+.lista-duelos-nomes .lider { font-weight: 700; }
+.duelo-barra-mini { height: 8px; margin-top: 2px; }
+.duelo-barra-mini .duelo-marca { top: -2px; bottom: -2px; border-left-width: 1px; }
+
+/* ---------- mapa do 2º turno ---------- */
+.rotulo-regiao {
+  fill: #141414; stroke: rgb(255 255 255 / 0.85); paint-order: stroke; stroke-linejoin: round;
+  font-family: var(--fonte-corpo); font-weight: 700; text-anchor: middle; pointer-events: none;
+}
+.tooltip-linha { display: flex; align-items: center; gap: 4px; }
+.tooltip-linha > span:nth-child(2) { flex: 1; }
+.legenda-2t { display: grid; grid-template-columns: auto repeat(3, 62px) auto; gap: 4px 6px; align-items: center; }
+.legenda-2t-linha { display: contents; }
+.legenda-2t-nome { font-weight: 600; padding-right: 6px; }
+.legenda-2t-rotulos span { font-size: 0.7rem; text-align: center; }
+.amostra-estado { display: inline-flex; align-items: center; gap: 4px; }
+.amostra-estado { justify-content: center; }
+.amostra-estado i { display: inline-block; width: 100%; height: 12px; }
+.amostra-estado i.liderando { opacity: 0.5; }
+.legenda-estados { gap: 10px; }
+.legenda-estados .amostra-estado i { width: 22px; flex: none; }
+
+.cartao-exterior {
+  align-self: flex-start; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; text-align: left;
+  border: 1px solid var(--texto); background: var(--superficie); box-shadow: 4px 4px 0 rgb(0 0 0 / 0.06);
+}
+.cartao-exterior strong { font-family: var(--fonte-titulo); }
+.cartao-exterior-cands { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 0.85rem; }
+.cartao-exterior-cands span { display: inline-flex; align-items: center; }
+.cartao-exterior:hover strong { text-decoration: underline; }

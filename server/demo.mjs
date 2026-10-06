@@ -54,10 +54,19 @@ export function applyDemo(raw) {
     });
   }
 
+  // Antes de 100% ninguém está eleito ainda (o arquivo pode vir com a situação final).
+  if (progresso < 1) out.tf = 'n';
   for (const carg of out.carg ?? []) {
     const cands = carg.agr.flatMap((a) => a.par.flatMap((p) => p.cand));
-    // Peso global do candidato (forte) × variação regional (fraca) → líderes mudam por região.
-    const pesos = cands.map((c) => Math.pow(hash(c.sqcand), 4) * (0.6 + hash(c.sqcand + regiao)));
+    // Arquivo que já tem votos (arquivo próprio, simulação do 2º turno): segue a proporção real, com uma
+    // oscilação que diminui conforme a apuração avança. Zerado: peso global do candidato (forte) ×
+    // variação regional (fraca) → líderes mudam por região.
+    const reais = cands.map((c) => parseInt(c.vap ?? '0', 10) || 0);
+    const temVotos = reais.some((v) => v > 0);
+    const pesos = cands.map((c, i) => (temVotos
+      ? reais[i] * (1 + (hash(c.sqcand + regiao) - 0.5) * 0.3 * (1 - progresso))
+      : Math.pow(hash(c.sqcand), 4) * (0.6 + hash(c.sqcand + regiao))));
+    if (progresso < 1) for (const c of cands) Object.assign(c, { st: '', e: 'n' });
     const soma = pesos.reduce((a, b) => a + b, 0) || 1;
     cands.forEach((c, i) => {
       const votos = Math.round((validos * pesos[i]) / soma);

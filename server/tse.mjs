@@ -4,6 +4,7 @@
 import { readFile } from 'node:fs/promises';
 import { applyDemo, demoProgresso } from './demo.mjs';
 import { ARQUIVO_FORCADO, doArquivo, eleicaoFinal } from './arquivo.mjs';
+import { eleicaoDaFoto, eleicoesSimuladas, mesclarConfig } from './simulacao.mjs';
 
 export const TSE_BASE = 'https://resultados.tse.jus.br/oficial';
 export const CICLO = process.env.CICLO || 'ele2026';
@@ -12,15 +13,16 @@ const DEMO = process.env.DEMO === '1';
 /**
  * Horário de votação: desde 2022 é unificado em todo o país, das 8h às 17h de Brasília.
  * ENCERRAMENTO (ISO 8601) sobrescreve o fim da votação para testes — ex.: ENCERRAMENTO=2026-10-04T18:00:00-03:00.
- * No modo demo o aviso fica desligado (os números são simulados), a menos que ENCERRAMENTO seja definido.
+ * No modo demo e na simulação do 2º turno o aviso fica desligado (os números são simulados), a menos que
+ * ENCERRAMENTO seja definido.
  */
-function horarios(ddmmaaaa) {
+function horarios(ddmmaaaa, simulado) {
   const [d, m, a] = ddmmaaaa.split('/');
   const dia = `${a}-${m}-${d}`;
   if (process.env.ENCERRAMENTO) {
     return { abertura: `${dia}T08:00:00-03:00`, encerramento: process.env.ENCERRAMENTO };
   }
-  if (DEMO) return { abertura: null, encerramento: null };
+  if (DEMO || simulado) return { abertura: null, encerramento: null };
   return { abertura: `${dia}T08:00:00-03:00`, encerramento: `${dia}T17:00:00-03:00` };
 }
 
@@ -344,7 +346,7 @@ export function resultadoUrl({ eleicao, cargo, uf, mun, zona }) {
 }
 
 export function fotoUrl(eleicao, uf, sqcand) {
-  return `${TSE_BASE}/${CICLO}/${eleicao}/fotos/${uf}/${sqcand}.jpeg`;
+  return `${TSE_BASE}/${CICLO}/${eleicaoDaFoto(eleicao)}/fotos/${uf}/${sqcand}.jpeg`;
 }
 
 // ---------- configuração ----------
@@ -357,10 +359,10 @@ let configReserva = null;
 async function configTse() {
   try {
     const raw = await fetchJson(CONFIG_URL, 5 * 60_000);
-    if (raw) return raw;
+    if (raw) return mesclarConfig(raw);
   } catch { /* usa a cópia local abaixo */ }
   configReserva ??= readFile(CONFIG_RESERVA, 'utf8').then(JSON.parse);
-  return configReserva;
+  return mesclarConfig(await configReserva);
 }
 
 // getConfig() é chamada em quase toda requisição: só remonta quando o ele-c.json muda.
@@ -370,6 +372,10 @@ export async function getConfig() {
   const raw = await configTse();
   if (configMemo.raw === raw) return configMemo.cfg;
   const cargos = [];
+  const simuladas = eleicoesSimuladas();
+  // 2º turno → eleição do 1º turno (`cdt2`), para comparar os dois turnos (mapa: quem "virou").
+  const primeiroDe = new Map();
+  for (const pl of raw.pl) for (const e of pl.e) if (e.cdt2) primeiroDe.set(e.cdt2, e.cd);
   for (const pl of raw.pl.filter((p) => p.c === CICLO)) {
     for (const e of pl.e) {
       if (!TIPOS_ELEICAO.has(e.tp)) continue;
@@ -386,7 +392,9 @@ export async function getConfig() {
               nome: cp.ds + (e.t === '2' ? ' (2º turno)' : ''),
               turno: Number(e.t),
               data: pl.dt,
-              ...horarios(pl.dt),
+              ...horarios(pl.dt, simuladas.has(e.cd)),
+              simulado: simuladas.has(e.cd),
+              primeiroTurno: primeiroDe.has(e.cd) ? `${primeiroDe.get(e.cd)}-${cp.cd}` : null,
               tipo: cp.tp === '2' ? 'proporcional' : 'majoritario',
               escopo: cp.cd === '1' ? 'br' : 'uf',
               ufs: [],
@@ -740,16 +748,24 @@ function normalizar(raw, { eleicao, uf }) {
   };
 }
 
-/** Resumo enxuto usado para colorir o mapa. */
-export function resumo(r) {
+const resumoCand = (c) => (c && c.votos > 0
+  ? { numero: c.numero, nome: c.nomeUrna, partido: c.partido, pct: c.pct, votos: c.votos }
+  : null);
+
+/**
+ * Resumo enxuto usado para colorir o mapa. No 2º turno (com `r1`, o resultado do 1º turno na mesma
+ * região) traz também o 2º colocado e se a região "virou": quem lidera agora ficou atrás do rival
+ * no 1º turno (entre os dois finalistas).
+ */
+export function resumo(r, r1) {
   if (!r) return null;
-  const lider = r.candidatos[0];
-  return {
-    pctApurado: r.secoes.pct,
-    lider: lider && lider.votos > 0
-      ? { numero: lider.numero, nome: lider.nomeUrna, partido: lider.partido, pct: lider.pct, votos: lider.votos }
-      : null,
-  };
+  const lider = resumoCand(r.candidatos[0]);
+  const out = { pctApurado: r.secoes.pct, lider };
+  if (r1 === undefined) return out;
+  out.segundo = lider ? resumoCand(r.candidatos[1]) : null;
+  const antes = (n) => r1?.candidatos.find((c) => c.numero === n)?.votos ?? 0;
+  out.virou = !!(lider && out.segundo && r1 && antes(out.segundo.numero) > antes(lider.numero));
+  return out;
 }
 
 /**

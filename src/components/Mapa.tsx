@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { geoPath, geoTransform } from 'd3-geo';
 import type { Feature, FeatureCollection } from 'geojson';
-import type { MapaDados, ModoMapa, Resumo } from '../types';
+import type { MapaDados, ModoMapa, Resumo, ResumoCandidato } from '../types';
 import { EsqueletoMapa } from './Carregando';
 import { corApuracao, corPartido, fmt, fmtPct, titulo } from '../util';
 
@@ -28,8 +28,21 @@ interface Props {
   rotuloRegiao: string; // "estados", "municípios"…
   /** Legenda por partido em vez de por candidato (cargos estaduais vistos no mapa do Brasil). */
   legendaPorPartido?: boolean;
+  /**
+   * 2º turno: cor sólida onde a apuração terminou ("venceu"), clara onde ainda não ("liderando") e
+   * hachurada onde quem lidera ficou atrás do rival no 1º turno ("virou").
+   */
+  segundoTurno?: boolean;
+  /** Cor do líder (no 2º turno, a do finalista); padrão: a do partido. */
+  corLider?: (l: ResumoCandidato) => string;
+  /** Sigla de cada região escrita no mapa (UFs no mapa do Brasil). */
+  rotulos?: boolean;
   onSelect: (chave: string) => void;
 }
+
+/** Estado de uma região no mapa do 2º turno. */
+const estado2t = (r: Resumo) => (r.virou ? 'virou' : r.pctApurado >= 100 ? 'venceu' : 'liderando');
+const ROTULO_ESTADO = { liderando: 'Liderando', venceu: 'Venceu', virou: 'Virou' } as const;
 
 /** Percorre todas as coordenadas de uma geometria. */
 function cadaPonto(g: Feature['geometry'], fn: (x: number, y: number) => void) {
@@ -66,7 +79,9 @@ function projetar(fc: FeatureCollection) {
   );
 }
 
-export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotuloRegiao, legendaPorPartido, onSelect }: Props) {
+export function Mapa({
+  geo, chave, nome, dados, modo, selecionado, focar, rotuloRegiao, legendaPorPartido, segundoTurno, corLider, rotulos, onSelect,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ k: string; x: number; y: number } | null>(null);
 
@@ -74,8 +89,8 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
     if (!geo) return [];
     const path = projetar(geo);
     return geo.features
-      .map((f) => ({ k: chave(f), d: path(f) ?? '', b: path.bounds(f) }))
-      .filter((r): r is { k: string; d: string; b: [[number, number], [number, number]] } => !!r.k);
+      .map((f) => ({ k: chave(f), d: path(f) ?? '', b: path.bounds(f), c: path.centroid(f) }))
+      .filter((r): r is { k: string; d: string; b: [[number, number], [number, number]]; c: [number, number] } => !!r.k);
   }, [geo, chave]);
 
   // Enquadramento padrão: o mapa inteiro, ou a região em foco.
@@ -183,13 +198,37 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
   const noMaximo = vista.w <= W / ZOOM_MAX + 1e-6;
   const noMinimo = vista.w >= W - 1e-6;
 
+  const corDe = corLider ?? ((l: ResumoCandidato) => corPartido(l.partido));
+  const doisTurnos = segundoTurno && modo === 'lider';
+  // Hachuras do "virou": uma por cor, com listras de largura fixa na tela (acompanham o zoom).
+  const hachuras = useMemo(() => {
+    if (!doisTurnos || !dados) return [];
+    return [...new Set(Object.values(dados).filter((r) => r?.virou && r.lider).map((r) => corDe(r!.lider!)))];
+  }, [doisTurnos, dados, corDe]);
   const cor = (r: Resumo | null | undefined) => {
     if (!r) return 'var(--sem-dado)';
     if (modo === 'apurado') return corApuracao(r.pctApurado);
-    return r.lider ? corPartido(r.lider.partido) : 'var(--sem-dado)';
+    if (!r.lider) return 'var(--sem-dado)';
+    if (doisTurnos && r.virou) return `url(#hachura-${hachuras.indexOf(corDe(r.lider))})`;
+    return corDe(r.lider);
   };
-  const opacidade = (r: Resumo | null | undefined) =>
-    modo === 'lider' && r?.lider ? 0.45 + 0.55 * Math.min(1, r.lider.pct / 60) : 1;
+  const opacidade = (r: Resumo | null | undefined) => {
+    if (modo !== 'lider' || !r?.lider) return 1;
+    if (doisTurnos) return r.pctApurado >= 100 ? 1 : 0.5;
+    return 0.45 + 0.55 * Math.min(1, r.lider.pct / 60);
+  };
+  const escala = vista.w / W; // 1 = mapa inteiro; menor = ampliado
+
+  // 2º turno: um item por finalista, com as amostras de "liderando", "venceu" e "virou".
+  const legenda2t = useMemo(() => {
+    if (!dados || !doisTurnos || legendaPorPartido) return [];
+    const cont = new Map<string, { c: ResumoCandidato; n: number }>();
+    for (const r of Object.values(dados)) {
+      for (const c of [r?.lider, r?.segundo]) if (c && !cont.has(c.numero)) cont.set(c.numero, { c, n: 0 });
+      if (r?.lider) cont.get(r.lider.numero)!.n++;
+    }
+    return [...cont.values()].sort((a, b) => Number(a.c.numero) - Number(b.c.numero));
+  }, [dados, doisTurnos, legendaPorPartido]);
 
   const legenda = useMemo(() => {
     if (!dados || modo !== 'lider') return [];
@@ -222,6 +261,23 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
         className={[dados ? '' : 'aguardando', vista.w < W ? 'ampliado' : ''].join(' ').trim() || undefined}
         style={geo ? undefined : { display: 'none' }}
       >
+        {hachuras.length > 0 && (
+          <defs>
+            {hachuras.map((c, i) => (
+              <pattern
+                key={c}
+                id={`hachura-${i}`}
+                patternUnits="userSpaceOnUse"
+                width={8 * escala}
+                height={8 * escala}
+                patternTransform="rotate(45)"
+              >
+                <rect width={8 * escala} height={8 * escala} fill={c} fillOpacity={0.35} />
+                <rect width={4 * escala} height={8 * escala} fill={c} />
+              </pattern>
+            ))}
+          </defs>
+        )}
         {regioes.map((r) => {
           const res = dados?.[r.k];
           const sel = r.k === selecionado;
@@ -249,6 +305,18 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
         {selecionado && regioes.filter((r) => r.k === selecionado).map((r) => (
           <path key="sel" d={r.d} className="contorno-selecao" vectorEffect="non-scaling-stroke" />
         ))}
+        {rotulos && regioes.map((r) => (
+          <text
+            key={`r-${r.k}`}
+            x={r.c[0]}
+            y={r.c[1]}
+            className="rotulo-regiao"
+            style={{ fontSize: 13 * escala, strokeWidth: 3 * escala }}
+            dy="0.35em"
+          >
+            {r.k.toUpperCase()}
+          </text>
+        ))}
       </svg>
 
       {geo && (
@@ -272,7 +340,21 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
           }}
         >
           <strong>{nome(hover.k)}</strong>
-          {info ? (
+          {info && doisTurnos && info.lider ? (
+            <>
+              {[info.lider, info.segundo].filter((c): c is ResumoCandidato => !!c).map((c) => (
+                <div key={c.numero} className="tooltip-linha">
+                  <span className="bolinha" style={{ background: corDe(c) }} />
+                  <span>{titulo(c.nome)} <span className="muted">({c.partido})</span></span>
+                  <strong>{fmtPct(c.pct)}</strong>
+                </div>
+              ))}
+              <div className="muted">
+                {ROTULO_ESTADO[estado2t(info)]}
+                {info.virou && ' (2º no 1º turno)'} · {fmtPct(info.pctApurado)} apurado
+              </div>
+            </>
+          ) : info ? (
             <>
               {info.lider && (
                 <div>
@@ -296,6 +378,20 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
             <i style={{ background: `linear-gradient(90deg, ${corApuracao(0)}, ${corApuracao(50)}, ${corApuracao(100)})` }} />
             <span>100% apurado</span>
           </div>
+        ) : legenda2t.length ? (
+          <div className="legenda-2t">
+            {legenda2t.map(({ c, n }) => (
+              <div key={c.numero} className="legenda-2t-linha">
+                <span className="legenda-2t-nome">{titulo(c.nome)}</span>
+                <AmostrasEstado cor={corDe(c)} />
+                <span className="muted">{n} {rotuloRegiao}</span>
+              </div>
+            ))}
+            <div className="legenda-2t-linha legenda-2t-rotulos muted" aria-hidden="true">
+              <span />
+              {Object.values(ROTULO_ESTADO).map((t) => <span key={t}>{t}</span>)}
+            </div>
+          </div>
         ) : legenda.length ? (
           legenda.map((l) => (
             <span key={l.nome + l.partido} className="legenda-item">
@@ -303,11 +399,34 @@ export function Mapa({ geo, chave, nome, dados, modo, selecionado, focar, rotulo
               {l.nome ? <>{l.nome}&nbsp;<span className="muted">({l.partido})</span></> : l.partido}
               <span className="muted">&nbsp;· {l.n} {rotuloRegiao}</span>
             </span>
-          ))
+          )).concat(doisTurnos ? [
+            <span key="estados" className="legenda-item legenda-estados muted">
+              <AmostrasEstado cor="var(--muted)" rotulos />
+            </span>,
+          ] : [])
         ) : (
           dados && <span className="muted">Nenhum voto apurado ainda nesta área.</span>
         )}
       </div>
     </div>
+  );
+}
+
+/** Amostras "liderando / venceu / virou" de uma cor (legenda do 2º turno). */
+function AmostrasEstado({ cor, rotulos }: { cor: string; rotulos?: boolean }) {
+  return (
+    <>
+      {(['liderando', 'venceu', 'virou'] as const).map((e) => (
+        <span key={e} className="amostra-estado" title={ROTULO_ESTADO[e]}>
+          <i
+            className={e}
+            style={e === 'virou'
+              ? { backgroundImage: `repeating-linear-gradient(45deg, ${cor} 0 3px, transparent 3px 6px)` }
+              : { background: cor }}
+          />
+          {rotulos && ROTULO_ESTADO[e]}
+        </span>
+      ))}
+    </>
   );
 }

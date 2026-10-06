@@ -12,6 +12,7 @@ import {
 import { assinar } from './aovivo.mjs';
 import { getCandidato } from './candidatos.mjs';
 import { estadoArquivo } from './arquivo.mjs';
+import { SIMULACAO } from './simulacao.mjs';
 import { flagsDe, cargoVisivel, rotaPreview, rotaFlags } from './flags.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -69,17 +70,27 @@ async function mapa(q, flags) {
   // Para colorir o mapa basta o líder: com todas as seções totalizadas ele não muda mais.
   const opcoes = { ttlCompletoMs: 30 * 60_000 };
 
+  // 2º turno: o resultado do 1º turno nas mesmas regiões (do arquivo próprio, já final) mostra onde virou.
+  const primeiro = c.primeiroTurno ? (await getConfig()).cargos.find((x) => x.id === c.primeiroTurno) : null;
+  const montar = async (chaves, lista, ttl, prioridade) => {
+    const [rs, r1s] = await Promise.all([
+      getResultadosRapidos(lista, ttl, prioridade, opcoes),
+      primeiro
+        ? getResultadosRapidos(lista.map((p) => ({ ...p, eleicao: primeiro.eleicao })), ttl, PRIORIDADE.baixa, opcoes)
+        : null,
+    ]);
+    return Object.fromEntries(chaves.map((k, i) => [k, resumo(rs[i], r1s ? r1s[i] ?? null : undefined)]));
+  };
+
   if (u === 'br') {
     const ufs = c.ufs;
-    const rs = await getResultadosRapidos(ufs.map((x) => ({ ...base, uf: x })), 30_000, PRIORIDADE.media, opcoes);
-    return Object.fromEntries(ufs.map((x, i) => [x, resumo(rs[i])]));
+    return montar(ufs, ufs.map((x) => ({ ...base, uf: x })), 30_000, PRIORIDADE.media);
   }
 
   const municipios = (await getMunicipios(c.eleicao))?.[u]?.municipios ?? [];
   if (mun) {
     const zonas = municipios.find((m) => m.cd === mun)?.zonas ?? [];
-    const rs = await getResultadosRapidos(zonas.map((z) => ({ ...base, uf: u, mun, zona: z })), 60_000, PRIORIDADE.baixa, opcoes);
-    return Object.fromEntries(zonas.map((z, i) => [z, resumo(rs[i])]));
+    return montar(zonas, zonas.map((z) => ({ ...base, uf: u, mun, zona: z })), 60_000, PRIORIDADE.baixa);
   }
 
   // Cargos proporcionais têm arquivos grandes (milhares de candidatos) — para o mapa
@@ -88,8 +99,7 @@ async function mapa(q, flags) {
 
   // Um arquivo por município (853 em MG): entram na fila com prioridade baixa e o mapa vai se
   // completando a cada atualização, em vez de disparar centenas de consultas de uma vez.
-  const rs = await getResultadosRapidos(municipios.map((m) => ({ ...base, uf: u, mun: m.cd })), 3 * 60_000, PRIORIDADE.baixa, opcoes);
-  return Object.fromEntries(municipios.map((m, i) => [m.cd, resumo(rs[i])]));
+  return montar(municipios.map((m) => m.cd), municipios.map((m) => ({ ...base, uf: u, mun: m.cd })), 3 * 60_000, PRIORIDADE.baixa);
 }
 
 // ---------- composição das casas legislativas ----------
@@ -318,7 +328,7 @@ const rotas = {
   '/api/busca': busca,
   '/api/composicao': composicao,
   // Diagnóstico: fila de consultas ao TSE, cache e memória.
-  '/api/saude': () => ({ fila: estadoFila(), arquivo: estadoArquivo(), memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20) }),
+  '/api/saude': () => ({ fila: estadoFila(), arquivo: estadoArquivo(), simulacao: SIMULACAO, memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20) }),
 };
 
 // No log do Render: estado da fila a cada minuto, quando há algo esperando.

@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import zlib from 'node:zlib';
+import { SIMULACAO, RAIZ_SIMULACAO } from './simulacao.mjs';
 
 const gunzip = promisify(zlib.gunzip);
 
@@ -235,10 +236,15 @@ let pastas = null; // eleição → URL da pasta; eleições com todas as unidad
 function mapearPastas() {
   if (pastas) return pastas;
   pastas = { eleicao: new Map(), finais: new Set(), config: null };
-  let turnos = [];
-  try { turnos = fs.readdirSync(RAIZ_ARQUIVO).filter((d) => /-\d+turno$/.test(d)).sort(); } catch { return pastas; }
-  for (const t of turnos) {
-    const base = new URL(`${t}/`, RAIZ_ARQUIVO);
+  // A simulação do 2º turno (SIMULACAO_2TURNO=1) entra como mais uma pasta, toda final: sai só dela.
+  const turnos = [];
+  for (const raiz of SIMULACAO ? [RAIZ_ARQUIVO, RAIZ_SIMULACAO] : [RAIZ_ARQUIVO]) {
+    try {
+      for (const d of fs.readdirSync(raiz).filter((x) => /-\d+turno$/.test(x)).sort()) turnos.push([d, raiz]);
+    } catch { /* pasta ausente */ }
+  }
+  for (const [t, raiz] of turnos) {
+    const base = new URL(`${t}/`, raiz);
     for (const e of fs.readdirSync(base)) if (/^\d+$/.test(e)) pastas.eleicao.set(`${t.split('-')[0]}/${e}`, new URL(`${e}/`, base));
     let unidades = {};
     try { unidades = JSON.parse(fs.readFileSync(new URL('manifesto.json', base), 'utf8')).unidades ?? {}; } catch {}

@@ -1,0 +1,114 @@
+{
+ "gerado": "2026-10-06T14:37:39.516Z",
+ "base": "2º turno de 2022 (Dados Abertos do TSE), aplicado ao eleitorado do 1º turno de 2026",
+ "fotos": {
+  "6258": "6257",
+  "6260": "6259"
+ },
+ "pleito": {
+  "cd": "simulacao",
+  "c": "ele2026",
+  "dt": "25/10/2026",
+  "dtlim": "25/10/2034",
+  "e": [
+   {
+    "cd": "6258",
+    "cdt2": "",
+    "nm": "Eleição Ordinária Federal - 2026 2º Turno",
+    "t": "2",
+    "tp": "8",
+    "abr": [
+     {
+      "cd": "br",
+      "cp": [
+       {
+        "cd": "1",
+        "ds": "Presidente",
+        "tp": "1"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "cd": "6260",
+    "cdt2": "",
+    "nm": "Eleição Ordinária Estadual - 2026 2º Turno",
+    "t": "2",
+    "tp": "1",
+    "abr": [
+     {
+      "cd": "ac",
+      "cp": [
+       {
+        "cd": "3",
+        "ds": "Governador",
+        "tp": "1"
+       }
+      ]
+     },
+     {
+      "cd": "am",
+      "cp": [
+       {
+        "cd": "3",
+        "ds": "Governador",
+        "tp": "1"
+       }
+      ]
+     },
+     {
+      "cd": "df",
+      "cp": [
+       {
+        "cd": "3",
+        "ds": "Governador",
+        "tp": "1"
+       }
+      ]
+     },
+     {
+      "cd": "es",
+      "cp": [
+       {
+        "cd": "3",
+        "ds": "Governador",
+        "tp": "1"
+       }
+      ]
+     },
+     {
+      "cd": "rj",
+      "cp": [
+       {
+        "cd": "3",
+        "ds": "Governador",
+        "tp": "1"
+       }
+      ]
+     },
+     {
+      "cd": "rn",
+      "cp": [
+       {
+        "cd": "3",
+        "ds": "Governador",
+        "tp": "1"
+       }
+      ]
+     },
+     {
+      "cd": "to",
+      "cp": [
+       {
+        "cd": "3",
+        "ds": "Governador",
+        "tp": "1"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
