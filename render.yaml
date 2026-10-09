@@ -1,10 +1,10 @@
-# Blueprint do Render: um Web Service gratuito com o servidor Node (API + front buildado).
+# Blueprint do Render: um Web Service (instância Starter) com o servidor Node (API + front buildado).
 # O Render define a variável PORT; o server/index.mjs já a usa.
 services:
   - type: web
     name: apuracao-2026
     runtime: node
-    plan: free
+    plan: starter # 512 MB e não dorme (o free dormia após 15 min, ruim para o Googlebot)
     region: virginia # região mais próxima do Brasil entre as disponíveis
     buildCommand: npm ci && npm run build
     startCommand: npm start

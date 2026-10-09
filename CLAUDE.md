@@ -131,13 +131,19 @@ como sinal político).
   `sitemap-candidatos.xml`; sem zonas e sem o 2º turno enquanto a flag pública estiver desligada; 1 h em memória.
 - Cache: `/assets/*` `immutable` por 1 ano; HTML `no-cache`. Imagem de compartilhamento: `public/og.png` (1200×630).
 
-## Deploy no Render (plano gratuito — o que está em uso)
+## Deploy no Render (instância Starter, US$ 7/mês)
 
-`render.yaml` (Blueprint): Web Service Node, `npm ci && npm run build` / `npm start`, região virginia, health
-check em `/api/saude` (não passa pelo 301 do `SITE_URL`).
-Publicado em `https://apuracao-2026.onrender.com` (ou com sufixo, se o nome já existir). Cada push na
-branch principal do GitHub publica de novo. O plano gratuito dorme após 15 min sem acesso (~1 min para
-acordar) e reinicia o processo, perdendo o cache em memória — normal.
+`render.yaml` (Blueprint): Web Service Node, `npm ci && npm run build` / `npm start`, região virginia, plano
+`starter` (512 MB, não dorme), health check em `/api/saude` (não passa pelo 301 do `SITE_URL`).
+Publicado em **https://apuracao.org** (`www` redireciona para a raiz). O endereço do Render,
+`https://apuracao-2026-kipe.onrender.com`, responde 301 para o domínio (`SITE_URL`), menos `/api/*`. Cada push na
+branch principal do GitHub publica de novo; um deploy ou mudança de variável reinicia o processo e esvazia o cache
+em memória — normal, mas evite durante a apuração.
+
+DNS na Cloudflare (registrador do domínio): CNAME `@` e `www` → `apuracao-2026-kipe.onrender.com` com o proxy
+**desligado** ("DNS only" — com o proxy laranja o Render não verifica o domínio nem emite o certificado), mais o
+TXT `google-site-verification` do Search Console (não apagar). Sitemap enviado ao Google Search Console e ao Bing
+Webmaster Tools.
 
 ## API do TSE (descoberta empiricamente — não há documentação oficial)
 
@@ -197,7 +203,7 @@ Base: `https://resultados.tse.jus.br/oficial`
 
 O 2º turno fica escondido pela feature toggle `segundoTurno` e **liga sozinho em 25/10/2026 às 00h** (horário de
 Brasília). Nada precisa ser feito para isso; os passos abaixo servem para conferir antes, liberar antes da hora ou
-segurar se algo der errado. `URL` = https://apuracao-2026-kipe.onrender.com.
+segurar se algo der errado. `URL` = https://apuracao.org.
 
 1. **Antes de 25/10**
    - Defina `ADMIN_TOKEN` no Render (serviço *apuracao-2026* → **Environment**).
