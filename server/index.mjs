@@ -14,6 +14,7 @@ import { getCandidato } from './candidatos.mjs';
 import { estadoArquivo } from './arquivo.mjs';
 import { SIMULACAO } from './simulacao.mjs';
 import { flagsDe, cargoVisivel, rotaPreview, rotaFlags } from './flags.mjs';
+import { redirecionarHost, responderPagina, responderRobots, responderSitemap, candidaturaDe } from './seo.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -340,20 +341,33 @@ setInterval(() => {
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
   '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon',
+  '.webp': 'image/webp', '.jpg': 'image/jpeg', '.xml': 'application/xml; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json',
 };
 
-async function estatico(res, pathname) {
-  let file = path.join(DIST, path.normalize(pathname).replace(/^(\.\.[/\\])+/, ''));
-  if (!file.startsWith(DIST)) file = path.join(DIST, 'index.html');
-  try {
-    if ((await fs.stat(file)).isDirectory()) file = path.join(file, 'index.html');
-  } catch {
-    file = path.join(DIST, 'index.html'); // SPA fallback
+/**
+ * Arquivo do build, se existir; senão robots.txt, sitemaps ou uma página do app (HTML por rota, com 404 de
+ * verdade para rota inexistente — ver seo.mjs). Os /assets/* têm hash no nome: cache de 1 ano.
+ */
+async function estatico(req, res, pathname) {
+  const file = path.join(DIST, path.normalize(pathname).replace(/^(\.\.[/\\])+/, ''));
+  if (file.startsWith(DIST) && pathname !== '/' && pathname !== '/index.html') {
+    try {
+      if ((await fs.stat(file)).isFile()) {
+        const body = await fs.readFile(file);
+        res.writeHead(200, {
+          'content-type': MIME[path.extname(file)] || 'application/octet-stream',
+          'cache-control': pathname.startsWith('/assets/') ? 'public, max-age=31536000, immutable'
+            : path.extname(file) === '.html' ? 'no-cache' : 'public, max-age=3600',
+        });
+        return res.end(body);
+      }
+    } catch { /* não é arquivo do build */ }
   }
+  if (pathname === '/robots.txt') return responderRobots(req, res);
+  if (await responderSitemap(req, res, pathname)) return;
   try {
-    const body = await fs.readFile(file);
-    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
-    res.end(body);
+    await responderPagina(req, res, pathname, path.join(DIST, 'index.html'));
   } catch {
     res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
     res.end('Build não encontrado. Rode `npm run build` ou use `npm run dev`.');
@@ -380,6 +394,7 @@ const server = http.createServer(async (req, res) => {
     res.end(texto);
   };
   try {
+    if (redirecionarHost(req, res, url)) return;
     const geoMatch = url.pathname.match(/^\/api\/geo\/([a-z]{2})$/);
     if (geoMatch) {
       const alvo = geoMatch[1] === 'br' ? 'br' : uf(geoMatch[1]);
@@ -391,8 +406,10 @@ const server = http.createServer(async (req, res) => {
     if (candMatch) {
       const data = await getCandidato(candMatch[1]);
       if (!data) return json(404, { erro: 'candidato não encontrado' });
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=3600' });
-      return res.end(JSON.stringify(data));
+      // A candidatura depende das flags (2º turno escondido, prévia por cookie): resposta privada.
+      const candidatura = await candidaturaDe(candMatch[1], flagsDe(req)).catch(() => null);
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'private, max-age=3600' });
+      return res.end(JSON.stringify({ ...data, candidatura }));
     }
     if (url.pathname === '/api/preview') return rotaPreview(req, res, url);
     if (url.pathname === '/api/flags') return rotaFlags(req, res, url);
@@ -404,7 +421,7 @@ const server = http.createServer(async (req, res) => {
     const rota = rotas[url.pathname];
     if (rota) return json(200, await rota(url.searchParams, flags));
     if (url.pathname.startsWith('/api/')) return json(404, { erro: 'rota inexistente' });
-    return estatico(res, url.pathname);
+    return await estatico(req, res, url.pathname);
   } catch (err) {
     const status = err.status || 502;
     if (status >= 500 && !err.silencioso) console.error(err); // falhas do TSE já saem resumidas no log

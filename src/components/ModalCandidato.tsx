@@ -55,7 +55,8 @@ export function ModalCandidato({ c, pos, cargo, onFechar }: Props) {
         <button className="modal-fechar" onClick={onFechar} aria-label="Fechar">×</button>
 
         <header className="modal-topo">
-          <Foto src={c.foto} nome={c.nomeUrna} cor={cor} grande />
+          {/* Foto principal da página do candidato (/candidato/<sq>): com alt, também para a busca de imagens. */}
+          <Foto src={c.foto} nome={c.nomeUrna} cor={cor} alt={`Foto de ${titulo(c.nomeUrna)}`} grande />
           <div>
             <div className="muted pequeno">{cargo}{c.votos > 0 && ` · ${pos}º colocado`}</div>
             <h2 id="modal-candidato-nome">{titulo(c.nomeUrna)}</h2>
@@ -168,10 +169,11 @@ export function ModalCandidato({ c, pos, cargo, onFechar }: Props) {
   );
 }
 
-function Foto({ src, nome, cor, grande }: { src: string; nome: string; cor: string; grande?: boolean }) {
+/** `alt` vazio por padrão: nos vices o nome está logo ao lado, em texto. */
+function Foto({ src, nome, cor, alt = '', grande }: { src: string; nome: string; cor: string; alt?: string; grande?: boolean }) {
   const [semFoto, setSemFoto] = useState(false);
   const classe = `foto ${grande ? 'foto-grande' : ''}`;
   return semFoto
     ? <span className={`${classe} foto-vazia`} style={{ background: cor }}>{nome.charAt(0)}</span>
-    : <img className={classe} src={src} alt="" onError={() => setSemFoto(true)} />;
+    : <img className={classe} src={src} alt={alt} onError={() => setSemFoto(true)} />;
 }

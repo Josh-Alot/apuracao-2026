@@ -1,6 +1,7 @@
 import { type CSSProperties, useState } from 'react';
 import type { Candidato, MapaDados, Resultado } from '../types';
 import { Num } from './Num';
+import { Link } from './Link';
 import { coresDuelo, corPartido, fmt, fmtPct, titulo, UF_NOMES } from '../util';
 
 /** Os dois finalistas na ordem do número de urna (fica estável: ninguém troca de lado quando a liderança muda). */
@@ -111,7 +112,9 @@ function Lado({ c, cor, lado }: { c: Candidato; cor: string; lado: 'a' | 'b' }) 
  * Cargos estaduais no nível Brasil: uma linha por UF com 2º turno — os dois finalistas e a barra
  * dos votos válidos, a partir do resumo do mapa. Clique abre a UF.
  */
-export function ListaDuelos({ ufs, dados, onSelect }: { ufs: string[]; dados: MapaDados | null; onSelect: (uf: string) => void }) {
+export function ListaDuelos({ ufs, dados, href, onSelect }: {
+  ufs: string[]; dados: MapaDados | null; href: (uf: string) => string; onSelect: (uf: string) => void;
+}) {
   return (
     <ul className="lista-duelos">
       {ufs.map((uf) => {
@@ -124,7 +127,7 @@ export function ListaDuelos({ ufs, dados, onSelect }: { ufs: string[]; dados: Ma
         const cores = par ? par.map((c) => (c.numero === r!.lider!.numero ? cl : cs)) : null;
         return (
           <li key={uf}>
-            <button onClick={() => onSelect(uf)}>
+            <Link href={href(uf)} onNavegar={() => onSelect(uf)}>
               <span className="lista-duelos-uf">
                 {UF_NOMES[uf]}
                 {r?.virou && <span className="selo" title="Quem lidera ficou em 2º no 1º turno">virou</span>}
@@ -151,7 +154,7 @@ export function ListaDuelos({ ufs, dados, onSelect }: { ufs: string[]; dados: Ma
                   {r?.lider && ` · ${titulo(r.lider.nome)}`}
                 </span>
               )}
-            </button>
+            </Link>
           </li>
         );
       })}

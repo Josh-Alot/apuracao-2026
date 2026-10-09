@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useCarregandoGlobal } from '../api';
 
 /**
@@ -30,13 +30,13 @@ export function Esq({ w = '100%', h = '1em', redondo = false, className = '' }: 
   return <span className={`esq ${redondo ? 'esq-redondo' : ''} ${className}`} style={{ width: w, height: h }} />;
 }
 
-/** Esqueleto do painel de resultados (mesma estrutura do PainelResultado). */
-export function EsqueletoPainel({ titulo, linhas = 6 }: { titulo?: string; linhas?: number }) {
+/** Esqueleto do painel de resultados (mesma estrutura do PainelResultado); `titulo` já vem com o heading. */
+export function EsqueletoPainel({ titulo, linhas = 6 }: { titulo?: ReactNode; linhas?: number }) {
   return (
     <section className="painel" aria-busy="true" aria-label="Carregando resultados">
       <header className="painel-topo">
         <div style={{ width: '100%' }}>
-          {titulo ? <h2>{titulo}</h2> : <Esq w="45%" h="2rem" />}
+          {titulo ?? <Esq w="45%" h="2rem" />}
           <Esq w="60%" h="0.9rem" className="esq-espaco" />
         </div>
       </header>
@@ -89,7 +89,7 @@ export function EsqueletoPagina() {
     <div className="app" aria-busy="true">
       <header className="topo">
         <div className="marca">
-          <h1>Apuração 2026</h1>
+          <p className="marca-titulo">Apuração 2026</p>
           <div className="dataline"><Esq w="22rem" h="0.8rem" /></div>
         </div>
         <div className="busca"><Esq h="2.5rem" /></div>

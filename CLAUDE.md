@@ -26,7 +26,10 @@ sobrescreve o fechamento das urnas para testar o aviso, ex. `ENCERRAMENTO=2026-1
 `ARQUIVO=1` (usa só o arquivo próprio para tudo o que ele cobre, sem consultar o TSE; eleições já todas finais no
 arquivo saem dele mesmo sem a variável), `ARQUIVO_MB` (16; unidades
 do arquivo abertas em memória), `SIMULACAO_2TURNO=1` (serve o 2º turno simulado de `simulacao/`; nunca em produção
-aberta ao público).
+aberta ao público), `SITE_URL` (ex. `https://dominio.com.br`, sem barra final: base do canonical, og:url, robots e
+sitemap; definida, todo pedido por outro host recebe 301 para o mesmo caminho nela, menos `/api/*` — defina só com o
+domínio já respondendo e antes do dia da eleição, porque mudar variável reinicia o serviço e o 301 fica guardado nos
+navegadores; sem ela, a base vem de `x-forwarded-proto` + `host`).
 
 ### Feature toggles (`server/flags.mjs`)
 
@@ -61,6 +64,8 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   flags.mjs        Feature toggles (FLAG_*), prévia por cookie e /api/flags (ADMIN_TOKEN)
   simulacao.mjs    Simulação do 2º turno (SIMULACAO_2TURNO=1): pleito acrescentado ao ele-c.json e fotos do 1º turno
   candidatos.mjs   /api/candidato/:sq — perfil e bens; lê dados/candidatos-2026.tsv.gz no 1º pedido (buffer + índice)
+  seo.mjs          HTML por rota (title, description, canonical, Open Graph, JSON-LD, resumo em texto no #root), 404 de
+                   verdade, robots.txt, sitemaps, SITE_URL/301 e `candidatura` do /api/candidato (ver "SEO" abaixo)
   scripts/candidatos.mjs  `npm run candidatos`: baixa os CSVs dos Dados Abertos e gera o .tsv.gz
   scripts/arquivar.mjs    `npm run arquivar`: baixa os resultados finais e grava em arquivo/
   scripts/simular-2turno.mjs  `npm run simular-2turno`: gera simulacao/ a partir do 2º turno de 2022
@@ -68,7 +73,8 @@ dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz)
 arquivo/           Resultados finais arquivados e versionados (<ciclo>-<turno>turno/)
 simulacao/         2º turno simulado (mesmo formato do arquivo/), versionado
 src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths SVG
-  App.tsx          Estado da navegação (no hash da URL), polling e composição das telas
+  rotas.mjs        Rotas públicas e títulos das páginas, JS puro compartilhado com o servidor (tipos em rotas.d.mts)
+  App.tsx          Estado da navegação (no caminho da URL, pushState/popstate), polling e composição das telas
   api.ts           useApi(url, intervalo) — fetch + polling mantendo o dado anterior
   components/
     Mapa.tsx           Choropleth SVG (projeção plana própria), tooltip, legenda, zoom no município;
@@ -87,6 +93,8 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
                        bancada, linha/bolinha destaca a cadeira e abre a ficha do eleito sobre o plenário;
                        clique fixa a cadeira em foco até um clique fora do componente ou ESC
     ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
+    Link.tsx           <a href> com navegação SPA no clique simples (ctrl/cmd/meio abrem nova aba); toda navegação
+                       usa links de verdade para o Google rastrear
     Carregando.tsx     Barra fina no topo (conta requisições ativas em getJson) + esqueletos de página/painel/mapa
     AvisoVotacao.tsx   Faixa "votação ainda não começou / em andamento (contagem regressiva) / urnas fechadas"
     ProximaAtualizacao.tsx "a cada 30 s · próxima em 12 s" (usa `proxima` exposto pelo useApi)
@@ -103,9 +111,30 @@ Google Fonts (`index.html`), papel creme, filetes em vez de cartões, os 2 prime
 Cor forte fica reservada aos partidos; evite verde-amarelo ou vermelho como cor de interface (são lidos
 como sinal político).
 
+## SEO
+
+- Rotas (`src/rotas.mjs`): `/`, `/<cargo>[/<uf>[/<mun>-<nome>[/zona-<zona>]]]` (cargo por slug: `governador`,
+  `presidente-2-turno`…; município pelo código TSE, o nome é opcional) e `/candidato/<sq>-<nome>`. Links antigos
+  `#/<cargoId>/…` viram o caminho novo no front (`replaceState`). Título da página por `tituloPagina()`, igual no
+  servidor e no front.
+- O servidor (`server/seo.mjs`) valida a rota (cargo visível pelas flags, UF do cargo, município, zona, candidato) e
+  responde 200 com o `dist/index.html` preenchido nos marcadores `<!--seo-->…<!--/seo-->` e `<!--seo:conteudo-->`
+  do `index.html` (não os remova), ou 404 + `noindex`. O `createRoot` substitui o resumo ao montar — esperado.
+- **Nunca consultar o TSE para montar página**: o Googlebot pede dezenas de milhares de URLs. Usa só config,
+  municípios, perfil e resultados do cache em memória ou do arquivo final (`getResultadoSemTse`), com prazo de
+  300 ms (passou, descrição genérica). O índice de candidatos (cargo/UF/votos por `sq`) é montado uma vez por
+  processo das eleições finais do arquivo (~1 s, ~80 MB).
+- `robots.txt` bloqueia `/api/` menos as rotas baratas que o Google precisa para renderizar (`/api/config`,
+  `/api/municipios`, `/api/resultado`, `/api/candidato/`); `/api/mapa` (1 consulta por município), busca, composição
+  e SSE seguem bloqueados. Ao criar rota de API, decida se entra nessa lista.
+- Sitemaps: `/sitemap.xml` (índice) → `sitemap-geral.xml`, um `sitemap-<cargo>.xml` por cargo (municípios) e
+  `sitemap-candidatos.xml`; sem zonas e sem o 2º turno enquanto a flag pública estiver desligada; 1 h em memória.
+- Cache: `/assets/*` `immutable` por 1 ano; HTML `no-cache`. Imagem de compartilhamento: `public/og.png` (1200×630).
+
 ## Deploy no Render (plano gratuito — o que está em uso)
 
-`render.yaml` (Blueprint): Web Service Node, `npm ci && npm run build` / `npm start`, região virginia.
+`render.yaml` (Blueprint): Web Service Node, `npm ci && npm run build` / `npm start`, região virginia, health
+check em `/api/saude` (não passa pelo 301 do `SITE_URL`).
 Publicado em `https://apuracao-2026.onrender.com` (ou com sufixo, se o nome já existir). Cada push na
 branch principal do GitHub publica de novo. O plano gratuito dorme após 15 min sem acesso (~1 min para
 acordar) e reinicia o processo, perdendo o cache em memória — normal.
@@ -163,6 +192,30 @@ Base: `https://resultados.tse.jus.br/oficial`
 - Mapa do 2º turno: cor do finalista clara = liderando (apuração < 100%), sólida = venceu, hachurada = virou;
   siglas das UFs no mapa do Brasil; cartão do exterior. Cores dos finalistas: as dos partidos, salvo quando têm
   a mesma matiz (`coresDuelo()` em `util.ts` troca a do segundo por uma reserva).
+
+### Liberar o 2º turno em produção
+
+O 2º turno fica escondido pela feature toggle `segundoTurno` e **liga sozinho em 25/10/2026 às 00h** (horário de
+Brasília). Nada precisa ser feito para isso; os passos abaixo servem para conferir antes, liberar antes da hora ou
+segurar se algo der errado. `URL` = https://apuracao-2026-kipe.onrender.com.
+
+1. **Antes de 25/10**
+   - Defina `ADMIN_TOKEN` no Render (serviço *apuracao-2026* → **Environment**).
+   - Confirme que `SIMULACAO_2TURNO` **não** está definida (ela troca os dados do TSE pela simulação com os votos de 2022).
+   - `curl -H "Authorization: Bearer $ADMIN_TOKEN" "$URL/api/flags"`: `segundoTurno` deve estar com o padrão.
+2. **Conferir antes de liberar**: quando o TSE publicar o 2º turno (dias antes da votação), abra
+   `$URL/api/preview?token=<ADMIN_TOKEN>`. Só esse navegador vê o 2º turno (selo "PRÉVIA · sair"); os números
+   estarão zerados até as 17h do dia 25. Para sair: `$URL/api/preview?sair`.
+3. **Liberar antes da hora** (sem reiniciar; vale até o próximo reinício do serviço):
+   ```bash
+   curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$URL/api/flags?segundoTurno=on"
+   ```
+   Para valer de vez, defina `FLAG_SEGUNDO_TURNO=on` no Render — isso reinicia o serviço e esvazia o cache.
+4. **Segurar** (esconder de novo): o mesmo comando com `segundoTurno=off`, ou `FLAG_SEGUNDO_TURNO=off` no Render.
+   `segundoTurno=padrao` volta à data de 25/10.
+5. **Nunca** deixe `SIMULACAO_2TURNO=1` em produção a partir de 25/10.
+
+Evite mudar variáveis no Render durante a apuração: cada mudança reinicia o serviço e esvazia o cache.
 
 ### Dia do 2º turno (25/10/2026) e depois
 

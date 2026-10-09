@@ -112,6 +112,11 @@ export interface DetalheCandidato {
   composicaoColigacao: string | null;
   situacaoCandidatura: string | null;
   tetoGastos: number | null;
+  /**
+   * Candidatura no cargo visível mais recente (o 2º turno antes do 1º), se o servidor a conhece; o front a usa
+   * para montar a tela por baixo da ficha aberta direto pela URL (/candidato/<sq>). `uf` null = Brasil.
+   */
+  candidatura?: { cargoId: string; uf: string | null } | null;
   /** [tipo, descrição, valor], do maior para o menor valor. */
   bens: [string | null, string | null, number][];
   totalBens: number;

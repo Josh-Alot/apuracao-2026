@@ -42,3 +42,8 @@ export async function getCandidato(sq) {
   const pos = indice.get(sq);
   return pos ? { ...JSON.parse(buf.toString('utf8', pos[0], pos[1])), gerado } : null;
 }
+
+/** Data em que o arquivo foi gerado ("dd/mm/aaaa hh:mm:ss"), para o lastmod do sitemap. */
+export async function geradoEm() {
+  return (await carregar()).gerado;
+}

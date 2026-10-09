@@ -516,6 +516,21 @@ function deRaw(raw, params, url) {
   return e.norm;
 }
 
+/**
+ * Resultado sem nenhuma consulta ao TSE (meta tags e sitemap, que o Googlebot pede às dezenas de milhares):
+ * o que estiver no cache em memória, mesmo vencido, ou, em eleição toda final no arquivo próprio, o arquivo
+ * (lido direto, sem entrar no cache do TSE). `arquivo: false` dispensa também o arquivo (unidades grandes,
+ * como as de deputado por município). null se não houver.
+ */
+export async function getResultadoSemTse(params, { arquivo = true } = {}) {
+  const url = resultadoUrl(params);
+  const hit = cache.get(url);
+  if (hit) return deRaw(hit.data, params, url);
+  if (!arquivo || !(ARQUIVO_FORCADO || eleicaoFinal(url, TSE_BASE))) return null;
+  const raw = await doArquivo(url, TSE_BASE).catch(() => undefined);
+  return raw ? deRaw(raw, params, url) : null;
+}
+
 /** Todas as seções totalizadas: o líder não muda mais (o mapa pode renovar bem devagar). */
 const apuracaoCompleta = (raw) => !DEMO && pct(raw?.s?.pst) >= 100;
 

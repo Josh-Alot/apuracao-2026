@@ -232,10 +232,10 @@ const abertos = new Map(); // caminho → { dado, bytes }
 let abertosBytes = 0;
 const abrindo = new Map(); // caminho → Promise
 
-let pastas = null; // eleição → URL da pasta; eleições com todas as unidades finais; ele-c.json mais recente
+let pastas = null; // eleição → URL da pasta; eleições com todas as unidades finais (e a data); ele-c.json mais recente
 function mapearPastas() {
   if (pastas) return pastas;
-  pastas = { eleicao: new Map(), finais: new Set(), config: null };
+  pastas = { eleicao: new Map(), finais: new Set(), datas: new Map(), config: null };
   // A simulação do 2º turno (SIMULACAO_2TURNO=1) entra como mais uma pasta, toda final: sai só dela.
   const turnos = [];
   for (const raiz of SIMULACAO ? [RAIZ_ARQUIVO, RAIZ_SIMULACAO] : [RAIZ_ARQUIVO]) {
@@ -249,7 +249,14 @@ function mapearPastas() {
     let unidades = {};
     try { unidades = JSON.parse(fs.readFileSync(new URL('manifesto.json', base), 'utf8')).unidades ?? {}; } catch {}
     const porEleicao = Map.groupBy(Object.entries(unidades), ([k]) => k.split('/')[0]);
-    for (const [e, us] of porEleicao) if (us.every(([, u]) => u.final)) pastas.finais.add(`${t.split('-')[0]}/${e}`);
+    for (const [e, us] of porEleicao) {
+      if (!us.every(([, u]) => u.final)) continue;
+      pastas.finais.add(`${t.split('-')[0]}/${e}`);
+      // Data do resultado final (a geração mais recente no TSE, "dd/mm/aaaa hh:mm:ss"), para o lastmod do
+      // sitemap; a simulação não tem data verdadeira.
+      const datas = us.map(([, u]) => /^(\d\d)\/(\d\d)\/(\d{4})/.exec(u.tse ?? '')).filter(Boolean).map((m) => `${m[3]}-${m[2]}-${m[1]}`);
+      if (raiz === RAIZ_ARQUIVO && datas.length) pastas.datas.set(`${t.split('-')[0]}/${e}`, datas.sort().at(-1));
+    }
     if (fs.existsSync(new URL('ele-c.json', base))) pastas.config = new URL('ele-c.json', base);
   }
   return pastas;
@@ -290,6 +297,9 @@ export function eleicaoFinal(url, base) {
   const m = url.startsWith(base) && /^\/([a-z]+\d+)\/(\d+)\//.exec(url.slice(base.length));
   return Boolean(m && mapearPastas().finais.has(`${m[1]}/${m[2]}`));
 }
+
+/** Data (aaaa-mm-dd) do resultado final de uma eleição toda final no arquivo, ou null. */
+export const dataFinal = (ciclo, eleicao) => mapearPastas().datas.get(`${ciclo}/${eleicao}`) ?? null;
 
 let usados = 0;
 export const estadoArquivo = () => ({

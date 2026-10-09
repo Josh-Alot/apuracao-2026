@@ -5,14 +5,18 @@ import { Num } from './Num';
 import { SeloSituacao } from './SeloSituacao';
 import { ProximaAtualizacao } from './ProximaAtualizacao';
 import { ModalCandidato } from './ModalCandidato';
+import { cliqueSimples } from './Link';
 import type { AoVivo } from '../api';
 import { corPartido, fmt, fmtPct, semAcento, titulo } from '../util';
+import { caminhoCandidato } from '../rotas.mjs';
 
 interface Props {
   resultado: Resultado | null;
   erro: string | null;
   carregando: boolean;
   titulo: string;
+  /** Nome do cargo (com o turno), só para leitores de tela e buscadores no <h1>. */
+  cargoNome: string;
   /** Pré-preenche o filtro (ex.: candidato escolhido na busca global). */
   filtroInicial?: string;
   /** Próxima consulta automática (ms) e intervalo do polling, para o aviso de atualização. */
@@ -21,15 +25,20 @@ interface Props {
   aoVivo?: AoVivo | null;
   inicioAtualizacao?: string | null;
   encerrada?: boolean;
+  /** Candidato com a ficha aberta (sq): a ficha tem URL própria, então o estado fica no App. */
+  candidatoAberto?: string;
+  onAbrirCandidato: (c: Candidato) => void;
+  onFecharCandidato: () => void;
 }
 
 const PAGINA = 60;
 
-export function PainelResultado({ resultado: r, erro, carregando, titulo: tituloLocal, filtroInicial, proxima, intervalo, aoVivo, inicioAtualizacao, encerrada }: Props) {
+export function PainelResultado({
+  resultado: r, erro, carregando, titulo: tituloLocal, cargoNome, filtroInicial, proxima, intervalo, aoVivo, inicioAtualizacao,
+  encerrada, candidatoAberto: aberto, onAbrirCandidato, onFecharCandidato,
+}: Props) {
   const [filtro, setFiltro] = useState(filtroInicial ?? '');
   const [limite, setLimite] = useState(PAGINA);
-  /** Candidato com a ficha aberta (sq). */
-  const [aberto, setAberto] = useState<string | null>(null);
 
   useEffect(() => setFiltro(filtroInicial ?? ''), [filtroInicial]);
   useEffect(() => setLimite(PAGINA), [filtro, r?.cargo.cd]);
@@ -46,8 +55,10 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
     });
   }, [r, filtro]);
 
-  if (erro && !r) return <section className="painel"><h2>{tituloLocal}</h2><p className="erro">{erro}</p></section>;
-  if (!r) return <EsqueletoPainel titulo={tituloLocal} />;
+  // O título do painel é o <h1> da página (a marca no topo não é); o cargo entra só para leitores de tela e buscadores.
+  const h1 = <h1>{tituloLocal}<span className="visualmente-oculto">: {cargoNome}</span></h1>;
+  if (erro && !r) return <section className="painel">{h1}<p className="erro">{erro}</p></section>;
+  if (!r) return <EsqueletoPainel titulo={h1} />;
 
   const posicao = new Map(r.candidatos.map((c, i) => [c.sq, i + 1]));
   const maxPct = Math.max(1, ...r.candidatos.slice(0, 1).map((c) => c.pct));
@@ -57,7 +68,7 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
     <section className={`painel ${carregando ? 'atualizando' : ''}`} aria-busy={carregando}>
       <header className="painel-topo">
         <div>
-          <h2>{tituloLocal}</h2>
+          {h1}
           <div className="muted">
             {r.cargo.nome}
             {r.cargo.vagas > 1 && ` · ${r.cargo.vagas} vagas`}
@@ -95,7 +106,7 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
 
       <ol className="candidatos">
         {lista.slice(0, limite).map((c) => (
-          <LinhaCandidato key={c.sq} c={c} pos={posicao.get(c.sq)!} maxPct={maxPct} onAbrir={() => setAberto(c.sq)} />
+          <LinhaCandidato key={c.sq} c={c} pos={posicao.get(c.sq)!} maxPct={maxPct} onAbrir={() => onAbrirCandidato(c)} />
         ))}
       </ol>
       {lista.length === 0 && <p className="muted">Nenhum candidato encontrado.</p>}
@@ -105,7 +116,7 @@ export function PainelResultado({ resultado: r, erro, carregando, titulo: titulo
         </button>
       )}
       {candAberto && (
-        <ModalCandidato c={candAberto} pos={posicao.get(candAberto.sq)!} cargo={r.cargo.nome} onFechar={() => setAberto(null)} />
+        <ModalCandidato c={candAberto} pos={posicao.get(candAberto.sq)!} cargo={r.cargo.nome} onFechar={onFecharCandidato} />
       )}
     </section>
   );
@@ -124,9 +135,20 @@ function LinhaCandidato({ c, pos, maxPct, onAbrir }: { c: Candidato; pos: number
       )}
       <div className="cand-info">
         <div className="cand-nome">
-          <button className="cand-abrir" onClick={(e) => { e.stopPropagation(); onAbrir(); }} title="Ver ficha do candidato">
+          {/* Link para a ficha (URL própria); ctrl/cmd/meio-clique abrem a ficha numa aba nova. */}
+          <a
+            className="cand-abrir"
+            href={caminhoCandidato(c.sq, c.nomeUrna)}
+            onClick={(e) => {
+              e.stopPropagation(); // a linha inteira também abre a ficha
+              if (!cliqueSimples(e)) return;
+              e.preventDefault();
+              onAbrir();
+            }}
+            title="Ver ficha do candidato"
+          >
             <strong>{titulo(c.nomeUrna)}</strong>
-          </button>
+          </a>
           <span className="numero">{c.numero}</span>
           <span className="partido" style={{ '--cor': cor } as CSSProperties}>{c.partido}</span>
           <SeloSituacao c={c} />

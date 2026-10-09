@@ -2,12 +2,15 @@ import { type CSSProperties, Fragment, useEffect, useMemo, useRef, useState } fr
 import { getJson, qs } from '../api';
 import { Esq } from './Carregando';
 import { Num } from './Num';
+import { Link } from './Link';
 import { SeloSituacao } from './SeloSituacao';
 import type { Cargo, ItemBusca } from '../types';
 import { PARTIDOS, UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../util';
 
 interface Props {
   cargos: Cargo[];
+  /** Caminho da tela do item (cargo/UF), para o link; o clique simples chama `onEscolher`. */
+  href: (item: ItemBusca) => string;
   onEscolher: (item: ItemBusca) => void;
 }
 
@@ -24,7 +27,7 @@ const REPETIR_PARCIAL_MS = 4_000;
 const POR_PAGINA = 50;
 const PAGINA_PARTIDO = 200;
 
-export function BarraBusca({ cargos, onEscolher }: Props) {
+export function BarraBusca({ cargos, href, onEscolher }: Props) {
   const [termo, setTermo] = useState('');
   const [cargo, setCargo] = useState('');
   const [uf, setUf] = useState('');
@@ -162,7 +165,7 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
                       <li className="busca-grupo">{i.cargoNome}</li>
                     )}
                     <li>
-                      <button onClick={() => { onEscolher(i); setAberto(false); }}>
+                      <Link href={href(i)} onNavegar={() => { onEscolher(i); setAberto(false); }}>
                         <img className="foto pequena" src={i.foto} alt="" loading="lazy"
                           onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
                         <span className="busca-info">
@@ -177,7 +180,7 @@ export function BarraBusca({ cargos, onEscolher }: Props) {
                           <strong><Num valor={i.votos} formatar={fmt} /></strong>
                           <span className="muted"><Num valor={i.pct} formatar={fmtPct} /></span>
                         </span>
-                      </button>
+                      </Link>
                     </li>
                   </Fragment>
                 ))}

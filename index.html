@@ -7,7 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..800&family=Libre+Franklin:wght@400..800&display=swap" rel="stylesheet" />
-    <title>Apuração 2026</title>
+    <title>Apuração 2026: resultados das eleições ao vivo</title>
+    <!-- Por rota, o servidor (server/seo.mjs) troca o título, o bloco seo abaixo e o resumo no #root; no vite dev ficam assim. -->
+    <!--seo-->
+    <meta name="description" content="Apuração das Eleições 2026 com dados oficiais do TSE: presidente, governador, senador e deputados, com mapa por estado, município e zona eleitoral." />
+    <!--/seo-->
     <script>
       // Aplica o tema escolhido antes da primeira pintura (sem escolha salva, segue o sistema).
       try {
@@ -17,7 +21,7 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><!--seo:conteudo--></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
