@@ -769,18 +769,19 @@ const resumoCand = (c) => (c && c.votos > 0
   : null);
 
 /**
- * Resumo enxuto usado para colorir o mapa. No 2º turno (com `r1`, o resultado do 1º turno na mesma
- * região) traz também o 2º colocado e se a região "virou": quem lidera agora ficou atrás do rival
+ * Resumo enxuto usado para colorir o mapa: líder e 2º colocado (o mapa pinta pela vantagem; a lateral mostra a
+ * diferença por UF e as disputas apertadas) e o eleitorado (maiores eleitorados). No 2º turno (com `r1`, o
+ * resultado do 1º turno na mesma região) traz também se a região "virou": quem lidera agora ficou atrás do rival
  * no 1º turno (entre os dois finalistas).
  */
 export function resumo(r, r1) {
   if (!r) return null;
   const lider = resumoCand(r.candidatos[0]);
-  const out = { pctApurado: r.secoes.pct, lider };
+  const segundo = lider ? resumoCand(r.candidatos[1]) : null;
+  const out = { pctApurado: r.secoes.pct, eleitorado: r.eleitorado.total, lider, segundo };
   if (r1 === undefined) return out;
-  out.segundo = lider ? resumoCand(r.candidatos[1]) : null;
   const antes = (n) => r1?.candidatos.find((c) => c.numero === n)?.votos ?? 0;
-  out.virou = !!(lider && out.segundo && r1 && antes(out.segundo.numero) > antes(lider.numero));
+  out.virou = !!(lider && segundo && r1 && antes(segundo.numero) > antes(lider.numero));
   return out;
 }
 

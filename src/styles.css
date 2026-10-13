@@ -1,77 +1,103 @@
-/* Estilo "noite de apuração de jornal": papel creme, serifa nos títulos, números grandes,
-   filetes em vez de cartões e cor forte reservada aos partidos. Tema escuro = "edição noturna". */
+/* Tema "Plantão": mesa de redação na noite da apuração. Tipografia condensada (Archivo), números grandes,
+   rótulos em fonte monoespaçada (IBM Plex Mono), filetes finos e nenhum canto arredondado. Cor forte só nos
+   partidos; --ao-vivo (âmbar) só em status, nunca em dado. Edição diurna (clara) e noturna (escura). */
 
 :root {
-  --bg: #faf7f0;
-  --superficie: #faf7f0;
-  --texto: #141414;
-  --muted: #6b675f;
-  --borda: #ddd6c8;
-  --destaque: #141414;
-  --destaque-suave: #efe9dc;
-  --sem-dado: #e6e0d4;
+  --bg: #f5f4f0;
+  --superficie: #eae8e2;
+  --faixa: #ecebe6;
+  --campo: #ffffff;
+  --modal: #f5f4f0;
+  --texto: #141413;
+  --texto-2: #45423c;
+  --muted: #5f5b54;
+  --borda: #d6d3cb;
+  --borda-forte: #c4c0b6;
+  --eixo: #8a857b;
+  --sem-dado: #dcd9d1;
+  --ao-vivo: #a14a06;
+  /* Fundo da faixa de votação: o mesmo âmbar nos dois temas (texto #111110 com contraste 9:1). */
+  --aviso: #f2a33a;
+  --destaque: var(--texto);
   --mistura-partido: 65%; /* quanto da cor do partido entra no texto da sigla */
-  --ao-vivo: #b45309;
-  --erro: #b3261e;
-  --sombra: none;
+  --erro: #9b1c1c;
   --raio: 0;
-  --fonte-corpo: 'Libre Franklin', system-ui, sans-serif;
-  --fonte-titulo: 'Fraunces', Georgia, serif;
+  --sombra: none;
+  --fonte-corpo: 'Archivo', 'Helvetica Neue', sans-serif;
+  --fonte-titulo: 'Archivo', 'Helvetica Neue', sans-serif;
+  --fonte-dado: 'IBM Plex Mono', ui-monospace, monospace;
+  --gutter: 24px;
+  --largura: 1432px;
   color-scheme: light;
 }
 
-/* Tema escuro: segue o sistema, a menos que o leitor tenha escolhido um tema no botão do topo
+/* Edição noturna: segue o sistema, a menos que o leitor tenha escolhido no botão do topo
    (atributo data-tema no <html>, aplicado em index.html antes da pintura). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
-    --bg: #121212;
-    --superficie: #121212;
-    --texto: #f1ece2;
-    --muted: #a39e94;
-    --borda: #34312c;
-    --destaque: #f1ece2;
-    --destaque-suave: #26231f;
-    --sem-dado: #2c2925;
+    --bg: #111110;
+    --superficie: #1a1917;
+    --faixa: #161513;
+    --campo: #1a1917;
+    --modal: #161513;
+    --texto: #ede8dd;
+    --texto-2: #c9c3b8;
+    --muted: #9a948a;
+    --borda: #2e2c28;
+    --borda-forte: #3a3833;
+    --eixo: #5c5850;
+    --sem-dado: #2a2825;
+    --ao-vivo: #f2a33a;
     --mistura-partido: 40%;
-    --ao-vivo: #f59e0b;
     --erro: #ff8a80;
     color-scheme: dark;
   }
 }
 
 :root[data-tema="escuro"] {
-  --bg: #121212;
-  --superficie: #121212;
-  --texto: #f1ece2;
-  --muted: #a39e94;
-  --borda: #34312c;
-  --destaque: #f1ece2;
-  --destaque-suave: #26231f;
-  --sem-dado: #2c2925;
+  --bg: #111110;
+  --superficie: #1a1917;
+  --faixa: #161513;
+  --campo: #1a1917;
+  --modal: #161513;
+  --texto: #ede8dd;
+  --texto-2: #c9c3b8;
+  --muted: #9a948a;
+  --borda: #2e2c28;
+  --borda-forte: #3a3833;
+  --eixo: #5c5850;
+  --sem-dado: #2a2825;
+  --ao-vivo: #f2a33a;
   --mistura-partido: 40%;
-  --ao-vivo: #f59e0b;
   --erro: #ff8a80;
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
+/* ======================= base ======================= */
+
+* { box-sizing: border-box; border-radius: var(--raio); }
+html, body { overflow-x: clip; }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--texto);
-  font: 15px/1.45 var(--fonte-corpo);
+  font: 15px/1.4 var(--fonte-corpo);
   font-variant-numeric: tabular-nums;
 }
 button, input, select { font: inherit; color: inherit; }
 /* A lista aberta de um <select> é desenhada pelo navegador/sistema: sem cores explícitas ela pode
    vir com fundo claro herdando o texto claro do tema escuro (ilegível). */
-select, option, optgroup { background-color: var(--superficie); color: var(--texto); }
+select, option, optgroup { background-color: var(--campo); color: var(--texto); }
 button { cursor: pointer; }
-h1, h2, h3, .marca-titulo { margin: 0; line-height: 1.2; font-family: var(--fonte-titulo); }
+h1, h2, h3, h4 { margin: 0; line-height: 1.1; font-family: var(--fonte-titulo); }
+p { margin: 0; }
+:focus-visible { outline: 2px solid var(--texto); outline-offset: 2px; }
 /* Links internos com cara de botão/aba (navegação com <a href> rastreável, ver components/Link.tsx). */
-.cargos a, .turnos a, .trilha a, .lista-regioes li a, .lista-duelos li a, .busca-resultados li a,
-.cand-abrir, .botao-exterior, .cartao-exterior, .indice-regioes a { color: inherit; text-decoration: none; }
-/* Só para leitores de tela e buscadores (ex.: o cargo no <h1> do painel). */
+.cargos a, .turnos a, .trilha a, .lista-regioes li a, .lista-duelos li a, .busca-resultados li a, .ticker a,
+.diferenca-uf a, .destaques-uf a, .cand-abrir, .cartao-exterior, .indice-regioes a, .placar-nome {
+  color: inherit; text-decoration: none;
+}
+/* Só para leitores de tela e buscadores (ex.: o cargo no <h1> da tela). */
 .visualmente-oculto {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
@@ -82,611 +108,521 @@ h1, h2, h3, .marca-titulo { margin: 0; line-height: 1.2; font-family: var(--font
 .pad { padding: 12px 16px; }
 .erro { color: var(--erro); }
 
-.app { max-width: 1480px; margin: 0 auto; padding: 0 16px 24px; }
+/* Largura total para as faixas (topo, aviso, status); o conteúdo de cada uma alinha na coluna central. */
+.app { padding-bottom: 32px; }
+.app > * { padding-inline: max(var(--gutter), calc((100% - var(--largura)) / 2)); }
 
-/* ---------- topo ---------- */
-.topo {
-  display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between;
-  padding: 16px 0 12px;
+/* ---------- peças comuns ---------- */
+.rotulo-secao {
+  font: 600 12px/1.3 var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em; margin: 0;
 }
-.marca { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
-.marca-titulo { display: inline-flex; align-items: center; gap: 0.28em; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
-.logo { width: 0.82em; height: 0.82em; flex: none; }
+.titulo-bloco {
+  font: 800 32px/1 var(--fonte-titulo); font-stretch: 62%; text-transform: uppercase;
+  padding-bottom: 8px; margin: 0 0 12px; border-bottom: 1px solid var(--texto);
+}
+.bloco-cabecalho {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px;
+  padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--texto);
+}
+.titulo-bloco-linha { align-items: flex-end; margin-bottom: 0; }
+.titulo-bloco-linha .titulo-bloco { border: 0; padding: 0; margin: 0; }
 
+.botao-icone {
+  display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; flex: none;
+  border: 1px solid var(--borda); background: transparent; color: var(--texto);
+}
+.botao-icone:hover { border-color: var(--texto); }
+
+.campo-rotulado { display: inline-flex; align-items: center; gap: 8px; }
+.campo-rotulado > span {
+  font: 600 11px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+}
+.campo-rotulado input, .lista-topo input {
+  height: 36px; padding: 0 10px; border: 1px solid var(--borda); background: var(--campo);
+  font: 13px var(--fonte-dado); min-width: 0;
+}
+.campo-rotulado input:focus, .lista-topo input:focus, .busca input:focus { outline: 2px solid var(--texto); outline-offset: -1px; }
+
+.quadrado { display: inline-block; width: 8px; height: 8px; margin-right: 6px; flex: none; vertical-align: 1px; }
+/* Bolinha de partido (hemiciclo, listas): também quadrada. */
+.bolinha { display: inline-block; width: 10px; height: 10px; margin-right: 6px; flex: none; }
+
+.mais, .botao-texto, .busca-mais {
+  display: block; width: 100%; min-height: 40px; margin-top: 12px; padding: 8px 12px;
+  border: 1px solid var(--borda-forte); background: none; color: var(--texto);
+  font: 600 12px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em;
+}
+.mais:hover, .botao-texto:hover, .busca-mais:hover:not(:disabled) { border-color: var(--texto); }
+
+.numero { font: 500 12px var(--fonte-dado); color: var(--muted); }
+.partido { font: 600 11px var(--fonte-dado); letter-spacing: 0.04em; }
+/* A sigla é texto: mistura a cor do partido com a do texto para o amarelo não sumir no claro
+   e o azul-marinho/preto (PL, UP) não sumirem no escuro. */
+.partido { color: color-mix(in oklab, var(--cor) var(--mistura-partido), var(--texto)); }
+
+/* Selos de situação e do topo: etiqueta retangular em Plex Mono. */
 .selo {
-  display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 99px;
-  background: var(--destaque-suave); color: var(--destaque); white-space: nowrap;
+  display: inline-block; padding: 1px 6px; border: 1px solid currentColor; white-space: nowrap;
+  font: 600 11px/1.4 var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
 }
-.selo-demo { color: var(--ao-vivo); }
-.selo-eleito { background: var(--destaque); color: #fff; }
+.selo-demo { color: var(--ao-vivo); border-color: var(--ao-vivo); text-decoration: none; }
+.selo-eleito { background: var(--texto); color: var(--bg); border-color: var(--texto); }
+.selo-2turno, .selo-matematico, .selo-puxador { color: var(--texto); }
+.selo-suplente { color: var(--muted); }
+.selo-puxado { color: var(--muted); font-style: italic; }
+.selo-nao-eleito { color: var(--muted); border-color: transparent; padding-left: 0; }
+.selo-anulado { color: var(--erro); }
+.selo-matematico::before { content: "✓ "; }
+.selo[title] { cursor: help; }
+.selos { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 8px; vertical-align: 1px; }
+
+.foto { display: block; object-fit: cover; object-position: top; background: var(--sem-dado); }
+.foto.pequena { width: 34px; height: 34px; flex: none; }
+.foto-vazia { display: grid; place-items: center; color: #fff; font-weight: 800; }
+
+/* ======================= topo ======================= */
+
+.topo {
+  display: flex; align-items: center; gap: 0 24px; min-height: 64px;
+  border-bottom: 1px solid var(--borda);
+}
+.marca { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.marca-titulo {
+  display: inline-flex; align-items: center; gap: 10px; margin: 0; white-space: nowrap;
+  font: 800 24px/1 var(--fonte-titulo); font-stretch: 70%; text-transform: uppercase;
+}
+.logo { width: 1em; height: 1em; flex: none; color: var(--texto); }
+
+.cargos { display: flex; align-self: stretch; overflow-x: auto; scrollbar-width: none; }
+.cargos::-webkit-scrollbar { display: none; }
+.cargos a {
+  display: flex; align-items: center; height: 64px; padding: 0 12px; white-space: nowrap; color: var(--muted);
+  font: 13px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cargos a:hover { color: var(--texto); }
+.cargos a.ativo { background: var(--texto); color: var(--bg); font-weight: 600; }
+.cargos .esq { align-self: center; margin: 0 8px; }
+
+.topo-acoes { display: flex; flex: 1 1 0; justify-content: flex-end; align-items: center; gap: 8px; min-width: 0; padding: 12px 0; }
+/* Sem espaço para tudo numa linha: as abas vão para uma faixa própria, rolável, abaixo da marca. */
+@media (max-width: 1280px) {
+  .topo { flex-wrap: wrap; gap: 0 16px; }
+  .cargos { order: 3; flex-basis: 100%; border-top: 1px solid var(--borda); }
+  .cargos a { height: 48px; }
+}
 
 /* ---------- busca ---------- */
-.busca { position: relative; flex: 1 1 520px; max-width: 760px; }
-.busca-campos { display: flex; gap: 6px; }
-.busca-campos input { flex: 1; min-width: 0; }
-.busca input, .busca select, .filtro input, .seletor-municipio, .lista-topo input {
-  border: 1px solid var(--borda); background: var(--superficie); border-radius: 8px; padding: 8px 12px;
+.busca { position: relative; flex: 0 1 276px; min-width: 160px; }
+.busca-botao { display: none; }
+.busca-campo { position: relative; }
+.busca-campo svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.busca-campo input {
+  width: 100%; height: 40px; padding: 0 12px 0 34px; border: 1px solid var(--borda); background: var(--campo);
+  font: 13px var(--fonte-dado);
 }
-.busca input:focus, .filtro input:focus { outline: 2px solid var(--destaque); outline-offset: -1px; }
+.busca-campo input::placeholder { color: var(--muted); }
 .busca-resultados {
-  position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0;
-  background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio);
-  box-shadow: var(--sombra); max-height: 70vh; overflow: auto;
+  position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; width: min(640px, calc(100vw - 32px));
+  background: var(--bg); border: 1px solid var(--texto); max-height: 70vh; overflow: auto;
+}
+.busca-filtros { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--borda); }
+.busca-filtros select {
+  flex: 1; min-width: 0; height: 32px; padding: 0 6px; border: 1px solid var(--borda);
+  font: 12px var(--fonte-dado);
 }
 .busca-resultados ul { list-style: none; margin: 0; padding: 0 0 6px; }
 .busca-resultados li a {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-  padding: 8px 16px; border: 0; background: none;
+  padding: 8px 16px; border-top: 1px solid var(--borda);
 }
-.busca-resultados li a:hover { background: var(--destaque-suave); }
+.busca-resultados li a:hover { background: var(--superficie); }
 .busca-info { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
-.busca-info .muted { flex-basis: 100%; }
+.busca-info strong { font-weight: 600; }
+.busca-info .muted { flex-basis: 100%; font-family: var(--fonte-dado); font-size: 11px; text-transform: uppercase; }
+.busca-info .selos { margin-left: 0; }
 .busca-resultados .busca-grupo {
-  position: sticky; top: 0; z-index: 1; padding: 6px 16px; background: var(--superficie);
-  border-bottom: 1px solid var(--borda); font-size: 0.75rem; font-weight: 600;
+  position: sticky; top: 0; z-index: 1; padding: 6px 16px; background: var(--faixa);
+  border-bottom: 1px solid var(--borda); font: 600 11px var(--fonte-dado);
   text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
 }
-.busca-mais {
-  display: block; width: calc(100% - 32px); margin: 0 16px 10px; padding: 8px;
-  border: 1px solid var(--borda); background: var(--superficie); border-radius: 8px;
-}
-.busca-mais:hover:not(:disabled) { background: var(--destaque-suave); }
+.busca-mais { width: calc(100% - 32px); margin: 4px 16px 10px; }
+.busca-esq { display: flex; align-items: center; gap: 10px; padding: 8px 16px; }
+.cand-votos { display: flex; flex-direction: column; align-items: flex-end; text-align: right; font: 13px var(--fonte-dado); }
+.cand-votos strong { font-weight: 600; }
 
-/* ---------- cargos ---------- */
-.cargos { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 12px; }
-.cargos a, .alternador button, .trilha a {
-  border: 1px solid var(--borda); background: var(--superficie); border-radius: 99px;
-  padding: 6px 14px; white-space: nowrap;
+/* ======================= aviso de votação ======================= */
+
+.aviso-votacao {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px;
+  padding-block: 14px; background: var(--aviso); color: #111110;
 }
-.cargos a.ativo, .alternador button.ativo {
-  background: var(--destaque); border-color: var(--destaque); color: #fff;
+.aviso-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 420px; }
+.aviso-texto strong { font: 800 22px/1.05 var(--fonte-titulo); font-stretch: 70%; text-transform: uppercase; }
+.aviso-texto span { font-size: 14px; }
+.aviso-contagem { display: flex; flex-direction: column; align-items: flex-end; }
+.aviso-contagem span { font: 600 11px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em; }
+.aviso-contagem b { font: 600 26px/1.1 var(--fonte-dado); }
+
+/* ======================= faixa de status ======================= */
+
+.faixa-status {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px;
+  padding-block: 10px; background: var(--faixa); border-bottom: 1px solid var(--borda);
+  font: 12px/1.4 var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+}
+.faixa-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; }
+.faixa-estado { display: inline-flex; align-items: center; gap: 8px; color: var(--ao-vivo); font-weight: 600; }
+.faixa-estado i { width: 8px; height: 8px; background: var(--ao-vivo); }
+.faixa-pct { color: var(--texto); font-weight: 600; }
+.auto { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.auto input { accent-color: var(--texto); margin: 0; }
+
+.turnos { display: flex; gap: 6px; }
+.turnos a {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px;
+  border: 1px solid var(--borda); color: var(--muted); white-space: nowrap;
+}
+.turnos a:hover { color: var(--texto); }
+.turnos a.ativo { border-color: var(--texto); color: var(--texto); font-weight: 600; }
+.turnos a span { font-weight: 400; }
+
+/* "a cada 30 s · próxima em 12 s" */
+.proxima { display: inline-flex; align-items: center; gap: 8px; cursor: help; }
+.proxima-anel {
+  width: 24px; height: 4px; flex: none;
+  background: linear-gradient(90deg, currentColor var(--p, 0%), var(--borda-forte) 0);
+}
+.proxima.pausada { font-style: normal; }
+.ponto-ao-vivo { width: 7px; height: 7px; background: var(--ao-vivo); animation: esq-pulsar 1.6s ease-in-out infinite; }
+.proxima-ao-vivo { cursor: help; }
+.ao-vivo-off { color: var(--erro); }
+.nota-mapa { margin-top: 10px; font-family: var(--fonte-dado); font-size: 11px; }
+
+/* ======================= ticker de UFs ======================= */
+
+.ticker { margin-top: 16px; }
+.ticker ul {
+  display: flex; list-style: none; margin: 0; padding: 0; overflow-x: auto; scrollbar-width: none;
+  border-bottom: 1px solid var(--borda);
+}
+.ticker ul::-webkit-scrollbar { display: none; }
+.ticker a {
+  display: flex; flex-direction: column; gap: 2px; min-width: 64px; padding: 10px 10px 9px;
+  border-right: 1px solid var(--borda); border-top: 3px solid var(--cor); font-family: var(--fonte-dado);
+}
+.ticker a:hover { background: var(--superficie); }
+.ticker-uf { font-size: 12px; color: var(--muted); }
+.ticker-lider { font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+/* ======================= cabeçalho das telas ======================= */
+
+.linha-rotulo {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px;
+  margin-top: 24px;
+  font: 600 13px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em;
+}
+.linha-rotulo h1 { font: inherit; letter-spacing: inherit; }
+.linha-rotulo-direita { color: var(--muted); font-weight: 400; }
+.placar .linha-rotulo { margin-top: 0; }
+
+.cabecalho-tela { margin-top: 20px; }
+.trilha-linha { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.trilha {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+  font: 13px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.trilha a { color: var(--muted); }
+.trilha a:hover { color: var(--texto); text-decoration: underline; text-underline-offset: 3px; }
+.trilha span[aria-hidden] { color: var(--borda-forte); }
+.trilha [aria-current] { font-weight: 600; }
+.seletor-municipio input { width: 240px; }
+.titulo-tela {
+  margin-top: 14px; font: 800 56px/0.95 var(--fonte-titulo); font-stretch: 62%; text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.subtitulo-tela {
+  margin-top: 8px; color: var(--muted);
+  font: 13px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
 }
 
-/* ---------- grade ---------- */
-.grade { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(360px, 1fr); gap: 16px; align-items: start; }
-@media (max-width: 960px) { .grade { grid-template-columns: 1fr; } }
+/* ======================= placar ======================= */
 
-.coluna-mapa, .painel {
-  background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio);
-  box-shadow: var(--sombra); padding: 14px;
+.placar { margin-top: 24px; transition: opacity 0.3s; }
+.placar.atualizando { opacity: 0.85; }
+.placar-colunas {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 24px 64px;
+  margin-top: 16px;
 }
-.coluna-mapa { display: flex; flex-direction: column; gap: 12px; }
-.coluna-painel { position: sticky; top: 12px; }
-@media (max-width: 960px) { .coluna-painel { position: static; } }
+.placar-lado { border-top: 6px solid var(--cor); padding-top: 12px; min-width: 0; }
+.placar-nome-linha { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.placar-nome {
+  font: 800 44px/1 var(--fonte-titulo); font-stretch: 62%; text-transform: uppercase; min-width: 0;
+  overflow-wrap: anywhere;
+}
+.placar-nome:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.placar-selo {
+  flex: none; padding: 4px 8px; background: var(--texto); color: var(--bg); white-space: nowrap;
+  font: 600 12px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.placar-sub { margin-top: 6px; color: var(--muted); font: 13px var(--fonte-dado); }
+.placar-numeros {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px 24px; margin-top: 10px;
+}
+.placar-pct {
+  font: 800 clamp(96px, 12vw, 168px)/0.82 var(--fonte-titulo); font-stretch: 62%; letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.placar-pct.vazio { color: var(--borda-forte); }
+.placar-sinal { font-size: 0.4em; color: var(--muted); margin-left: 0.04em; letter-spacing: 0; }
+.placar-dados { display: grid; gap: 6px; margin: 0; font: 13px var(--fonte-dado); }
+.placar-dados div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.placar-dados dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.placar-dados dd { margin: 0; font-weight: 600; text-align: right; }
 
-.barra-mapa { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
-.trilha { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.trilha a { padding: 4px 10px; border-radius: 6px; }
-.trilha a:hover { border-color: var(--destaque); }
-.controles { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.placar-barra { position: relative; display: flex; height: 14px; margin-top: 24px; background: var(--borda); }
+.placar-barra i { display: block; height: 100%; flex: none; transition: width 0.6s ease; }
+.placar-outros { background: var(--borda-forte); }
+.placar-barra.vazia { background: repeating-linear-gradient(90deg, var(--borda) 0 6px, var(--superficie) 6px 10px); }
+.placar-marca { position: absolute; left: 50%; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; background: var(--texto); }
+.placar-legenda {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin-top: 10px;
+  color: var(--muted); font: 12px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.placar-barra-mini { height: 8px; margin-top: 4px; }
+.placar-barra-mini .placar-marca { top: -3px; bottom: -3px; }
+
+.placar-compacto .placar-colunas { margin-top: 20px; }
+.placar-compacto .placar-nome { font-size: 30px; }
+.placar-compacto .placar-pct { font-size: 96px; }
+
+/* ======================= mapa + lateral ======================= */
+
+.grade {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 24px 32px; align-items: start;
+  margin-top: 32px;
+}
+.grade.sem-lateral { grid-template-columns: minmax(0, 1fr); }
+.coluna-mapa { min-width: 0; }
+.coluna-lateral { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
+
+.painel-mapa { background: var(--superficie); padding: 18px 20px 20px; }
+.mapa-cabecalho { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
 .alternador { display: flex; }
-.alternador button { border-radius: 0; padding: 4px 12px; }
-.alternador button:first-child { border-radius: 99px 0 0 99px; }
-.alternador button:last-child { border-radius: 0 99px 99px 0; border-left: 0; }
-.auto { display: flex; gap: 4px; align-items: center; font-size: 0.85rem; }
-.seletor-municipio { padding: 4px 10px; width: 200px; }
+.alternador button {
+  height: 32px; padding: 0 12px; border: 1px solid var(--borda-forte); background: transparent; color: var(--texto);
+  font: 12px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.alternador button + button { margin-left: -1px; }
+.alternador button.ativo { background: var(--texto); border-color: var(--texto); color: var(--bg); font-weight: 600; }
 
-/* ---------- mapa ---------- */
 .mapa { position: relative; }
-.mapa svg { width: 100%; height: auto; max-height: 72vh; display: block; }
-.regiao { stroke: var(--superficie); stroke-width: 0.6; cursor: pointer; transition: fill 0.4s, fill-opacity 0.3s; }
-.regiao:hover { stroke: var(--texto); stroke-width: 1.4; }
-.mapa svg { touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+.mapa svg { width: 100%; height: auto; max-height: 72vh; display: block; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 /* Ampliado, o gesto de 1 dedo arrasta o mapa em vez de rolar a página. */
 .mapa svg.ampliado { touch-action: none; }
 .mapa svg:active { cursor: grabbing; }
-.zoom-controles {
-  position: absolute; top: 8px; right: 8px; z-index: 5;
-  display: flex; flex-direction: column; gap: 0; align-items: flex-end;
-}
-.zoom-controles button {
-  min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--texto); margin-top: -1px;
-  background: var(--superficie); color: var(--texto); font-size: 1.15rem; line-height: 1; border-radius: 0;
-}
-.zoom-controles button:hover:not(:disabled) { background: var(--destaque-suave); }
-.zoom-controles button:disabled { color: var(--muted); border-color: var(--borda); cursor: default; }
-.zoom-controles .zoom-reset { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px; }
-.quadro-ilha { fill: none; stroke: var(--borda); stroke-width: 1; pointer-events: none; }
+.regiao { stroke: var(--superficie); stroke-width: 0.6; cursor: pointer; transition: fill 0.4s, fill-opacity 0.3s; }
+.regiao:hover { stroke: var(--texto); stroke-width: 1.4; }
+.quadro-ilha { fill: none; stroke: var(--borda-forte); stroke-width: 1; pointer-events: none; }
 .contorno-selecao { fill: none; stroke: var(--texto); stroke-width: 2.5; pointer-events: none; }
+.rotulo-regiao {
+  fill: #141413; stroke: rgb(255 255 255 / 0.85); paint-order: stroke; stroke-linejoin: round;
+  font-family: var(--fonte-dado); font-weight: 600; text-anchor: middle; pointer-events: none;
+}
+
+.zoom-controles { position: absolute; top: 0; right: 0; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; }
+.zoom-controles button {
+  width: 36px; height: 36px; padding: 0; margin-top: -1px; border: 1px solid var(--borda-forte);
+  background: var(--bg); color: var(--texto); font: 500 18px/1 var(--fonte-dado);
+}
+.zoom-controles button:hover:not(:disabled) { border-color: var(--texto); }
+.zoom-controles button:disabled { color: var(--borda-forte); cursor: default; }
+.zoom-controles .zoom-reset {
+  width: auto; min-width: 36px; padding: 0 6px; margin-top: 6px;
+  font: 600 10px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em;
+}
+
 .tooltip {
-  position: absolute; pointer-events: none; z-index: 10; width: 220px;
-  background: var(--superficie); border: 1px solid var(--borda); border-radius: 8px;
-  box-shadow: var(--sombra); padding: 8px 10px; font-size: 0.85rem;
+  position: absolute; pointer-events: none; z-index: 10; width: 230px; padding: 10px 12px;
+  background: var(--bg); border: 1px solid var(--texto); font: 13px/1.4 var(--fonte-corpo);
 }
-.tooltip strong { display: block; margin-bottom: 2px; }
-.bolinha { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; flex: none; }
-.legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; margin-top: 8px; }
-.legenda-item { display: inline-flex; align-items: center; }
+.tooltip-nome {
+  display: block; font: 800 18px/1.05 var(--fonte-titulo); font-stretch: 75%; text-transform: uppercase;
+}
+.tooltip-meta { margin: 2px 0 6px; font: 11px var(--fonte-dado); text-transform: uppercase; }
+.tooltip-linha { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: baseline; gap: 6px; padding: 2px 0; }
+.tooltip-linha.lider { font-weight: 600; }
+.tooltip-linha > span:last-child { font-family: var(--fonte-dado); }
+.amostra { display: inline-block; width: 10px; height: 10px; }
+.tooltip-dica {
+  margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--borda);
+  font: 11px var(--fonte-dado); text-transform: uppercase; color: var(--muted);
+}
+
+.mapa-rodape { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; margin-top: 14px; }
+.legenda {
+  display: flex; flex-direction: column; gap: 6px; flex: 1 1 280px;
+  font: 11px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+}
+.legenda-linha { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.legenda-nome { color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.amostras { display: flex; gap: 2px; }
+.amostras i { display: block; width: 22px; height: 10px; flex: none; }
+.legenda-escala { margin-top: 2px; }
 .legenda-gradiente { display: flex; align-items: center; gap: 8px; }
-.legenda-gradiente i { width: 160px; height: 10px; border-radius: 99px; }
+.legenda-gradiente i { width: 160px; height: 10px; }
 
-.botao-exterior {
-  align-self: flex-start; border: 1px dashed var(--borda); background: none; border-radius: 8px; padding: 6px 12px;
+.cartao-exterior {
+  display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px dashed var(--eixo);
+  font: 12px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
 }
+.cartao-exterior strong { font-weight: 600; }
+.cartao-exterior:hover { border-color: var(--texto); }
+.cartao-exterior-cands { display: flex; flex-wrap: wrap; gap: 2px 12px; text-transform: none; font-size: 13px; }
+.cartao-exterior-cands span { display: inline-flex; align-items: center; }
 
-/* ---------- lista de regiões (zonas, exterior, estados) ---------- */
-.lista-regioes h3 { font-size: 0.95rem; }
-.lista-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
-.lista-topo input { padding: 4px 10px; }
-.lista-regioes ul {
-  list-style: none; margin: 0; padding: 0; display: grid; gap: 4px;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); max-height: 340px; overflow: auto;
+.indice-regioes { margin-top: 12px; }
+.indice-regioes summary {
+  cursor: pointer; width: fit-content; padding: 10px 0; color: var(--muted);
+  font: 600 12px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em;
 }
-.lista-regioes li a {
-  width: 100%; display: flex; flex-wrap: wrap; align-items: center; text-align: left;
-  border: 1px solid var(--borda); background: var(--superficie); border-radius: 8px; padding: 6px 10px;
-}
-.lista-regioes li a:hover { border-color: var(--destaque); }
-.lista-regioes li a.ativo { border-color: var(--destaque); background: var(--destaque-suave); }
-.regiao-nome { font-weight: 600; flex: 1; }
-
-/* Índice de links das regiões do mapa (fechado por padrão) */
-.indice-regioes summary { cursor: pointer; width: fit-content; }
 .indice-regioes summary:hover { color: var(--texto); }
 .indice-regioes ul {
-  list-style: none; margin: 8px 0 0; padding: 0; columns: 200px; column-gap: 20px;
-  max-height: 340px; overflow: auto; font-size: 0.85rem;
+  list-style: none; margin: 4px 0 0; padding: 0; columns: 200px; column-gap: 20px;
+  max-height: 340px; overflow: auto; font-size: 14px;
 }
 .indice-regioes li { break-inside: avoid; padding: 2px 0; }
 .indice-regioes a:hover { text-decoration: underline; }
-.lista-regioes .muted { flex-basis: 100%; padding-left: 16px; }
 
-/* ---------- painel ---------- */
-.painel { display: flex; flex-direction: column; gap: 12px; }
-.painel-topo { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
-.painel :is(h1, h2) { font-size: 1.25rem; }
-.progresso { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
-.progresso-barra { height: 8px; border-radius: 99px; background: var(--sem-dado); overflow: hidden; }
-.progresso-barra i { display: block; height: 100%; background: var(--destaque); transition: width 0.6s; }
-
-.numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
-.numeros div { background: var(--bg); border-radius: 8px; padding: 6px 10px; }
-.numeros dt { font-size: 0.75rem; color: var(--muted); }
-.numeros dd { margin: 0; font-weight: 600; }
-.numeros small { font-weight: 400; color: var(--muted); }
-@media (max-width: 480px) { .numeros { grid-template-columns: repeat(2, 1fr); } }
-
-.filtro input { width: 100%; }
-
-.candidatos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.candidato {
-  display: grid; grid-template-columns: 30px 44px minmax(0, 1fr) auto; gap: 10px; align-items: center;
-  padding: 8px 0; border-bottom: 1px solid var(--borda);
+/* ---------- diferença por UF ---------- */
+.diferenca-uf ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.diferenca-uf a {
+  display: grid; grid-template-columns: 34px 1fr 1fr 52px; align-items: center;
+  font: 12px var(--fonte-dado);
 }
-.pos { color: var(--muted); font-size: 0.85rem; text-align: right; }
-.foto { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: var(--sem-dado); }
-.foto.pequena { width: 34px; height: 34px; flex: none; }
-.foto-vazia { display: grid; place-items: center; color: #fff; font-weight: 700; }
-.cand-nome { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.numero { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
-.partido { font-size: 0.7rem; font-weight: 700; border: 1px solid var(--cor); border-radius: 4px; padding: 0 5px; }
-/* A sigla é texto: mistura a cor do partido com a do texto para o amarelo (Missão, PSD, PSB) não sumir
-   no creme e o azul-marinho/preto (PL, UP) não sumir no tema escuro. */
-.partido { color: color-mix(in oklab, var(--cor) var(--mistura-partido), var(--texto)); }
-.barra { height: 6px; background: var(--bg); border-radius: 99px; margin-top: 5px; overflow: hidden; }
-.barra i { display: block; height: 100%; border-radius: 99px; transition: width 0.6s; }
-.cand-votos { display: flex; flex-direction: column; align-items: flex-end; text-align: right; font-size: 0.85rem; }
-.cand-votos strong { font-size: 1rem; }
-.mais { border: 1px solid var(--borda); background: none; border-radius: 8px; padding: 8px; }
+.diferenca-uf a:hover { background: var(--superficie); }
+.dif-metade { display: flex; height: 16px; }
+.dif-esquerda { justify-content: flex-end; border-right: 1px solid var(--eixo); }
+.dif-direita { justify-content: flex-start; }
+.dif-metade i { display: block; height: 100%; }
+.dif-valor { text-align: right; font-weight: 600; }
 
-.rodape { padding-top: 16px; text-align: center; }
+/* ---------- tela de UF: maiores eleitorados e disputas apertadas ---------- */
+.destaques-uf { display: flex; flex-direction: column; gap: 32px; }
+.maiores-colunas { display: flex; }
+.maiores-colunas span, .maiores-eleitorados a > span:not(.maiores-nome) { width: 64px; text-align: right; }
+.maiores-eleitorados ol, .disputas-apertadas ul { list-style: none; margin: 0; padding: 0; }
+.maiores-eleitorados a {
+  display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px; align-items: center; gap: 0;
+  padding: 7px 0 7px 10px; border-left: 4px solid var(--cor); margin-top: 4px;
+  font: 13px var(--fonte-dado);
+}
+.maiores-eleitorados a:hover { background: var(--superficie); }
+.maiores-nome { display: flex; flex-direction: column; min-width: 0; }
+.maiores-nome strong {
+  font: 600 14px var(--fonte-corpo); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.maiores-nome .muted { font-size: 11px; }
+.vence { color: var(--texto); font-weight: 600; }
+.disputas-apertadas ul { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.disputas-apertadas a { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-top: 1px solid var(--borda); }
+.disputas-apertadas li:nth-child(-n + 2) a { border-top: 0; }
+.disputas-apertadas strong { font: 600 14px var(--fonte-corpo); }
+.disputas-apertadas span { font: 600 12px var(--fonte-dado); }
+.disputas-apertadas a:hover strong { text-decoration: underline; }
 
-/* ---------- celular ---------- */
-.cargos { scrollbar-width: none; }
-@media (max-width: 640px) {
-  .busca-campos { flex-wrap: wrap; }
-  .busca-campos input { flex-basis: 100%; }
-  .busca-campos select { flex: 1; min-width: 0; }
-  .seletor-municipio { width: 100%; }
+/* ---------- listas (zonas, exterior, estados) ---------- */
+.lista-regioes h3 { font: 600 12px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em; }
+.lista-topo {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--texto);
 }
-
-/* ---------- carregamento ---------- */
-.barra-topo {
-  position: fixed; top: 0; left: 0; z-index: 100; height: 3px; width: 0;
-  background: var(--destaque); opacity: 0; pointer-events: none;
+.lista-topo input { height: 32px; width: 160px; }
+.lista-regioes ul {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 0 20px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); max-height: 420px; overflow: auto;
 }
-.barra-topo.carregando { opacity: 1; width: 85%; transition: width 8s cubic-bezier(0.1, 0.7, 0.2, 1), opacity 0.1s; }
-.barra-topo.concluindo { opacity: 0; width: 100%; transition: width 0.2s ease-out, opacity 0.3s 0.15s; }
-
-.esq {
-  display: block; max-width: 100%; border-radius: 4px; background: var(--sem-dado);
-  animation: esq-pulsar 1.4s ease-in-out infinite;
+.lista-regioes li a {
+  width: 100%; display: flex; flex-wrap: wrap; align-items: center; padding: 8px 0; min-height: 44px;
+  border-bottom: 1px solid var(--borda);
 }
-.esq-redondo { border-radius: 50%; }
-.esq-espaco { margin-top: 6px; }
-.cand-votos .esq { margin-left: auto; }
-.cargos .esq { flex: none; border-radius: 99px; }
-.esq-mapa {
-  aspect-ratio: 1000 / 820; max-height: 72vh; display: grid; place-items: center;
-  background: repeating-linear-gradient(-45deg, var(--sem-dado) 0 1px, transparent 1px 9px);
-  animation: esq-pulsar 1.4s ease-in-out infinite;
-}
-.esq-mapa-rotulo {
-  background: var(--superficie); padding: 4px 12px; font-size: 0.75rem; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
-}
-.numeros dd .esq { margin-top: 6px; }
-.mapa svg.aguardando .regiao { animation: esq-pulsar 1.4s ease-in-out infinite; }
-
-@keyframes esq-pulsar { 50% { opacity: 0.45; } }
-@media (prefers-reduced-motion: reduce) {
-  .esq, .esq-mapa, .mapa svg.aguardando .regiao { animation: none; }
-  .barra-topo.carregando { transition: opacity 0.1s; width: 100%; opacity: 0.6; }
-}
-
-/* ---------- números ao vivo ---------- */
-/* Enquanto o TSE é consultado, os números pulsam (após 300 ms, para não piscar em respostas rápidas). */
-.atualizando .num { animation: esq-pulsar 1.4s ease-in-out 0.3s infinite; }
-/* Valor que acabou de mudar: realce que se desfaz. */
-.num.mudou { animation: num-realce 1.4s ease-out; border-radius: 3px; }
-@keyframes num-realce {
-  0%, 30% { background: color-mix(in srgb, var(--destaque) 22%, transparent); }
-  100% { background: transparent; }
-}
-.indicador-atualizando { animation: esq-pulsar 1.4s ease-in-out infinite; }
-.busca-esq { display: flex; align-items: center; gap: 10px; padding: 8px 16px; }
+.lista-regioes li a:hover .regiao-nome { text-decoration: underline; }
+.lista-regioes li a.ativo { background: var(--superficie); }
+.regiao-nome { font-weight: 600; flex: 1; }
+.lista-regioes .muted { flex-basis: 100%; padding-left: 16px; font-family: var(--fonte-dado); font-size: 11px; }
 .lista-regioes .num .esq { display: inline-block; vertical-align: middle; }
-@media (prefers-reduced-motion: reduce) {
-  .atualizando .num, .num.mudou, .indicador-atualizando { animation: none; }
-  .atualizando .num { opacity: 0.6; }
+
+.lista-duelos { list-style: none; margin: 12px 0 0; padding: 0; }
+.lista-duelos li a { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px 0; border-top: 1px solid var(--borda); }
+.lista-duelos li a:hover .lista-duelos-uf { text-decoration: underline; }
+.lista-duelos-uf {
+  display: flex; align-items: center; gap: 8px;
+  font: 800 20px/1 var(--fonte-titulo); font-stretch: 75%; text-transform: uppercase;
+}
+.lista-duelos-nomes { font-size: 14px; }
+.lista-duelos-nomes .lider { font-weight: 600; }
+.lista-duelos .pequeno { font-family: var(--fonte-dado); font-size: 11px; text-transform: uppercase; }
+
+/* ======================= tabela de candidatos e comparecimento ======================= */
+
+.grade-baixo {
+  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 32px 48px; align-items: start;
+  margin-top: 48px; transition: opacity 0.3s;
+}
+.bloco-candidatos, .coluna-baixo { min-width: 0; }
+.coluna-baixo { display: flex; flex-direction: column; gap: 24px; }
+.bloco-candidatos > .muted { margin-top: 8px; }
+
+.tabela-candidatos { width: 100%; border-collapse: collapse; margin-top: 8px; font: 13px var(--fonte-dado); }
+.tabela-candidatos th {
+  padding: 8px 8px 8px 0; text-align: left; color: var(--muted); font-weight: 500;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.tabela-candidatos td { padding: 9px 8px 9px 0; border-top: 1px solid var(--borda); vertical-align: baseline; }
+.tabela-candidatos .col-num { width: 4.5em; color: var(--muted); }
+.tabela-candidatos .col-votos, .tabela-candidatos .col-pct { text-align: right; white-space: nowrap; }
+.tabela-candidatos td.col-pct { font-weight: 600; padding-right: 0; }
+.tabela-candidatos th.col-pct { padding-right: 0; }
+.tabela-candidatos .col-partido { white-space: nowrap; }
+.tabela-candidatos tr.clicavel { cursor: pointer; }
+.tabela-candidatos tr.clicavel:hover td { background: var(--superficie); }
+.cand-abrir { font: 600 15px var(--fonte-corpo); }
+tr.clicavel:hover .cand-abrir { text-decoration: underline; text-underline-offset: 3px; }
+.cand-vices { display: block; margin-top: 2px; font-size: 11px; }
+.so-celular { display: none; }
+
+.numeros {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0;
+  background: var(--borda); border: 1px solid var(--borda);
+}
+.numeros div { background: var(--bg); padding: 14px; min-width: 0; }
+.numeros dt { color: var(--muted); font: 11px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.06em; }
+.numeros dd { margin: 4px 0 0; }
+.valor-estatistica { display: block; font: 700 26px/1.1 var(--fonte-titulo); font-stretch: 75%; }
+.numeros small { display: block; margin-top: 2px; color: var(--muted); font: 12px var(--fonte-dado); }
+
+.proximo-plantao { padding: 16px; border: 1px solid var(--ao-vivo); }
+.proximo-plantao .rotulo-secao { color: var(--ao-vivo); }
+.proximo-plantao strong { display: block; margin-top: 6px; font: 700 24px/1.1 var(--fonte-titulo); font-stretch: 75%; }
+.proximo-plantao p { margin-top: 6px; color: var(--texto-2); font-size: 14px; }
+
+.rodape {
+  margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--borda);
+  font-family: var(--fonte-dado); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
 }
 
-/* ---------- aviso de votação em andamento ---------- */
-.aviso-votacao {
-  display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline;
-  margin: 0 0 12px; padding: 12px 16px; border-radius: var(--raio);
-  background: var(--destaque-suave); border: 1px solid var(--destaque);
+/* ======================= composição da casa (hemiciclo) ======================= */
+
+.hemiciclo { margin-top: 48px; display: flex; flex-direction: column; gap: 10px; }
+.hemiciclo-topo {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--texto);
 }
-.aviso-votacao strong { font-size: 1.05rem; }
-
-/* ---------- aviso de próxima atualização ---------- */
-.proxima { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
-.proxima-anel {
-  width: 11px; height: 11px; border-radius: 50%; flex: none;
-  background: conic-gradient(currentColor var(--p, 0%), var(--sem-dado) 0);
-}
-.proxima.pausada { font-style: italic; }
-.nota-mapa { margin: 0; }
-.ponto-ao-vivo {
-  width: 7px; height: 7px; border-radius: 50%; background: var(--ao-vivo, var(--destaque));
-  animation: esq-pulsar 1.6s ease-in-out infinite;
-}
-.proxima-ao-vivo { cursor: help; }
-.ao-vivo-off { color: var(--erro); }
-
-/* ======================= Tema jornal (regras específicas) ======================= */
-
-:root {
-  /* ---------- cabeçalho estilo "masthead" ---------- */
-  .topo {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-    padding: 22px 0 16px;
-  }
-  .marca {
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
-    padding-bottom: 10px;
-    border-bottom: 3px double var(--texto);
-  }
-  .marca-titulo {
-    font-size: clamp(2.2rem, 5vw, 3.6rem);
-    font-weight: 800;
-    letter-spacing: -0.035em;
-    font-variation-settings: 'opsz' 144;
-  }
-  .marca > .muted { display: none; }
-  .dataline {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 4px 14px;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--muted);
-  }
-  .ao-vivo { color: var(--ao-vivo); font-weight: 700; }
-  /* Switch claro/escuro: trilho com ☀ e ☾ nas pontas e uma bolinha que desliza por cima */
-  .switch-tema {
-    display: inline-flex; align-items: center; gap: 8px;
-    border: 0; background: none; padding: 0; color: inherit;
-    font: inherit; text-transform: inherit; letter-spacing: inherit;
-  }
-  .switch-tema-trilho {
-    position: relative; display: inline-flex; align-items: center; justify-content: space-between;
-    width: 52px; height: 28px; padding: 0 6px; border-radius: 99px;
-    border: 1px solid var(--texto); background: var(--destaque-suave);
-    color: var(--muted);
-  }
-  .switch-tema-bolinha {
-    position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%;
-    background: var(--texto); transition: transform 0.2s ease;
-  }
-  .switch-tema[aria-checked='true'] .switch-tema-bolinha { transform: translateX(24px); }
-  .switch-tema:hover .switch-tema-trilho { background: var(--borda); }
-  .switch-tema:hover .switch-tema-texto { color: var(--texto); }
-  .switch-tema:focus-visible { outline: none; }
-  .switch-tema:focus-visible .switch-tema-trilho { outline: 2px solid var(--ao-vivo); outline-offset: 2px; }
-  @media (prefers-reduced-motion: reduce) { .switch-tema-bolinha { transition: none; } }
-  .ao-vivo::before {
-    content: '';
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    margin-right: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    vertical-align: 1px;
-    animation: pulsar 1.6s ease-in-out infinite;
-  }
-
-  .busca { max-width: none; flex-basis: auto; }
-  .busca input, .busca select, .filtro input, .seletor-municipio, .lista-topo input {
-    border-radius: 0;
-    border-color: var(--texto);
-    background: var(--superficie);
-  }
-
-  .selo {
-    border-radius: 0;
-    background: none;
-    border: 1px solid currentColor;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 0.65rem;
-  }
-  .selo-demo { color: var(--ao-vivo); }
-  .selo-eleito { background: var(--texto); color: var(--bg); border-color: var(--texto); }
-
-  /* ---------- cargos como seções do jornal ---------- */
-  .cargos {
-    gap: 0;
-    padding-bottom: 0;
-    margin-bottom: 24px;
-    border-bottom: 1px solid var(--borda);
-  }
-  .cargos a {
-    border: 0;
-    border-radius: 0;
-    background: none;
-    padding: 10px 14px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted);
-  }
-  .cargos a:hover { color: var(--texto); }
-  .cargos a.ativo {
-    background: none;
-    color: var(--texto);
-    box-shadow: inset 0 -3px 0 var(--texto);
-  }
-
-  /* ---------- colunas sem cartões, com filete no topo ---------- */
-  .grade { gap: 40px; }
-  .coluna-mapa, .painel {
-    background: none;
-    border: 0;
-    border-top: 2px solid var(--texto);
-    border-radius: 0;
-    box-shadow: none;
-    padding: 14px 0 0;
-  }
-
-  .trilha a {
-    border: 0;
-    background: none;
-    padding: 2px 0;
-    font-weight: 600;
-    text-decoration: underline;
-    text-decoration-color: var(--borda);
-    text-underline-offset: 3px;
-  }
-  .trilha a:hover { text-decoration-color: var(--texto); }
-  .alternador button { border-radius: 0 !important; border-color: var(--texto); padding: 3px 12px; font-size: 0.85rem; }
-  .alternador button.ativo { background: var(--texto); color: var(--bg); border-color: var(--texto); }
-
-  /* ---------- mapa ---------- */
-  .regiao { stroke: var(--bg); }
-  .tooltip { border-radius: 0; border-color: var(--texto); box-shadow: 4px 4px 0 rgb(0 0 0 / 0.08); }
-  .tooltip strong { font-family: var(--fonte-titulo); font-size: 1.05rem; }
-  .legenda { font-size: 0.8rem; border-top: 1px solid var(--borda); padding-top: 8px; }
-  .botao-exterior { border-radius: 0; border: 0; padding: 0; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
-
-  /* ---------- painel: manchete + tabela ---------- */
-  .painel :is(h1, h2) { font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; }
-  .progresso-barra { height: 4px; border-radius: 0; }
-  .progresso-barra i { background: var(--texto); }
-
-  .numeros { gap: 0; border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda); padding: 8px 0; }
-  .numeros div { background: none; border-radius: 0; padding: 4px 12px; border-left: 1px solid var(--borda); }
-  .numeros div:nth-child(3n + 1) { border-left: 0; padding-left: 0; }
-  .numeros dt { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.68rem; }
-  .numeros dd { font-size: 1.05rem; }
-
-  .candidato { grid-template-columns: 22px 48px minmax(0, 1fr) auto; padding: 12px 0; }
-  .cand-nome strong { font-family: var(--fonte-titulo); font-size: 1.1rem; font-weight: 600; }
-  .cand-votos strong { font-family: var(--fonte-titulo); font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
-  .partido { border: 0; padding: 0; font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; }
-  .barra { height: 4px; border-radius: 0; background: var(--destaque-suave); }
-  .barra i { border-radius: 0; }
-
-  /* Os dois primeiros colocados viram a "manchete" */
-  .candidatos > .candidato:first-child { grid-template-columns: 22px 76px minmax(0, 1fr) auto; padding: 16px 0; }
-  .candidatos > .candidato:first-child .foto { width: 76px; height: 76px; }
-  .candidatos > .candidato:first-child .cand-nome strong { font-size: 1.6rem; font-weight: 700; }
-  .candidatos > .candidato:first-child .cand-votos strong { font-size: 2.8rem; line-height: 1; }
-  .candidatos > .candidato:first-child .barra { height: 8px; }
-  .candidatos > .candidato:nth-child(2) .cand-nome strong { font-size: 1.3rem; }
-  .candidatos > .candidato:nth-child(2) .cand-votos strong { font-size: 2rem; line-height: 1.05; }
-
-  .mais {
-    border-radius: 0;
-    border-color: var(--texto);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 0.78rem;
-    font-weight: 700;
-  }
-
-  /* ---------- listas (zonas, exterior, estados) ---------- */
-  .lista-regioes h3 {
-    font-family: var(--fonte-corpo);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .lista-regioes ul { gap: 0 20px; }
-  .lista-regioes li a {
-    border: 0;
-    border-top: 1px solid var(--borda);
-    border-radius: 0;
-    background: none;
-    padding: 8px 0;
-  }
-  .lista-regioes li a:hover .regiao-nome { text-decoration: underline; }
-  .lista-regioes li a.ativo { background: var(--destaque-suave); }
-  .regiao-nome { font-family: var(--fonte-titulo); }
-
-  .busca-resultados { border-radius: 0; border-color: var(--texto); box-shadow: 6px 6px 0 rgb(0 0 0 / 0.06); }
-  .busca-info strong { font-family: var(--fonte-titulo); }
-
-  .rodape { margin-top: 32px; border-top: 1px solid var(--texto); }
-}
-
-@keyframes pulsar {
-  50% { opacity: 0.3; }
-}
-
-@media (max-width: 480px) {
-  :root {
-    .numeros div:nth-child(3n + 1) { border-left: 1px solid var(--borda); padding-left: 12px; }
-    .numeros div:nth-child(2n + 1) { border-left: 0; padding-left: 0; }
-    .candidatos > .candidato:first-child { grid-template-columns: 18px 56px minmax(0, 1fr) auto; }
-    .candidatos > .candidato:first-child .foto { width: 56px; height: 56px; }
-    .candidatos > .candidato:first-child .cand-nome strong { font-size: 1.25rem; }
-    .candidatos > .candidato:first-child .cand-votos strong { font-size: 2rem; }
-    .candidatos > .candidato:nth-child(2) .cand-votos strong { font-size: 1.6rem; }
-    .candidato { grid-template-columns: 18px 40px minmax(0, 1fr) auto; gap: 8px; }
-    .foto { width: 40px; height: 40px; }
-  }
-}
-
-/* Esqueletos e barra no estilo jornal: blocos retos, barra na cor do texto */
-:root {
-  .esq { border-radius: 0; }
-  .esq-redondo { border-radius: 50%; }
-  .cargos .esq { border-radius: 0; margin: 8px 6px; height: 1rem !important; }
-  .barra-topo { background: var(--ao-vivo); height: 2px; }
-}
-
-:root {
-  .num.mudou { animation-name: num-realce-jornal; }
-  .indicador-atualizando { color: var(--ao-vivo); }
-}
-@keyframes num-realce-jornal {
-  0%, 30% { background: color-mix(in srgb, var(--ao-vivo) 20%, transparent); }
-  100% { background: transparent; }
-}
-
-/* Aviso como "nota da redação": filete na cor do ao vivo, título em serifa */
-:root .aviso-votacao {
-  margin: 0 0 18px; padding: 12px 0 12px 16px; border: 0; border-left: 4px solid var(--ao-vivo);
-  background: color-mix(in srgb, var(--ao-vivo) 8%, transparent);
-}
-:root .aviso-votacao strong { font-family: var(--fonte-titulo); font-size: 1.25rem; color: var(--ao-vivo); }
-:root .aviso-indisponivel { border-left-color: var(--erro); background: color-mix(in srgb, var(--erro) 8%, transparent); }
-:root .aviso-indisponivel strong { color: var(--erro); }
-
-/* Aviso do mapa (regiões faltando / falha): mesma "nota da redação", acima do mapa */
-.aviso-mapa {
-  margin: 0 0 14px; padding: 10px 14px 10px 16px; border-left: 4px solid var(--ao-vivo);
-  background: color-mix(in srgb, var(--ao-vivo) 8%, transparent);
-}
-.aviso-mapa strong { display: block; font-family: var(--fonte-titulo); font-size: 1.1rem; color: var(--ao-vivo); }
-.aviso-mapa p { margin: 4px 0 0; font-size: 0.88rem; }
-.aviso-mapa-barra {
-  height: 6px; margin-top: 8px; border-radius: 99px; overflow: hidden;
-  background: color-mix(in srgb, var(--ao-vivo) 18%, transparent);
-}
-.aviso-mapa-barra span { display: block; height: 100%; background: var(--ao-vivo); transition: width 0.6s ease; }
-.aviso-mapa-erro { border-left-color: var(--erro); background: color-mix(in srgb, var(--erro) 8%, transparent); }
-.aviso-mapa-erro strong { color: var(--erro); }
-
-/* ---------- situação do candidato ---------- */
-.selo-2turno { color: var(--ao-vivo); }
-.selo-suplente { color: var(--muted); }
-.selo-puxado { color: var(--muted); font-style: italic; }
-.selo-puxador { color: var(--texto); }
-.selo-nao-eleito { color: var(--muted); border-color: transparent !important; padding-left: 0; }
-.selo-anulado { color: var(--erro); }
-.selo-matematico { color: var(--texto); }
-.selo-matematico::before { content: "✓ "; }
-.selo-matematico.selo-2turno { color: var(--ao-vivo); }
-.selo[title] { cursor: help; }
-
-/* ---------- ficha do candidato (modal) ---------- */
-.candidato.clicavel { cursor: pointer; }
-.candidato.clicavel:hover .cand-abrir strong { text-decoration: underline; text-underline-offset: 3px; }
-.cand-abrir { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.cand-abrir:focus-visible { outline: 2px solid var(--ao-vivo); outline-offset: 2px; }
-
-.modal-candidato {
-  width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
-  padding: 0; border: 1px solid var(--texto); border-top: 4px double var(--texto);
-  background: var(--bg); color: var(--texto);
-}
-.modal-candidato::backdrop { background: rgb(0 0 0 / 0.55); }
-.modal-conteudo { position: relative; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
-.modal-fechar {
-  position: absolute; top: 8px; right: 10px; border: 0; background: none; color: var(--muted);
-  font-size: 1.8rem; line-height: 1; padding: 4px 8px; cursor: pointer;
-}
-.modal-fechar:hover { color: var(--texto); }
-.modal-topo { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 18px; align-items: center; padding-right: 28px; }
-.modal-topo h2 { font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; margin: 2px 0 4px; }
-.foto.foto-grande { width: 112px; height: 112px; font-size: 2.4rem; }
-.modal-votos { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
-.modal-votos strong { font-family: var(--fonte-titulo); font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
-.modal-vices { list-style: none; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--borda); display: flex; flex-wrap: wrap; gap: 12px 24px; }
-.modal-vices li { display: flex; align-items: center; gap: 10px; line-height: 1.3; }
-.modal-candidato section { border-top: 1px solid var(--texto); padding-top: 10px; }
-.modal-candidato h3 { font-size: 0.75rem; font-family: var(--fonte-corpo); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-.modal-dados { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; margin: 0; }
-.modal-dados dt { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-.modal-dados dd { margin: 0; }
-.modal-total-bens { margin: 0 0 8px; }
-.modal-total-bens strong { font-family: var(--fonte-titulo); font-size: 1.5rem; }
-.modal-bens { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.modal-bens th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; padding: 4px 0; border-bottom: 1px solid var(--borda); }
-.modal-bens th:last-child, .modal-bens td:last-child { text-align: right; white-space: nowrap; padding-left: 12px; }
-.modal-bens td { padding: 6px 0; border-bottom: 1px solid var(--borda); vertical-align: top; }
-.modal-bens td span { display: block; }
-.bem-descricao { font-size: 0.82rem; letter-spacing: 0.02em; } /* texto original do TSE, em maiúsculas */
-.modal-bens + .mais { margin-top: 10px; width: 100%; }
-.modal-fonte { margin: 0; }
-@media (max-width: 480px) {
-  .modal-conteudo { padding: 18px 16px; }
-  .modal-topo { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
-  .foto.foto-grande { width: 72px; height: 72px; font-size: 1.6rem; }
-  .modal-dados { grid-template-columns: minmax(0, 1fr); }
-}
-
-/* ---------- composição da casa legislativa (hemiciclo) ---------- */
-.hemiciclo { border-top: 2px solid var(--texto); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-.hemiciclo-topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
-.hemiciclo-topo h3 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; }
+.hemiciclo-topo h3 { font: 800 32px/1 var(--fonte-titulo); font-stretch: 62%; text-transform: uppercase; }
 .hemiciclo svg { width: 100%; max-width: 640px; height: auto; display: block; margin: 0 auto; }
-/* Contorno discreto: cores escuras (PL, UP) não somem no tema escuro, nem as claras no creme. */
+/* Contorno discreto: cores escuras (PL, UP) não somem no escuro, nem as claras no claro. */
 .cadeira { stroke: rgb(128 128 128 / 0.35); stroke-width: 0.004; transition: fill 0.4s, opacity 0.2s; cursor: pointer; }
-.hemiciclo-total { font-family: var(--fonte-titulo); font-weight: 700; font-size: 0.2px; fill: var(--texto); }
-.hemiciclo-rotulo { font-size: 0.04px; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.003px; }
+.hemiciclo-total { font-family: var(--fonte-titulo); font-weight: 800; font-stretch: 62%; font-size: 0.2px; fill: var(--texto); }
+.hemiciclo-rotulo { font-family: var(--fonte-dado); font-size: 0.04px; fill: var(--muted); text-transform: uppercase; letter-spacing: 0.003px; }
 .cadeira.realce { stroke: var(--texto); stroke-width: 0.012; }
 .hemiciclo-plenario { position: relative; width: 100%; max-width: 640px; margin: 0 auto; }
 .ficha-cadeira { width: 240px; }
@@ -694,132 +630,227 @@ h1, h2, h3, .marca-titulo { margin: 0; line-height: 1.2; font-family: var(--font
 .ficha-cadeira-topo img { width: 40px; height: 52px; object-fit: cover; flex: none; background: var(--sem-dado); }
 .ficha-cadeira-topo strong { margin-bottom: 0; }
 /* Donos das cadeiras, por partido: o cabeçalho fica preso no topo enquanto a lista do partido rola. */
-.hemiciclo-lista { max-height: 360px; overflow-y: auto; border-top: 1px solid var(--borda); font-size: 0.85rem; overscroll-behavior: contain; }
+.hemiciclo-lista { max-height: 360px; overflow-y: auto; border-top: 1px solid var(--borda); font-size: 14px; overscroll-behavior: contain; }
 .hemiciclo-lista section { transition: opacity 0.2s; }
 .hemiciclo-lista section.apagado { opacity: 0.35; }
 .hemiciclo-lista h4 {
   position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; margin: 0;
   padding: 6px 0 4px; background: var(--bg); border-bottom: 1px solid var(--texto); cursor: default;
 }
-.hemiciclo-lista h4 .partido { flex: 1; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
-.hemiciclo-lista h4 strong { font-family: var(--fonte-titulo); font-size: 1.05rem; }
+.hemiciclo-lista h4 .partido { flex: 1; font-size: 12px; text-transform: uppercase; }
+.hemiciclo-lista h4 strong { font: 700 18px var(--fonte-titulo); font-stretch: 75%; }
 .hemiciclo-lista ol { list-style: none; margin: 0; padding: 0; }
-.hemiciclo-lista li { display: flex; align-items: baseline; gap: 8px; padding: 3px 4px; border-bottom: 1px solid var(--borda); cursor: pointer; }
-.hemiciclo-lista li.ativo { background: var(--destaque-suave); }
+.hemiciclo-lista li { display: flex; align-items: baseline; gap: 8px; padding: 4px; border-bottom: 1px solid var(--borda); cursor: pointer; }
+.hemiciclo-lista li.ativo { background: var(--superficie); }
 .hemiciclo-lista li:focus-visible { outline: 2px solid var(--texto); outline-offset: -2px; }
-.cadeira-num { width: 2.6em; flex: none; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.75rem; }
-.hemiciclo-lista li.ativo .cadeira-num { color: var(--texto); font-weight: 700; }
+.cadeira-num { width: 2.6em; flex: none; color: var(--muted); font: 12px var(--fonte-dado); }
+.hemiciclo-lista li.ativo .cadeira-num { color: var(--texto); font-weight: 600; }
 .cadeira-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cadeira-uf { font-size: 0.72rem; letter-spacing: 0.05em; }
+.cadeira-uf { font: 11px var(--fonte-dado); letter-spacing: 0.05em; }
 .hemiciclo p { margin: 0; }
+.hemiciclo .muted.pequeno { font-family: var(--fonte-dado); font-size: 11px; text-transform: uppercase; }
 
-/* ---------- turnos: duas "edições" acima das seções de cargo ---------- */
-.turnos { display: flex; gap: 0; margin: 0 0 14px; border-bottom: 1px solid var(--texto); }
-.turnos a {
-  display: flex; align-items: baseline; gap: 10px; padding: 8px 20px 10px 0; margin-right: 20px;
-  border: 0; background: none; color: var(--muted);
+/* ======================= ficha do candidato ======================= */
+
+.modal-candidato {
+  width: min(980px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 0;
+  border: 1px solid var(--borda); border-top: 6px solid var(--cor); background: var(--modal); color: var(--texto);
 }
-.turnos a strong { font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
-.turnos a span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
-.turnos a:hover { color: var(--texto); }
-.turnos a.ativo { color: var(--texto); box-shadow: inset 0 -4px 0 var(--texto); }
-.turnos a:focus-visible { outline: 2px solid var(--ao-vivo); outline-offset: 2px; }
-.turnos a strong, .turnos a span { white-space: nowrap; }
-@media (max-width: 480px) {
-  .turnos a { flex-direction: column; gap: 0; padding-right: 0; }
-  .turnos a strong { font-size: 1.25rem; }
+.modal-candidato::backdrop { background: rgb(0 0 0 / 0.6); }
+.modal-conteudo { display: flex; flex-direction: column; gap: 24px; padding: 28px; }
+.modal-topo { display: grid; grid-template-columns: 132px minmax(0, 1fr) auto; gap: 24px; align-items: start; }
+.foto.foto-grande { width: 132px; height: 166px; font-size: 3rem; }
+.modal-identidade h2 {
+  margin: 6px 0 10px; font: 800 56px/0.95 var(--fonte-titulo); font-stretch: 62%; text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.modal-linha-partido {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  font: 600 13px var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.partido-borda { padding: 1px 6px; border: 1px solid; }
+.modal-identidade > .selos { margin: 8px 0 0; }
+.modal-votos { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 12px; }
+.modal-votos strong { font: 800 72px/0.9 var(--fonte-titulo); font-stretch: 62%; letter-spacing: -0.02em; }
+.modal-votos > span { font: 13px var(--fonte-dado); }
+.modal-fechar { width: 44px; height: 44px; }
+.modal-vices {
+  list-style: none; margin: 0; padding: 12px 0; display: flex; flex-wrap: wrap; gap: 12px 32px;
+  border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda);
+}
+.modal-vices li { display: flex; align-items: center; gap: 10px; line-height: 1.3; }
+.modal-vices .foto { width: 40px; height: 40px; }
+.modal-corpo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 40px; align-items: start; }
+.modal-coluna { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.modal-coluna h3, .modal-coluna > .rotulo-secao { padding-bottom: 6px; border-bottom: 1px solid var(--texto); }
+.modal-dados { display: grid; grid-template-columns: 140px minmax(0, 1fr); margin: 0; }
+.modal-dados div { display: contents; }
+.modal-dados dt, .modal-dados dd { padding: 8px 0; border-top: 1px solid var(--borda); }
+.modal-dados div:first-child > * { border-top: 0; }
+.modal-dados dt { color: var(--muted); font: 11px/1.6 var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em; }
+.modal-dados dd { margin: 0; font-size: 14px; }
+.modal-total-bens { display: flex; flex-direction: column; gap: 2px; margin-top: -12px; }
+.modal-total-bens strong { font: 800 40px/1 var(--fonte-titulo); font-stretch: 70%; }
+.modal-total-bens span { font: 12px var(--fonte-dado); text-transform: uppercase; }
+.modal-bens { width: 100%; border-collapse: collapse; }
+.modal-bens th {
+  padding: 4px 0; text-align: left; color: var(--muted); font: 500 11px var(--fonte-dado);
+  text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--borda);
+}
+.modal-bens th:last-child, .modal-bens td:last-child { text-align: right; white-space: nowrap; padding-left: 12px; }
+.modal-bens td { padding: 8px 0; border-bottom: 1px solid var(--borda); vertical-align: top; font: 13px var(--fonte-dado); }
+.bem-descricao { display: block; font-size: 12px; } /* texto original do TSE, em maiúsculas */
+.bem-tipo { display: block; font-size: 12px; }
+.modal-fonte {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding-top: 12px;
+  border-top: 1px solid var(--borda); font: 11px var(--fonte-dado);
 }
 
-.aviso-simulacao { margin-top: -10px; }
+/* ======================= avisos do mapa ======================= */
 
-/* ---------- placar do 2º turno ---------- */
-.duelo { margin: 0 auto 28px; max-width: 900px; transition: opacity 0.3s; }
-.duelo.atualizando { opacity: 0.75; }
-.duelo-topo {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "a meta b";
-  align-items: end; gap: 12px;
+.aviso-mapa { margin: 0 0 14px; padding: 10px 14px 10px 16px; border-left: 4px solid var(--ao-vivo); background: color-mix(in srgb, var(--ao-vivo) 8%, transparent); }
+.aviso-mapa strong { display: block; font: 700 18px/1.1 var(--fonte-titulo); font-stretch: 75%; color: var(--ao-vivo); }
+.aviso-mapa p { margin: 4px 0 0; font-size: 14px; }
+.aviso-mapa-barra { height: 4px; margin-top: 8px; overflow: hidden; background: color-mix(in srgb, var(--ao-vivo) 18%, transparent); }
+.aviso-mapa-barra span { display: block; height: 100%; background: var(--ao-vivo); transition: width 0.6s ease; }
+.aviso-mapa-erro { border-left-color: var(--erro); background: color-mix(in srgb, var(--erro) 8%, transparent); }
+.aviso-mapa-erro strong { color: var(--erro); }
+.aviso-simulacao { margin-top: 16px; }
+
+/* ======================= carregamento ======================= */
+
+.barra-topo {
+  position: fixed; top: 0; left: 0; z-index: 100; height: 2px; width: 0;
+  background: var(--ao-vivo); opacity: 0; pointer-events: none;
 }
-.duelo-lado { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.duelo-lado.lado-a { grid-area: a; }
-.duelo-lado.lado-b { grid-area: b; flex-direction: row-reverse; text-align: right; }
-.duelo-foto {
-  width: 88px; height: 88px; flex: none; border-radius: 50%; object-fit: cover; object-position: top;
-  background: var(--cor); border: 4px solid var(--cor);
+.barra-topo.carregando { opacity: 1; width: 85%; transition: width 8s cubic-bezier(0.1, 0.7, 0.2, 1), opacity 0.1s; }
+.barra-topo.concluindo { opacity: 0; width: 100%; transition: width 0.2s ease-out, opacity 0.3s 0.15s; }
+
+.esq { display: block; max-width: 100%; background: var(--borda); animation: esq-pulsar 1.4s ease-in-out infinite; }
+.esq-espaco { margin-top: 8px; }
+.cand-votos .esq { margin-left: auto; }
+.esq-mapa {
+  aspect-ratio: 1000 / 820; max-height: 72vh; display: grid; place-items: center;
+  background: repeating-linear-gradient(-45deg, var(--borda) 0 1px, transparent 1px 9px);
+  animation: esq-pulsar 1.4s ease-in-out infinite;
 }
-.duelo-info { display: flex; flex-direction: column; min-width: 0; }
-.duelo-pct {
-  font-family: var(--fonte-titulo); font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1;
-  letter-spacing: -0.03em;
+.esq-mapa-rotulo {
+  background: var(--superficie); padding: 4px 12px; color: var(--muted);
+  font: 600 11px var(--fonte-dado); letter-spacing: 0.08em; text-transform: uppercase;
 }
-.duelo-nome { font-family: var(--fonte-titulo); font-size: clamp(1.1rem, 2.4vw, 1.5rem); font-weight: 600; line-height: 1.2; }
-.duelo-partido { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; }
-.duelo-check {
-  display: inline-grid; place-items: center; width: 1.1em; height: 1.1em; margin: 0 6px 0 0; border-radius: 50%;
-  background: var(--cor); color: #fff; font-family: var(--fonte-corpo); font-size: 0.8em; vertical-align: 0.05em;
+.mapa svg.aguardando .regiao { animation: esq-pulsar 1.4s ease-in-out infinite; }
+
+@keyframes esq-pulsar { 50% { opacity: 0.45; } }
+
+/* Enquanto o TSE é consultado, os números pulsam (após 300 ms, para não piscar em respostas rápidas). */
+.atualizando .num { animation: esq-pulsar 1.4s ease-in-out 0.3s infinite; }
+/* Valor que acabou de mudar: realce que se desfaz. */
+.num.mudou { animation: num-realce 1.4s ease-out; }
+@keyframes num-realce {
+  0%, 30% { background: color-mix(in srgb, var(--texto) 16%, transparent); }
+  100% { background: transparent; }
 }
-.duelo-lado.lado-b .duelo-check { margin: 0 6px 0 0; }
-.duelo-meta {
-  grid-area: meta; display: flex; flex-direction: column; align-items: center; padding-bottom: 2px;
-  font-size: 0.75rem; line-height: 1.2; text-align: center; color: var(--muted);
+.indicador-atualizando { animation: esq-pulsar 1.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .esq, .esq-mapa, .mapa svg.aguardando .regiao, .ponto-ao-vivo { animation: none; }
+  .barra-topo.carregando { transition: opacity 0.1s; width: 100%; opacity: 0.6; }
+  .atualizando .num, .num.mudou, .indicador-atualizando { animation: none; }
+  .atualizando .num { opacity: 0.6; }
 }
-.duelo-meta i { width: 0; height: 0; margin-top: 4px; border: 5px solid transparent; border-top-color: var(--texto); border-bottom: 0; }
-.duelo-barra { position: relative; display: flex; height: 22px; margin-top: 8px; background: var(--sem-dado); }
-.duelo-barra i { display: block; height: 100%; transition: width 0.6s ease; }
-.duelo-marca { position: absolute; left: 50%; top: -4px; bottom: -4px; border-left: 2px dotted var(--texto); }
-.duelo-rodape {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px 12px; margin-top: 6px;
-  font-size: 0.82rem; line-height: 1.3;
+
+/* ======================= telas médias ======================= */
+
+@media (max-width: 960px) {
+  .grade, .grade-baixo { grid-template-columns: minmax(0, 1fr); }
+  .modal-corpo { grid-template-columns: minmax(0, 1fr); }
 }
-.duelo-rodape .lado-a { grid-column: 1; display: flex; flex-direction: column; }
-.duelo-rodape .lado-b { grid-column: 3; grid-row: 1; display: flex; flex-direction: column; text-align: right; }
-.duelo-apurado { grid-column: 2; grid-row: 1; text-align: center; white-space: nowrap; }
+
+/* ======================= celular ======================= */
+
 @media (max-width: 640px) {
-  .duelo-topo { grid-template-areas: "a b" "meta meta"; grid-template-columns: 1fr 1fr; }
-  .duelo-lado { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .duelo-lado.lado-b { flex-direction: column; align-items: flex-end; }
-  .duelo-foto { width: 60px; height: 60px; border-width: 3px; }
-  .duelo-meta { display: none; }
-  .duelo-rodape { grid-template-columns: 1fr 1fr; }
-  .duelo-rodape .lado-b { grid-column: 2; }
-  .duelo-apurado { grid-column: 1 / -1; grid-row: 2; }
-}
+  :root { --gutter: 16px; }
 
-/* ---------- disputas estaduais do 2º turno (nível Brasil) ---------- */
-.lista-duelos { list-style: none; margin: 12px 0 0; padding: 0; }
-.lista-duelos li a {
-  display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px 0; text-align: left;
-  border: 0; border-top: 1px solid var(--borda); background: none;
-}
-.lista-duelos li a:hover .lista-duelos-uf { text-decoration: underline; }
-.lista-duelos-uf { display: flex; align-items: center; gap: 8px; font-family: var(--fonte-titulo); font-size: 1.1rem; font-weight: 600; }
-.lista-duelos-nomes { font-size: 0.88rem; }
-.lista-duelos-nomes .lider { font-weight: 700; }
-.duelo-barra-mini { height: 8px; margin-top: 2px; }
-.duelo-barra-mini .duelo-marca { top: -2px; bottom: -2px; border-left-width: 1px; }
+  /* Topo: marca, busca e tema numa linha de 60px; as abas de cargo numa faixa rolável abaixo. */
+  .topo { min-height: 60px; gap: 0 12px; }
+  .marca-titulo { font-size: 22px; }
+  .topo-acoes { order: 2; padding: 8px 0; gap: 6px; }
+  .cargos {
+    order: 3; flex-basis: calc(100% + 2 * var(--gutter)); margin: 0 calc(-1 * var(--gutter));
+    padding: 0 var(--gutter); border-top: 1px solid var(--borda);
+  }
+  .cargos a { height: 44px; padding: 0 12px; }
+  .botao-icone { width: 44px; height: 44px; }
+  .busca { position: static; flex: none; min-width: 0; }
+  .busca-botao { display: inline-grid; }
+  .busca-campo { display: none; }
+  .busca.expandida .busca-campo {
+    display: block; position: absolute; z-index: 31; left: var(--gutter); right: var(--gutter); top: 64px;
+  }
+  .topo { position: relative; }
+  .busca.expandida .busca-campo input { width: 100%; height: 44px; }
+  .busca-resultados { left: var(--gutter); right: var(--gutter); width: auto; top: 112px; }
+  .busca-filtros { flex-wrap: wrap; }
+  .busca-filtros select { flex-basis: calc(50% - 3px); height: 40px; }
 
-/* ---------- mapa do 2º turno ---------- */
-.rotulo-regiao {
-  fill: #141414; stroke: rgb(255 255 255 / 0.85); paint-order: stroke; stroke-linejoin: round;
-  font-family: var(--fonte-corpo); font-weight: 700; text-anchor: middle; pointer-events: none;
-}
-.tooltip-linha { display: flex; align-items: center; gap: 4px; }
-.tooltip-linha > span:nth-child(2) { flex: 1; }
-.legenda-2t { display: grid; grid-template-columns: auto repeat(3, 62px) auto; gap: 4px 6px; align-items: center; }
-.legenda-2t-linha { display: contents; }
-.legenda-2t-nome { font-weight: 600; padding-right: 6px; }
-.legenda-2t-rotulos span { font-size: 0.7rem; text-align: center; }
-.amostra-estado { display: inline-flex; align-items: center; gap: 4px; }
-.amostra-estado { justify-content: center; }
-.amostra-estado i { display: inline-block; width: 100%; height: 12px; }
-.amostra-estado i.liderando { opacity: 0.5; }
-.legenda-estados { gap: 10px; }
-.legenda-estados .amostra-estado i { width: 22px; flex: none; }
+  .aviso-contagem { align-items: flex-start; }
 
-.cartao-exterior {
-  align-self: flex-start; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; text-align: left;
-  border: 1px solid var(--texto); background: var(--superficie); box-shadow: 4px 4px 0 rgb(0 0 0 / 0.06);
+  .faixa-status { flex-direction: column; align-items: stretch; gap: 10px; }
+  .turnos { display: grid; grid-template-columns: 1fr 1fr; }
+  .turnos a { height: 40px; }
+
+  .titulo-tela { font-size: 44px; }
+  .seletor-municipio { width: 100%; }
+  .seletor-municipio input { flex: 1; width: auto; height: 44px; }
+
+  .placar-colunas { gap: 28px; }
+  .placar-nome { font-size: 32px; }
+  .placar-numeros { flex-wrap: nowrap; }
+  .placar-pct { font-size: 104px; }
+  .placar-dados { flex: 1; min-width: 0; }
+  .placar-dados div { flex-direction: column; align-items: flex-end; gap: 0; }
+  .placar-compacto .placar-nome { font-size: 28px; }
+  .placar-compacto .placar-pct { font-size: 80px; }
+  .placar-legenda { justify-content: flex-start; }
+
+  .painel-mapa { margin: 0 calc(-1 * var(--gutter)); padding: 16px; }
+  .zoom-controles button { width: 44px; height: 44px; }
+  .zoom-controles .zoom-reset { min-width: 44px; }
+  .mapa-rodape { flex-wrap: nowrap; align-items: flex-start; }
+  .legenda { flex: 1 1 auto; min-width: 0; }
+  .legenda-linha { grid-template-columns: 70px minmax(0, 1fr); }
+  .legenda-linha > :nth-child(3) { display: none; }
+  .cartao-exterior { flex: none; max-width: 45%; }
+  .alternador button { height: 40px; }
+
+  .dif-metade { height: 14px; }
+  .disputas-apertadas ul { grid-template-columns: 1fr; }
+  .disputas-apertadas li:nth-child(2) a { border-top: 1px solid var(--borda); }
+  .indice-regioes summary { min-height: 44px; display: flex; align-items: center; }
+
+  /* Tabela: cada candidato vira um item de 2 linhas (nome | %, partido · nº | votos). */
+  .tabela-candidatos thead, .tabela-candidatos .col-num { display: none; }
+  .tabela-candidatos tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "nome pct" "partido votos";
+    align-items: baseline; gap: 2px 12px; min-height: 52px; padding: 8px 0; border-top: 1px solid var(--borda);
+  }
+  .tabela-candidatos td { padding: 0; border: 0; }
+  .tabela-candidatos .col-nome { grid-area: nome; min-width: 0; }
+  .tabela-candidatos .col-pct { grid-area: pct; }
+  .tabela-candidatos .col-partido { grid-area: partido; color: var(--muted); }
+  .tabela-candidatos .col-votos { grid-area: votos; color: var(--muted); }
+  .tabela-candidatos tr.clicavel:hover td { background: none; }
+  .so-celular { display: inline; }
+  .titulo-bloco-linha { flex-direction: column; align-items: stretch; gap: 8px; }
+  .titulo-bloco-linha .filtro input { flex: 1; height: 44px; }
+  .titulo-bloco { font-size: 28px; }
+  .valor-estatistica { font-size: 22px; }
+
+  .modal-candidato { width: 100vw; height: 100dvh; max-height: none; margin: 0; border-left: 0; border-right: 0; }
+  .modal-conteudo { padding: 18px 16px; }
+  .modal-topo { grid-template-columns: 88px minmax(0, 1fr) auto; gap: 12px; }
+  .foto.foto-grande { width: 88px; height: 110px; font-size: 2rem; }
+  .modal-identidade h2 { font-size: 36px; }
+  .modal-votos strong { font-size: 48px; }
+  .modal-dados { grid-template-columns: 110px minmax(0, 1fr); }
 }
-.cartao-exterior strong { font-family: var(--fonte-titulo); }
-.cartao-exterior-cands { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 0.85rem; }
-.cartao-exterior-cands span { display: inline-flex; align-items: center; }
-.cartao-exterior:hover strong { text-decoration: underline; }

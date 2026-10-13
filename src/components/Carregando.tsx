@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCarregandoGlobal } from '../api';
 import { Logo } from './Logo';
 
@@ -24,54 +24,47 @@ export function BarraTopo() {
   return <div className={`barra-topo ${fase}`} role="progressbar" aria-hidden={fase === 'oculta'} aria-label="Carregando" />;
 }
 
-/** Bloco cinza pulsante. `w`/`h` aceitam qualquer unidade CSS. */
-export function Esq({ w = '100%', h = '1em', redondo = false, className = '' }: {
-  w?: string; h?: string; redondo?: boolean; className?: string;
-}) {
-  return <span className={`esq ${redondo ? 'esq-redondo' : ''} ${className}`} style={{ width: w, height: h }} />;
+/** Bloco reto pulsante. `w`/`h` aceitam qualquer unidade CSS. */
+export function Esq({ w = '100%', h = '1em', className = '' }: { w?: string; h?: string; className?: string }) {
+  return <span className={`esq ${className}`} style={{ width: w, height: h }} />;
 }
 
-/** Esqueleto do painel de resultados (mesma estrutura do PainelResultado); `titulo` já vem com o heading. */
-export function EsqueletoPainel({ titulo, linhas = 6 }: { titulo?: ReactNode; linhas?: number }) {
+/** Esqueleto da tabela de candidatos e do comparecimento (mesma estrutura do PainelResultado). */
+export function EsqueletoPainel({ linhas = 6 }: { linhas?: number }) {
   return (
-    <section className="painel" aria-busy="true" aria-label="Carregando resultados">
-      <header className="painel-topo">
-        <div style={{ width: '100%' }}>
-          {titulo ?? <Esq w="45%" h="2rem" />}
-          <Esq w="60%" h="0.9rem" className="esq-espaco" />
-        </div>
-      </header>
-      <div className="progresso">
-        <div className="progresso-barra" />
-        <Esq w="35%" h="0.9rem" />
-      </div>
-      <dl className="numeros">
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i}>
-            <dt><Esq w="60%" h="0.7rem" /></dt>
-            <dd><Esq w="80%" h="1.1rem" /></dd>
-          </div>
-        ))}
-      </dl>
-      <Esq h="2.4rem" />
-      <ol className="candidatos">
-        {Array.from({ length: linhas }, (_, i) => (
-          <li key={i} className="candidato">
-            <span className="pos"><Esq w="1.2em" /></span>
-            <Esq w="44px" h="44px" redondo className="foto" />
-            <div className="cand-info">
-              <Esq w={`${70 - i * 6}%`} h="1.1rem" />
-              <Esq w="40%" h="0.75rem" className="esq-espaco" />
-              <div className="barra" />
-            </div>
-            <div className="cand-votos">
-              <Esq w="4.5rem" h="1.3rem" />
-              <Esq w="5.5rem" h="0.75rem" className="esq-espaco" />
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
+    <div className="grade-baixo" aria-busy="true" aria-label="Carregando resultados">
+      <section className="bloco bloco-candidatos">
+        <header className="bloco-cabecalho titulo-bloco-linha">
+          <h2 className="titulo-bloco">Todos os candidatos</h2>
+        </header>
+        <table className="tabela-candidatos">
+          <tbody>
+            {Array.from({ length: linhas }, (_, i) => (
+              <tr key={i}>
+                <td className="col-num"><Esq w="2em" /></td>
+                <td className="col-nome"><Esq w={`${70 - i * 6}%`} h="1.1rem" /></td>
+                <td className="col-partido"><Esq w="4em" /></td>
+                <td className="col-votos"><Esq w="6em" /></td>
+                <td className="col-pct"><Esq w="4em" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <aside className="coluna-baixo">
+        <section className="bloco bloco-comparecimento">
+          <h2 className="titulo-bloco">Comparecimento</h2>
+          <dl className="numeros">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i}>
+                <dt><Esq w="60%" h="0.7rem" /></dt>
+                <dd><Esq w="80%" h="1.4rem" /></dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      </aside>
+    </div>
   );
 }
 
@@ -89,21 +82,19 @@ export function EsqueletoPagina() {
   return (
     <div className="app" aria-busy="true">
       <header className="topo">
-        <div className="marca">
-          <p className="marca-titulo"><Logo />Apuração.org</p>
-          <div className="dataline"><Esq w="22rem" h="0.8rem" /></div>
-        </div>
+        <p className="marca-titulo"><Logo />Apuração.org</p>
+        <nav className="cargos">
+          {[7, 8, 6, 10, 10, 11].map((w, i) => <Esq key={i} w={`${w}rem`} h="1rem" />)}
+        </nav>
         <div className="busca"><Esq h="2.5rem" /></div>
       </header>
-      <nav className="cargos">
-        {[7, 8, 6, 10, 10, 11].map((w, i) => <Esq key={i} w={`${w}rem`} h="2rem" />)}
-      </nav>
+      <div className="faixa-status"><Esq w="22rem" h="0.8rem" /></div>
+      <div className="placar"><Esq w="40%" h="6rem" /><Esq h="14px" className="esq-espaco" /></div>
       <main className="grade">
-        <section className="coluna-mapa">
-          <Esq w="30%" h="1.4rem" />
+        <section className="painel-mapa">
+          <Esq w="30%" h="0.9rem" />
           <EsqueletoMapa />
         </section>
-        <aside className="coluna-painel"><EsqueletoPainel /></aside>
       </main>
     </div>
   );

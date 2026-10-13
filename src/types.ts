@@ -151,8 +151,10 @@ export interface ResumoCandidato { numero: string; nome: string; partido: string
 
 export interface Resumo {
   pctApurado: number;
+  /** Eleitorado da região (`e.te`); ausente no mapa estadual dos cargos proporcionais (só % apurado). */
+  eleitorado?: number;
   lider: ResumoCandidato | null;
-  /** Só no 2º turno: o outro finalista. */
+  /** 2º colocado (no 2º turno, o outro finalista); ausente no mapa estadual dos cargos proporcionais. */
   segundo?: ResumoCandidato | null;
   /** Só no 2º turno: quem lidera ficou atrás do rival no 1º turno nesta região. */
   virou?: boolean;

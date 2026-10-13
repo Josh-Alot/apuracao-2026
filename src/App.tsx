@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import { RETENTAR_MS, getJson, qs, urlAoVivo, urlMapa, urlResultado, useApi } from './api';
 import type {
   Candidato, Cargo, Composicao, Config, DetalheCandidato, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado, Resumo, ResumoCandidato,
 } from './types';
-import { UF_NOMES, fmt, fmtPct, titulo } from './util';
+import { UF_NOMES, corPartido, fmt, fmtPct, titulo } from './util';
+import { useCores } from './tema';
 import { Mapa } from './components/Mapa';
 import { PainelResultado } from './components/PainelResultado';
 import { BarraBusca } from './components/BarraBusca';
@@ -14,25 +15,15 @@ import { ProximaAtualizacao } from './components/ProximaAtualizacao';
 import { AvisoVotacao, faseVotacao, useAgora } from './components/AvisoVotacao';
 import { BotaoTema } from './components/BotaoTema';
 import { Hemiciclo } from './components/Hemiciclo';
-import { Duelo, ListaDuelos, coresFinalistas, corDoLider, finalistas } from './components/Duelo';
+import { ListaDuelos, coresFinalistas, corDoLider, finalistas } from './components/Duelo';
+import { LinhaRotulo, Placar } from './components/Placar';
+import { TickerUFs } from './components/TickerUFs';
+import { DiferencaUF } from './components/DiferencaUF';
+import { DestaquesUF } from './components/DestaquesUF';
+import { Num } from './components/Num';
 import { Link } from './components/Link';
 import { Logo } from './components/Logo';
 import { caminho, caminhoCandidato, cargoPorSlug, lerCaminho, slugCargo, tituloPagina } from './rotas.mjs';
-
-/** "25/10/2026" → "25 de outubro" */
-function diaMes(ddmmaaaa: string) {
-  const [d, m, a] = ddmmaaaa.split('/').map(Number);
-  return new Date(a, m - 1, d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
-}
-
-/** "04/10/2026" → "Domingo, 4 de outubro de 2026" */
-function dataPorExtenso(ddmmaaaa: string) {
-  const [d, m, a] = ddmmaaaa.split('/').map(Number);
-  const s = new Date(a, m - 1, d).toLocaleDateString('pt-BR', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 // Com "ao vivo" ligado, os resultados chegam por stream (o servidor verifica o TSE a cada 5 s)
 // e o mapa é consultado com mais frequência. Desligado, tudo é atualizado periodicamente.
@@ -108,6 +99,7 @@ export default function App() {
   const [modo, setModo] = useState<ModoMapa>('lider');
   const [auto, setAuto] = useState(true);
   const [filtroCand, setFiltroCand] = useState<string | undefined>();
+  const [indiceAberto, setIndiceAberto] = useState(false);
 
   useEffect(() => {
     const on = () => setRota(lerRota());
@@ -269,6 +261,12 @@ export default function App() {
   const chavePar = par?.map((c) => `${c.numero}${c.partido}`).join() ?? '';
   const cores = useMemo(() => coresFinalistas(par), [chavePar]);
   const corLider = useMemo(() => corDoLider(cores), [cores]);
+  // 2º turno ainda sem votos: o placar mostra o 1º turno da mesma região como referência (do arquivo, já final).
+  const resultado1t = useApi<Resultado>(
+    segundoTurno && cargo?.primeiroTurno && !precisaUf && resultado.data?.votos.validos === 0
+      ? urlResultado(cargo.primeiroTurno, local)
+      : null,
+  );
 
   // Composição da casa legislativa: Senado sempre nacional; Dep. Federal da UF ou do Brasil; assembleias da UF.
   const casa = cargo && flags?.hemiciclo ? casaLegislativa(cargo.cargo, uf) : null;
@@ -362,78 +360,230 @@ export default function App() {
       : uf
         ? UF_NOMES[uf]
         : 'Brasil';
+  const cargoBase = cargo.nome.replace(/ \(\d+º turno\)$/, '');
+  const r = resultado.data;
+
+  // Placar: os dois da frente nos cargos majoritários (no 2º turno, os finalistas na ordem do número de urna).
+  const parPlacar: [Candidato, Candidato] | null = cargo.tipo !== 'majoritario' || !r || r.candidatos.length < 2
+    ? null
+    : segundoTurno ? par : [r.candidatos[0], r.candidatos[1]];
+  const coresPlacar: [string, string] | null = !parPlacar
+    ? null
+    : segundoTurno && cores
+      ? [cores.get(parPlacar[0].numero)!, cores.get(parPlacar[1].numero)!]
+      : [corPartido(parPlacar[0].partido), corPartido(parPlacar[1].partido)];
+  // Regiões vencidas por candidato: UFs no Brasil, municípios na UF, zonas no município.
+  const regioesPlacar = local.zona
+    ? null
+    : local.mun
+      ? { dados: mapaZonas.data, rotulo: 'zonas' }
+      : { dados: mapaAtual.data, rotulo: uf ? (uf === 'zz' ? 'cidades' : 'municípios') : 'UFs' };
+  const vencidas = (numero: string) => {
+    if (!regioesPlacar?.dados) return null;
+    const n = Object.values(regioesPlacar.dados).filter((x) => x?.lider?.numero === numero).length;
+    return n ? `${fmt(n)} ${regioesPlacar.rotulo}` : null;
+  };
+
+  const rotuloBrasil = (
+    <LinhaRotulo
+      direita={precisaUf
+        ? (segundoTurno ? `${cargo.ufs.length} estados no 2º turno` : 'Escolha um estado')
+        : r && `${parPlacar ? '% dos votos válidos' : 'Votos válidos'} · ${fmt(r.votos.validos)}`}
+    >
+      <h1>{cargoBase} · Brasil · {cargo.turno}º turno</h1>
+    </LinhaRotulo>
+  );
+
+  const estado = fase === 'votando' ? 'Votação em andamento'
+    : fase === 'antes' ? 'Votação ainda não começou'
+    : fase === 'aguardando' ? 'Urnas fechadas'
+    : fase === 'indisponivel' ? 'TSE indisponível'
+    : encerrada ? 'Apuração encerrada'
+    : aoVivo && tempoReal ? 'Ao vivo' : 'Atualização periódica';
+  const fonteAtualizacao = precisaUf ? mapaBr : resultado;
+
+  const cargo2t = config.cargos.find((c) => c.turno === 2);
+  const proximoPlantao = cargo2t?.abertura && agora < Date.parse(cargo2t.abertura) ? <ProximoPlantao cargo={cargo2t} /> : null;
+
+  const exterior = !uf && cargo.ufs.includes('zz') && (
+    mapaBr.data?.zz?.lider ? (
+      <CartaoExterior
+        dados={mapaBr.data.zz}
+        corLider={segundoTurno && cargo.escopo === 'br' ? corLider : (l) => corPartido(l.partido)}
+        href={caminhoDe({ uf: 'zz' })}
+        onAbrir={() => ir({ uf: 'zz' })}
+      />
+    ) : (
+      <Link className="cartao-exterior" href={caminhoDe({ uf: 'zz' })} onNavegar={() => ir({ uf: 'zz' })}>
+        Ver votos no exterior →
+      </Link>
+    )
+  );
+
+  const rotuloMapa = local.mun ? 'zona' : uf ? 'município' : 'UF';
+  const modoMapa = uf && cargo.tipo === 'proporcional' ? 'apurado' : modo;
+
+  let lateral: ReactNode = null;
+  if (precisaUf) {
+    lateral = segundoTurno ? (
+      <section className={`bloco ${mapaBr.carregando && mapaBr.data ? 'atualizando' : ''}`}>
+        <h2 className="titulo-bloco">Disputas no 2º turno</h2>
+        <p className="muted pequeno">Nos demais estados o governador foi eleito no 1º turno. Clique numa disputa para ver o mapa por município.</p>
+        <ListaDuelos ufs={cargo.ufs} dados={mapaBr.data} href={(u) => caminhoDe({ uf: u })} onSelect={(u) => ir({ uf: u })} />
+      </section>
+    ) : (
+      <section className="bloco">
+        <ListaRegioes
+          titulo="Líder em cada estado"
+          itens={cargo.ufs.map((u) => ({ chave: u, nome: UF_NOMES[u] }))}
+          dados={mapaBr.data}
+          carregando={mapaBr.carregando}
+          href={(u) => caminhoDe({ uf: u })}
+          onSelect={(u) => ir({ uf: u })}
+        />
+      </section>
+    );
+  } else if (!uf && parPlacar && coresPlacar && cargo.escopo === 'br') {
+    lateral = (
+      <DiferencaUF
+        a={parPlacar[0]}
+        b={parPlacar[1]}
+        cores={coresPlacar}
+        ufs={cargo.ufs}
+        dados={mapaBr.data}
+        href={(u) => caminhoDe({ uf: u })}
+        onSelect={(u) => ir({ uf: u })}
+      />
+    );
+  } else if (uf && uf !== 'zz' && !local.mun && cargo.tipo === 'majoritario') {
+    lateral = (
+      <DestaquesUF
+        dados={mapaUf.data}
+        par={parPlacar}
+        nome={nomeRegiao}
+        href={(cd) => caminhoDe({ uf, mun: cd })}
+        onSelect={(cd) => ir({ uf, mun: cd })}
+        total={munsUf.length}
+        onVerTodos={() => {
+          setIndiceAberto(true);
+          requestAnimationFrame(() => document.getElementById('indice-regioes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+        }}
+      />
+    );
+  } else if (munAtual && munAtual.zonas.length > 0) {
+    lateral = (
+      <section className="bloco">
+        <ListaRegioes
+          titulo={`Zonas eleitorais (${munAtual.zonas.length})`}
+          itens={munAtual.zonas.map((z) => ({ chave: z, nome: `Zona ${Number(z)}` }))}
+          dados={mapaZonas.data}
+          carregando={mapaZonas.carregando}
+          selecionado={local.zona}
+          href={(z) => caminhoDe({ uf, mun: munAtual.cd, zona: z })}
+          onSelect={(z) => ir({ uf, mun: munAtual.cd, zona: z })}
+        />
+      </section>
+    );
+  }
 
   return (
     <div className="app">
       <BarraTopo />
       <header className="topo">
         <div className="marca">
-          {/* A marca não é o <h1>: o <h1> descreve a tela (título do painel). */}
+          {/* A marca não é o <h1>: o <h1> descreve a tela. */}
           <p className="marca-titulo"><Logo />Apuração.org</p>
-          <span className="muted pequeno">Dados oficiais do TSE · {cargo.turno}º turno em {cargo.data}</span>
-          {config.demo && <span className="selo selo-demo" title="Votos sintéticos sobre os candidatos reais">MODO DEMO</span>}
+          {config.demo && <span className="selo selo-demo" title="Votos sintéticos sobre os candidatos reais">Modo demo</span>}
           {cargo.simulado && (
             <span className="selo selo-demo" title="Votos do 2º turno de 2022 aplicados aos candidatos que foram ao 2º turno de 2026">
-              SIMULAÇÃO
+              Simulação
             </span>
           )}
           {config.flags.previa && (
             <a className="selo selo-demo" href="/api/preview?sair" title="Todas as flags ligadas só neste navegador. Clique para sair da prévia.">
-              PRÉVIA · sair
+              Prévia · sair
             </a>
           )}
-          <div className="dataline">
-            <span>{dataPorExtenso(cargo.data)}</span>
-            <span>Eleições Gerais · {cargo.turno}º turno</span>
-            {fase === 'votando' ? <span className="ao-vivo">Votação em andamento</span>
-              : fase === 'antes' ? <span>Votação ainda não começou</span>
-              : encerrada ? <span>Apuração encerrada</span>
-              : aoVivo ? <span className="ao-vivo">Ao vivo</span> : <span>Atualização periódica</span>}
-            <span>{cargo.simulado ? 'Simulação com os votos de 2022' : 'Dados oficiais do TSE'}</span>
-            <BotaoTema />
-          </div>
         </div>
-        {config.flags.busca && (
-          <BarraBusca cargos={config.cargos} href={(i) => caminhoDe(localBusca(i), i.cargoId)} onEscolher={escolherBusca} />
-        )}
-      </header>
-
-      {turnos.length > 1 && (
-        <nav className="turnos" aria-label="Turno">
-          {turnos.map((t) => {
-            const c = config.cargos.find((x) => x.turno === t)!;
-            const [l, id] = destinoTurno(t);
-            return (
-              <Link
-                key={t}
-                href={caminhoDe(l, id)}
-                className={t === cargo.turno ? 'ativo' : undefined}
-                aria-current={t === cargo.turno ? 'page' : undefined}
-                onNavegar={() => ir(l, id)}
-              >
-                <strong>{t}º turno</strong>
-                <span>{diaMes(c.data)}</span>
-              </Link>
-            );
-          })}
+        <nav className="cargos" aria-label="Cargo">
+          {cargosDoTurno.map((c) => (
+            <Link
+              key={c.id}
+              href={caminhoDe(localCargo(c), c.id)}
+              className={c.id === cargo.id ? 'ativo' : undefined}
+              aria-current={c.id === cargo.id ? 'page' : undefined}
+              onNavegar={() => ir(localCargo(c), c.id)}
+            >
+              {turnos.length > 1 ? c.nome.replace(/ \(\d+º turno\)$/, '') : c.nome}
+            </Link>
+          ))}
         </nav>
-      )}
+        <div className="topo-acoes">
+          {config.flags.busca && (
+            <BarraBusca cargos={config.cargos} href={(i) => caminhoDe(localBusca(i), i.cargoId)} onEscolher={escolherBusca} />
+          )}
+          <BotaoTema />
+        </div>
+      </header>
 
       <AvisoVotacao cargo={cargo} fase={fase} agora={agora} />
 
-      <nav className="cargos" aria-label="Cargo">
-        {cargosDoTurno.map((c) => (
-          <Link
-            key={c.id}
-            href={caminhoDe(localCargo(c), c.id)}
-            className={c.id === cargo.id ? 'ativo' : undefined}
-            aria-current={c.id === cargo.id ? 'page' : undefined}
-            onNavegar={() => ir(localCargo(c), c.id)}
-          >
-            {turnos.length > 1 ? c.nome.replace(/ \(\d+º turno\)$/, '') : c.nome}
-          </Link>
-        ))}
-      </nav>
+      <div className="faixa-status">
+        <div className="faixa-info">
+          <span className="faixa-estado"><i aria-hidden="true" />{estado}</span>
+          {r && (
+            <span title={`${fmt(r.secoes.totalizadas)} de ${fmt(r.secoes.total)} seções totalizadas`}>
+              Seções {fmt(r.secoes.totalizadas)} / {fmt(r.secoes.total)} · <b className="faixa-pct"><Num valor={r.secoes.pct} formatar={fmtPct} /></b>
+            </span>
+          )}
+          {r?.atualizado && (
+            <span title="Horário de Brasília da última publicação do TSE">
+              Última totalização {r.atualizado.replace(/^(\d\d\/\d\d)\/\d{4}/, '$1')}
+            </span>
+          )}
+          {r?.totalizado && <span>Totalização final</span>}
+          <span className={fonteAtualizacao.carregando ? 'indicador-atualizando' : undefined}>
+            <ProximaAtualizacao
+              proxima={fonteAtualizacao.proxima}
+              intervalo={precisaUf ? intervaloMapa : ATUALIZA_RESULTADO_MS}
+              carregando={fonteAtualizacao.carregando}
+              aoVivo={precisaUf ? null : resultado.aoVivo}
+              inicio={apuracaoAberta ? null : cargo.encerramento}
+              encerrada={encerrada}
+              compacto
+            />
+          </span>
+          {!encerrada && config.flags.aoVivo && (
+            <label
+              className="auto"
+              title={auto
+                ? 'Ao vivo: os resultados chegam assim que o TSE publica (verificação a cada 5 s). Desmarque para atualizar a cada 30 s.'
+                : 'Atualização periódica: resultados a cada 30 s e mapa a cada 1 min. Marque para receber ao vivo.'}
+            >
+              <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> ao vivo
+            </label>
+          )}
+        </div>
+        {turnos.length > 1 && (
+          <nav className="turnos" aria-label="Turno">
+            {turnos.map((t) => {
+              const c = config.cargos.find((x) => x.turno === t)!;
+              const [l, id] = destinoTurno(t);
+              return (
+                <Link
+                  key={t}
+                  href={caminhoDe(l, id)}
+                  className={t === cargo.turno ? 'ativo' : undefined}
+                  aria-current={t === cargo.turno ? 'page' : undefined}
+                  onNavegar={() => ir(l, id)}
+                >
+                  {t}º turno <span>{c.data.slice(0, 5)}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+      </div>
 
       {cargo.simulado && (
         <div className="aviso-mapa aviso-simulacao" role="note">
@@ -445,205 +595,191 @@ export default function App() {
         </div>
       )}
 
-      {segundoTurno && par && cores && resultado.data && (
-        <Duelo
-          resultado={resultado.data}
-          cores={cores}
-          local={tituloPainel}
-          carregando={resultado.carregando}
-          regioes={local.mun ? null : { dados: mapaAtual.data, rotulo: uf ? (uf === 'zz' ? 'cidades' : 'municípios') : 'UFs' }}
-        />
+      {!uf && cargo.tipo === 'majoritario' && (
+        <TickerUFs ufs={cargo.ufs} dados={mapaBr.data} href={(u) => caminhoDe({ uf: u })} onSelect={(u) => ir({ uf: u })} />
       )}
 
-      <main className="grade">
-        <section className="coluna-mapa">
-          <div className="barra-mapa">
+      {uf && (
+        <div className="cabecalho-tela">
+          <div className="trilha-linha">
             <nav className="trilha" aria-label="Navegação">
               <Link href={caminhoDe({})} onNavegar={() => ir({})}>Brasil</Link>
-              {uf && <><span>›</span><Link href={caminhoDe({ uf })} onNavegar={() => ir({ uf })}>{UF_NOMES[uf]}</Link></>}
+              <span aria-hidden="true">/</span>
+              {munAtual
+                ? <Link href={caminhoDe({ uf })} onNavegar={() => ir({ uf })}>{UF_NOMES[uf]}</Link>
+                : <span aria-current="page">{UF_NOMES[uf]}</span>}
               {munAtual && (
                 <>
-                  <span>›</span>
-                  <Link href={caminhoDe({ uf, mun: munAtual.cd })} onNavegar={() => ir({ uf, mun: munAtual.cd })}>{titulo(munAtual.nome)}</Link>
+                  <span aria-hidden="true">/</span>
+                  {local.zona
+                    ? <Link href={caminhoDe({ uf, mun: munAtual.cd })} onNavegar={() => ir({ uf, mun: munAtual.cd })}>{titulo(munAtual.nome)}</Link>
+                    : <span aria-current="page">{titulo(munAtual.nome)}</span>}
                 </>
               )}
-              {local.zona && <><span>›</span><span>Zona {Number(local.zona)}</span></>}
+              {local.zona && <><span aria-hidden="true">/</span><span aria-current="page">Zona {Number(local.zona)}</span></>}
             </nav>
-            <div className="controles">
-              {uf && munsUf.length > 0 && (
-                <SeletorMunicipio
-                  municipios={munsUf.map((m) => ({ cd: m.cd, nome: titulo(m.nome) }))}
-                  onEscolher={(cd) => ir({ uf, mun: cd })}
-                />
-              )}
-              <div className="alternador" role="group" aria-label="Cor do mapa">
-                <button className={modo === 'lider' ? 'ativo' : ''} onClick={() => setModo('lider')}>Líder</button>
-                <button className={modo === 'apurado' ? 'ativo' : ''} onClick={() => setModo('apurado')}>% apurado</button>
-              </div>
-              {!encerrada && config.flags.aoVivo && (
-                <label
-                  className="auto"
-                  title={auto
-                    ? 'Ao vivo: os resultados chegam assim que o TSE publica (verificação a cada 5 s). Desmarque para atualizar a cada 30 s.'
-                    : 'Atualização periódica: resultados a cada 30 s e mapa a cada 1 min. Marque para receber ao vivo.'}
-                >
-                  <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> ao vivo
-                </label>
-              )}
-            </div>
+            {munsUf.length > 0 && (
+              <SeletorMunicipio
+                rotulo={uf === 'zz' ? 'Cidade' : 'Município'}
+                municipios={munsUf.map((m) => ({ cd: m.cd, nome: titulo(m.nome) }))}
+                onEscolher={(cd) => ir({ uf, mun: cd })}
+              />
+            )}
           </div>
-
-          <AvisoMapa
-            erro={mapaAtual.erro}
-            temDados={!!mapaAtual.data}
-            regioes={regioesTotal}
-            semDado={regioesTotal - regioesComDado.length}
-            rotulo={uf === 'zz' ? 'cidades' : uf ? 'municípios' : 'UFs'}
-            intervalo={encerrada ? RETENTAR_MS : intervaloMapa}
-          />
-
-          {uf === 'zz' ? (
-            <ListaRegioes
-              titulo="Cidades no exterior"
-              itens={munsUf.map((m) => ({ chave: m.cd, nome: titulo(m.nome) }))}
-              dados={mapaUf.data}
-              carregando={mapaUf.carregando}
-              selecionado={local.mun}
-              href={(cd) => caminhoDe({ uf, mun: cd })}
-              onSelect={(cd) => ir({ uf, mun: cd })}
-            />
-          ) : (
-            <Mapa
-              geo={geo}
-              chave={chave}
-              nome={nomeRegiao}
-              dados={uf ? mapaUf.data : mapaBr.data}
-              modo={uf && cargo.tipo === 'proporcional' ? 'apurado' : modo}
-              selecionado={local.mun}
-              focar={local.mun}
-              rotuloRegiao={uf ? 'municípios' : 'UFs'}
-              legendaPorPartido={!uf && cargo.escopo === 'uf'}
-              segundoTurno={segundoTurno}
-              corLider={segundoTurno && !(!uf && cargo.escopo === 'uf') ? corLider : undefined}
-              rotulos={segundoTurno && !uf}
-              onSelect={(k) => ir(uf ? { uf, mun: k } : { uf: k })}
-              zonas={zonasNoMapa && munAtual ? {
-                geo: zonasNoMapa,
-                dados: mapaZonas.data,
-                selecionada: local.zona,
-                onSelect: (z) => ir({ uf, mun: munAtual.cd, zona: z }),
-              } : undefined}
-            />
-          )}
-
-          {zonasNoMapa && (
-            <p className="muted pequeno nota-mapa">
-              Limites das zonas eleitorais estimados pelos locais de votação (cada área fica com a zona do local mais
-              próximo). O TSE não publica limites oficiais das zonas.
-            </p>
-          )}
-          <p className="muted pequeno nota-mapa">
-            <ProximaAtualizacao
-              rotulo="Mapa atualizado"
-              proxima={(uf ? mapaUf : mapaBr).proxima}
-              intervalo={intervaloMapa}
-              carregando={(uf ? mapaUf : mapaBr).carregando}
-              inicio={apuracaoAberta ? null : cargo.encerramento}
-              encerrada={encerrada}
-            />
+          <h1 className="titulo-tela">{tituloPainel}<span className="visualmente-oculto">: {nomeCargo(cargo)}</span></h1>
+          <p className="subtitulo-tela">
+            {cargoBase} · {cargo.turno}º turno
+            {!local.mun && munsUf.length > 0 && ` · ${fmt(munsUf.length)} ${uf === 'zz' ? 'cidades' : 'municípios'}`}
+            {local.mun && !local.zona && munAtual && munAtual.zonas.length > 1 && ` · ${munAtual.zonas.length} zonas`}
+            {r && ` · ${fmt(r.eleitorado.total)} eleitores`}
           </p>
+        </div>
+      )}
+
+      {parPlacar && coresPlacar && r ? (
+        <Placar
+          resultado={r}
+          par={parPlacar}
+          cores={coresPlacar}
+          compacto={!!uf}
+          regioes={regioesPlacar}
+          exterior={!uf && cargo.ufs.includes('zz') ? mapaBr.data?.zz ?? null : undefined}
+          primeiroTurno={resultado1t.data}
+          maioria={cargo.cargo !== '5'}
+          rotulo={uf ? undefined : rotuloBrasil}
+          carregando={resultado.carregando}
+          onAbrir={abrirCandidato}
+        />
+      ) : !uf && rotuloBrasil}
+
+      <main className={`grade ${lateral ? '' : 'sem-lateral'}`}>
+        <div className="coluna-mapa">
+          <section className="painel-mapa">
+            <header className="mapa-cabecalho">
+              <h2 className="rotulo-secao">
+                {uf === 'zz' ? 'Cidades no exterior' : `Mapa · ${modoMapa === 'apurado' ? '% apurado' : 'líder'} por ${rotuloMapa}`}
+              </h2>
+              {uf !== 'zz' && modoMapa === modo && (
+                <div className="alternador" role="group" aria-label="Cor do mapa">
+                  <button className={modo === 'lider' ? 'ativo' : ''} aria-pressed={modo === 'lider'} onClick={() => setModo('lider')}>Líder</button>
+                  <button className={modo === 'apurado' ? 'ativo' : ''} aria-pressed={modo === 'apurado'} onClick={() => setModo('apurado')}>% apurado</button>
+                </div>
+              )}
+            </header>
+
+            <AvisoMapa
+              erro={mapaAtual.erro}
+              temDados={!!mapaAtual.data}
+              regioes={regioesTotal}
+              semDado={regioesTotal - regioesComDado.length}
+              rotulo={uf === 'zz' ? 'cidades' : uf ? 'municípios' : 'UFs'}
+              intervalo={encerrada ? RETENTAR_MS : intervaloMapa}
+            />
+
+            {uf === 'zz' ? (
+              <ListaRegioes
+                titulo="Cidades no exterior"
+                itens={munsUf.map((m) => ({ chave: m.cd, nome: titulo(m.nome) }))}
+                dados={mapaUf.data}
+                carregando={mapaUf.carregando}
+                selecionado={local.mun}
+                href={(cd) => caminhoDe({ uf, mun: cd })}
+                onSelect={(cd) => ir({ uf, mun: cd })}
+              />
+            ) : (
+              <Mapa
+                geo={geo}
+                chave={chave}
+                nome={nomeRegiao}
+                dados={uf ? mapaUf.data : mapaBr.data}
+                modo={modoMapa}
+                selecionado={local.mun}
+                focar={local.mun}
+                rotuloRegiao={uf ? 'municípios' : 'UFs'}
+                legendaPorPartido={!uf && cargo.escopo === 'uf'}
+                segundoTurno={segundoTurno}
+                corLider={segundoTurno && !(!uf && cargo.escopo === 'uf') ? corLider : undefined}
+                rotulos={segundoTurno && !uf}
+                onSelect={(k) => ir(uf ? { uf, mun: k } : { uf: k })}
+                dica={(k) => (!uf
+                  ? 'Clique para abrir o estado →'
+                  : (porCd.get(k)?.zonas.length ?? 0) > 1 ? 'Clique para abrir as zonas →' : 'Clique para abrir o município →')}
+                rodape={exterior}
+                zonas={zonasNoMapa && munAtual ? {
+                  geo: zonasNoMapa,
+                  dados: mapaZonas.data,
+                  selecionada: local.zona,
+                  onSelect: (z) => ir({ uf, mun: munAtual.cd, zona: z }),
+                } : undefined}
+              />
+            )}
+
+            {zonasNoMapa && (
+              <p className="muted pequeno nota-mapa">
+                Limites das zonas eleitorais estimados pelos locais de votação (cada área fica com a zona do local mais
+                próximo). O TSE não publica limites oficiais das zonas.
+              </p>
+            )}
+            {uf && cargo.tipo === 'proporcional' && !local.mun && (
+              <p className="muted pequeno nota-mapa">
+                Para cargos proporcionais o mapa estadual mostra apenas o % apurado por município
+                (há milhares de candidatos). Clique num município para ver os votos.
+              </p>
+            )}
+            <p className="muted pequeno nota-mapa">
+              <ProximaAtualizacao
+                rotulo="Mapa atualizado"
+                proxima={mapaAtual.proxima}
+                intervalo={intervaloMapa}
+                carregando={mapaAtual.carregando}
+                inicio={apuracaoAberta ? null : cargo.encerramento}
+                encerrada={encerrada}
+              />
+            </p>
+          </section>
 
           {indice && indice.length > 0 && (
             <IndiceRegioes
               rotulo={uf ? `Todos os municípios de ${UF_NOMES[uf]}` : 'Todos os estados'}
               itens={indice}
+              aberto={indiceAberto}
+              onAlternar={setIndiceAberto}
               href={(k) => caminhoDe(uf ? { uf, mun: k } : { uf: k })}
               onSelect={(k) => ir(uf ? { uf, mun: k } : { uf: k })}
             />
           )}
+        </div>
 
-          {!uf && cargo.ufs.includes('zz') && (
-            segundoTurno && mapaBr.data?.zz?.lider ? (
-              <CartaoExterior dados={mapaBr.data.zz} corLider={corLider} href={caminhoDe({ uf: 'zz' })} onAbrir={() => ir({ uf: 'zz' })} />
-            ) : (
-              <Link className="botao-exterior" href={caminhoDe({ uf: 'zz' })} onNavegar={() => ir({ uf: 'zz' })}>
-                Ver votos no exterior →
-              </Link>
-            )
-          )}
-          {uf && cargo.tipo === 'proporcional' && !local.mun && (
-            <p className="muted pequeno">
-              Para cargos proporcionais o mapa estadual mostra apenas o % apurado por município
-              (há milhares de candidatos). Clique num município para ver os votos.
-            </p>
-          )}
-
-          {casa && (
-            <Hemiciclo
-              dados={composicao.data}
-              erro={composicao.erro}
-              carregando={composicao.carregando}
-              titulo={casa.titulo}
-              subtitulo={casa.subtitulo}
-              maioria={casa.casaInteira && composicao.data ? Math.floor(composicao.data.vagas / 2) + 1 : undefined}
-            />
-          )}
-
-          {munAtual && munAtual.zonas.length > 0 && (
-            <ListaRegioes
-              titulo={`Zonas eleitorais (${munAtual.zonas.length})`}
-              itens={munAtual.zonas.map((z) => ({ chave: z, nome: `Zona ${Number(z)}` }))}
-              dados={mapaZonas.data}
-              carregando={mapaZonas.carregando}
-              selecionado={local.zona}
-              href={(z) => caminhoDe({ uf, mun: munAtual.cd, zona: z })}
-              onSelect={(z) => ir({ uf, mun: munAtual.cd, zona: z })}
-            />
-          )}
-        </section>
-
-        <aside className="coluna-painel">
-          {precisaUf ? (
-            segundoTurno ? (
-              <section className={`painel ${mapaBr.carregando && mapaBr.data ? 'atualizando' : ''}`}>
-                <h1>{cargo.nome.replace(/ \(\d+º turno\)$/, '')}: {cargo.ufs.length} estados no 2º turno</h1>
-                <p className="muted">Nos demais estados o governador foi eleito no 1º turno. Clique numa disputa para ver o mapa por município.</p>
-                <ListaDuelos ufs={cargo.ufs} dados={mapaBr.data} href={(u) => caminhoDe({ uf: u })} onSelect={(u) => ir({ uf: u })} />
-              </section>
-            ) : (
-              <section className="painel">
-                <h1>{cargo.nome}: escolha um estado</h1>
-                <p className="muted">Este cargo é disputado por UF. Clique no mapa ou na lista abaixo.</p>
-                <ListaRegioes
-                  titulo="Líder em cada estado"
-                  itens={cargo.ufs.map((u) => ({ chave: u, nome: UF_NOMES[u] }))}
-                  dados={mapaBr.data}
-                  carregando={mapaBr.carregando}
-                  href={(u) => caminhoDe({ uf: u })}
-                  onSelect={(u) => ir({ uf: u })}
-                />
-              </section>
-            )
-          ) : (
-            <PainelResultado
-              resultado={resultado.data}
-              erro={resultado.erro}
-              carregando={resultado.carregando}
-              titulo={tituloPainel}
-              cargoNome={nomeCargo(cargo)}
-              filtroInicial={filtroCand}
-              proxima={resultado.proxima}
-              intervalo={ATUALIZA_RESULTADO_MS}
-              aoVivo={resultado.aoVivo}
-              inicioAtualizacao={apuracaoAberta ? null : cargo.encerramento}
-              encerrada={encerrada}
-              candidatoAberto={rota.candidato}
-              onAbrirCandidato={abrirCandidato}
-              onFecharCandidato={fecharCandidato}
-            />
-          )}
-        </aside>
+        {lateral && <aside className="coluna-lateral">{lateral}</aside>}
       </main>
+
+      {casa && (
+        <Hemiciclo
+          dados={composicao.data}
+          erro={composicao.erro}
+          carregando={composicao.carregando}
+          titulo={casa.titulo}
+          subtitulo={casa.subtitulo}
+          maioria={casa.casaInteira && composicao.data ? Math.floor(composicao.data.vagas / 2) + 1 : undefined}
+        />
+      )}
+
+      {precisaUf ? (
+        proximoPlantao && <div className="grade-baixo"><span /><aside className="coluna-baixo">{proximoPlantao}</aside></div>
+      ) : (
+        <PainelResultado
+          resultado={resultado.data}
+          erro={resultado.erro}
+          carregando={resultado.carregando}
+          local={tituloPainel}
+          filtroInicial={filtroCand}
+          candidatoAberto={rota.candidato}
+          vencidas={vencidas}
+          lateral={proximoPlantao}
+          onAbrirCandidato={abrirCandidato}
+          onFecharCandidato={fecharCandidato}
+        />
+      )}
 
       <footer className="rodape muted pequeno">
         Fonte: TSE (resultados.tse.jus.br) e IBGE (malhas). Projeto independente, sem vínculo com o TSE.
@@ -652,23 +788,43 @@ export default function App() {
   );
 }
 
-/** Exterior no mapa do Brasil (2º turno): não tem malha, então vira um cartão ao lado da legenda. */
+/** Caixa "Próximo plantão": o 2º turno já está na config e a votação ainda não começou. */
+function ProximoPlantao({ cargo }: { cargo: Cargo }) {
+  const [d, m, a] = cargo.data.split('/').map(Number);
+  const semana = new Date(a, m - 1, d).toLocaleDateString('pt-BR', { weekday: 'long' });
+  const hora = (iso: string | null) => (iso
+    ? new Date(iso).toLocaleTimeString('pt-BR', { hour: 'numeric', timeZone: 'America/Sao_Paulo' }).replace(/:00$/, '').replace(/^0/, '') + 'h'
+    : '');
+  return (
+    <section className="proximo-plantao">
+      <span className="rotulo-secao">Próximo plantão</span>
+      <strong>2º turno · {semana}, {cargo.data.slice(0, 5)}</strong>
+      <p>
+        Urnas abertas das {hora(cargo.abertura)} às {hora(cargo.encerramento)} (Brasília). Resultados ao vivo a partir
+        das {hora(cargo.encerramento)}.
+      </p>
+    </section>
+  );
+}
+
+/** Exterior no mapa do Brasil: não tem malha, então vira um cartão ao lado da legenda. */
 function CartaoExterior({ dados, corLider, href, onAbrir }: {
   dados: Resumo; corLider: (l: ResumoCandidato) => string; href: string; onAbrir: () => void;
 }) {
+  const tema = useCores();
   const cands = [dados.lider, dados.segundo].filter((c): c is ResumoCandidato => !!c);
   return (
     <Link className="cartao-exterior" href={href} onNavegar={onAbrir} title="Ver votos por cidade no exterior">
-      <strong>Exterior</strong>
-      <span className="muted pequeno">{fmt(cands.reduce((t, c) => t + c.votos, 0))} votos válidos</span>
+      <strong>Exterior →</strong>
       <span className="cartao-exterior-cands">
         {cands.map((c) => (
           <span key={c.numero}>
-            <span className="bolinha" style={{ background: corLider(c) }} />
+            <i className="quadrado" style={{ background: tema.preench(corLider(c)) }} />
             {titulo(c.nome)}&nbsp;<b>{fmtPct(c.pct)}</b>
           </span>
         ))}
       </span>
+      <span className="muted">{fmtPct(dados.pctApurado)} apurado</span>
     </Link>
   );
 }
@@ -678,12 +834,13 @@ function CartaoExterior({ dados, corLider, href, onAbrir }: {
  * "arrastar e soltar" do navegador e o toque longo abre a prévia do link, o que atrapalharia o zoom/arraste);
  * sem esta lista, as páginas de UF e de município não teriam link rastreável.
  */
-function IndiceRegioes({ rotulo, itens, href, onSelect }: {
-  rotulo: string; itens: { chave: string; nome: string }[]; href: (k: string) => string; onSelect: (k: string) => void;
+function IndiceRegioes({ rotulo, itens, aberto, onAlternar, href, onSelect }: {
+  rotulo: string; itens: { chave: string; nome: string }[]; aberto: boolean; onAlternar: (aberto: boolean) => void;
+  href: (k: string) => string; onSelect: (k: string) => void;
 }) {
   return (
-    <details className="indice-regioes">
-      <summary className="muted pequeno">{rotulo} ({fmt(itens.length)})</summary>
+    <details className="indice-regioes" id="indice-regioes" open={aberto} onToggle={(e) => onAlternar(e.currentTarget.open)}>
+      <summary>{rotulo} ({fmt(itens.length)})</summary>
       <ul>
         {itens.map((i) => (
           <li key={i.chave}><Link href={href(i.chave)} onNavegar={() => onSelect(i.chave)}>{i.nome}</Link></li>
@@ -716,14 +873,16 @@ function casaLegislativa(cargo: string, uf: string | undefined): Casa | null {
   return null;
 }
 
-function SeletorMunicipio({ municipios, onEscolher }: { municipios: { cd: string; nome: string }[]; onEscolher: (cd: string) => void }) {
+function SeletorMunicipio({ rotulo, municipios, onEscolher }: {
+  rotulo: string; municipios: { cd: string; nome: string }[]; onEscolher: (cd: string) => void;
+}) {
   const [valor, setValor] = useState('');
   return (
-    <>
+    <label className="campo-rotulado seletor-municipio">
+      <span>{rotulo}</span>
       <input
-        className="seletor-municipio"
         list="lista-municipios"
-        placeholder="Ir para município…"
+        placeholder="ir para…"
         value={valor}
         onChange={(e) => {
           setValor(e.target.value);
@@ -734,7 +893,7 @@ function SeletorMunicipio({ municipios, onEscolher }: { municipios: { cd: string
       <datalist id="lista-municipios">
         {municipios.map((m) => <option key={m.cd} value={m.nome} />)}
       </datalist>
-    </>
+    </label>
   );
 }
 
