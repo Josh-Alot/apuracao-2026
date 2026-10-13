@@ -57,7 +57,7 @@ Com `ADMIN_TOKEN` definido:
 ```
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
   index.mjs        Rotas HTTP, busca, malhas do IBGE (cache em disco em .cache/geo), contorno das zonas
-                   (/api/geo/<uf>/<mun>, de dados/zonas-2026.json.gz), arquivos estáticos
+                   (/api/zonas?uf=&mun=, de dados/zonas-2026.json.gz), arquivos estáticos
   aovivo.mjs       Stream SSE /api/ao-vivo: 1 vigia por resultado consulta o TSE a cada 5 s e empurra só quando muda
   tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
   demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais); arquivo com votos (arquivo
@@ -204,7 +204,8 @@ aproximado para os ~190 municípios com mais de uma zona (725 zonas; nos demais 
   mais eleitores; local a mais de 1 km fora do município é descartado (o script avisa).
 - Dependências só do script (devDependencies): `d3-delaunay` e `polygon-clipping`. O servidor só lê o `.json.gz`
   (`{ gerado, municipios: { <cd TSE>: { <zona4>: MultiPolygon } } }`), em memória no 1º pedido.
-- Front: com o município aberto, `App.tsx` pede `/api/geo/<uf>/<mun>` (404 = sem contorno) e o `Mapa` pinta as
+- Front: com o município aberto, `App.tsx` pede `/api/zonas?uf=<uf>&mun=<mun>` (404 = sem contorno;
+  ETag + `no-cache` como as demais rotas, para uma regeração chegar no deploy) e o `Mapa` pinta as
   zonas sobre o município (mesmas cores/modos, tooltip, clique abre a zona); a lista de zonas continua abaixo. Uma
   nota sob o mapa avisa que os limites são estimados. Parques, represas e área rural também ficam com alguma zona
   (ex.: o extremo sul de SP vira uma zona enorme) — limitação aceita da divisão simples.

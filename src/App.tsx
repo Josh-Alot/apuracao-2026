@@ -300,7 +300,7 @@ export default function App() {
   const munAtual = local.mun ? porCd.get(local.mun) : undefined;
   // Contorno estimado das zonas (só existe para municípios com mais de uma zona).
   const { data: geoZonas } = useApi<FeatureCollection & { mun: string }>(
-    temMalha && munAtual && munAtual.zonas.length > 1 ? `/api/geo/${uf}/${munAtual.cd}` : null,
+    temMalha && munAtual && munAtual.zonas.length > 1 ? `/api/zonas?uf=${uf}&mun=${munAtual.cd}` : null,
   );
   // Ao trocar de município o dado anterior fica até o novo chegar: só vale o do município aberto.
   const zonasNoMapa = munAtual && geoZonas?.mun === munAtual.cd ? geoZonas : null;

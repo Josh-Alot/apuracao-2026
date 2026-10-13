@@ -302,8 +302,12 @@ async function geo(alvo) {
 
 // Contorno estimado das zonas nos municípios com mais de uma zona (gerado por `npm run zonas`, ~0,3 MB):
 // lido no 1º pedido e mantido em memória.
+// Passa pelo json() das rotas (ETag + no-cache): uma regeração do arquivo chega ao navegador no deploy seguinte.
 let zonasGeo = null;
-async function geoZonas(mun) {
+async function geoZonas(q) {
+  uf(q.get('uf'));
+  const mun = q.get('mun');
+  if (!/^\d{5}$/.test(mun || '')) throw new HttpError(400, 'município inválido');
   zonasGeo ??= fs.readFile(path.join(ROOT, 'dados', 'zonas-2026.json.gz'))
     .then((b) => JSON.parse(zlib.gunzipSync(b)))
     .catch(() => ({ municipios: {} }));
@@ -349,6 +353,7 @@ const rotas = {
   '/api/mapa': mapa,
   '/api/busca': busca,
   '/api/composicao': composicao,
+  '/api/zonas': geoZonas,
   // Diagnóstico: fila de consultas ao TSE, cache e memória.
   '/api/saude': () => ({ fila: estadoFila(), arquivo: estadoArquivo(), simulacao: SIMULACAO, memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20) }),
 };
@@ -420,13 +425,6 @@ const server = http.createServer(async (req, res) => {
     if (geoMatch) {
       const alvo = geoMatch[1] === 'br' ? 'br' : uf(geoMatch[1]);
       const data = await geo(alvo);
-      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=86400' });
-      return res.end(JSON.stringify(data));
-    }
-    const zonasMatch = url.pathname.match(/^\/api\/geo\/([a-z]{2})\/(\d{5})$/);
-    if (zonasMatch) {
-      uf(zonasMatch[1]);
-      const data = await geoZonas(zonasMatch[2]);
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=86400' });
       return res.end(JSON.stringify(data));
     }
