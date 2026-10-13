@@ -14,6 +14,8 @@ interface Props {
   inicio?: string | null;
   /** Apuração encerrada: sem atualização automática; `proxima` = nova tentativa (falha ou dado incompleto). */
   encerrada?: boolean;
+  /** Ao lado do selo "ao vivo" (faixa de status): sem repetir "Ao vivo" e o ponto. */
+  compacto?: boolean;
 }
 
 const EXPLICACAO =
@@ -23,7 +25,7 @@ const EXPLICACAO =
 const fmtIntervalo = (ms: number) => (ms >= 60_000 ? `${ms / 60_000} min` : `${ms / 1000} s`);
 
 /** "Atualiza a cada 30 s · próxima em 12 s", com contagem regressiva por segundo. */
-export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'Atualização automática', aoVivo, inicio, encerrada }: Props) {
+export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'Atualização automática', aoVivo, inicio, encerrada, compacto }: Props) {
   const [agora, setAgora] = useState(Date.now);
   const relogio = !!proxima || !!aoVivo;
   useEffect(() => {
@@ -39,8 +41,8 @@ export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'A
     if (!aoVivo.conectado) return <span className="proxima ao-vivo-off">Reconectando ao vivo…</span>;
     return (
       <span className="proxima proxima-ao-vivo" title={`Conectado: o servidor verifica o TSE a cada ${s} s e envia os números assim que mudam.`}>
-        <i className="ponto-ao-vivo" aria-hidden />
-        Ao vivo · TSE verificado {ha === null ? 'agora' : ha <= 1 ? 'agora mesmo' : `há ${ha} s`}
+        {!compacto && <><i className="ponto-ao-vivo" aria-hidden />Ao vivo · </>}
+        TSE verificado {ha === null ? 'agora' : ha <= 1 ? 'agora mesmo' : `há ${ha} s`}
       </span>
     );
   }
@@ -49,7 +51,7 @@ export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'A
     if (!proxima) {
       return (
         <span className="proxima pausada" title="Todas as seções foram totalizadas: os números não mudam mais. A página consulta o TSE só ao abrir e ao navegar.">
-          Apuração encerrada · sem atualização automática
+          {compacto ? 'Sem atualização automática' : 'Apuração encerrada · sem atualização automática'}
         </span>
       );
     }

@@ -45,7 +45,10 @@ export function BarraBusca({ cargos, href, onEscolher }: Props) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
+  // No celular a busca fica atrás de um botão de ícone; aberta, ocupa a largura da tela.
+  const [expandida, setExpandida] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
+  const campo = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const t = termo.trim();
@@ -86,43 +89,69 @@ export function BarraBusca({ cargos, href, onEscolher }: Props) {
 
   useEffect(() => {
     const fechar = (e: MouseEvent) => {
-      if (!caixa.current?.contains(e.target as Node)) setAberto(false);
+      if (!caixa.current?.contains(e.target as Node)) { setAberto(false); setExpandida(false); }
     };
     document.addEventListener('mousedown', fechar);
     return () => document.removeEventListener('mousedown', fechar);
   }, []);
 
+  const lupa = (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M10 10l4.5 4.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+
   return (
-    <div className="busca" ref={caixa}>
-      <div className="busca-campos">
+    <div className={`busca ${expandida ? 'expandida' : ''}`} ref={caixa}>
+      <button
+        type="button"
+        className="botao-icone busca-botao"
+        aria-label="Buscar candidato"
+        aria-expanded={expandida}
+        onClick={() => {
+          setExpandida((x) => !x);
+          setTimeout(() => campo.current?.focus());
+        }}
+      >
+        {lupa}
+      </button>
+      <div className="busca-campo">
+        {lupa}
         <input
+          ref={campo}
           type="search"
-          placeholder={partido ? `Filtrar candidatos do ${partido}…` : 'Buscar candidato por nome ou número…'}
+          placeholder={partido ? `filtrar candidatos do ${partido}` : 'buscar candidato, nº ou partido'}
           value={termo}
           onChange={(e) => { setTermo(e.target.value); setAberto(true); }}
           onFocus={() => setAberto(true)}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setAberto(false);
-            if (e.key === 'Enter' && res?.itens[0]) { onEscolher(res.itens[0]); setAberto(false); }
+            if (e.key === 'Escape') { setAberto(false); setExpandida(false); }
+            if (e.key === 'Enter' && res?.itens[0]) { onEscolher(res.itens[0]); setAberto(false); setExpandida(false); }
           }}
           aria-label="Buscar candidato"
         />
-        <select value={cargo} onChange={(e) => setCargo(e.target.value)} aria-label="Filtrar por cargo">
-          <option value="">Todos os cargos</option>
-          {cargos.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-        <select value={uf} onChange={(e) => setUf(e.target.value)} aria-label="Filtrar por UF">
-          <option value="">Todas as UFs</option>
-          {Object.entries(UF_NOMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-        <select value={partido} onChange={(e) => { setPartido(e.target.value); setAberto(true); }} aria-label="Filtrar por partido">
-          <option value="">Todos os partidos</option>
-          {partidos.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
       </div>
 
-      {aberto && (res || carregando || erro) && (
+      {aberto && (
         <div className={`busca-resultados ${carregando && res ? 'atualizando' : ''}`} aria-busy={carregando}>
+          <div className="busca-filtros">
+            <select value={cargo} onChange={(e) => setCargo(e.target.value)} aria-label="Filtrar por cargo">
+              <option value="">Todos os cargos</option>
+              {cargos.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+            <select value={uf} onChange={(e) => setUf(e.target.value)} aria-label="Filtrar por UF">
+              <option value="">Todas as UFs</option>
+              {Object.entries(UF_NOMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <select value={partido} onChange={(e) => { setPartido(e.target.value); setAberto(true); }} aria-label="Filtrar por partido">
+              <option value="">Todos os partidos</option>
+              {partidos.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          {!res && !carregando && !erro && (
+            <div className="muted pad pequeno">Digite ao menos 2 letras do nome, o número ou escolha um partido.</div>
+          )}
           {carregando && !res && (
             <>
               <div className="muted pad pequeno">Buscando votos no TSE… a primeira busca indexa todos os cargos e pode levar alguns segundos.</div>
@@ -130,7 +159,7 @@ export function BarraBusca({ cargos, href, onEscolher }: Props) {
                 {Array.from({ length: 4 }, (_, k) => (
                   <li key={k}>
                     <div className="busca-esq">
-                      <Esq w="34px" h="34px" redondo />
+                      <Esq w="34px" h="34px" />
                       <span className="busca-info"><Esq w={`${55 - k * 8}%`} /><Esq w="40%" h="0.75rem" className="esq-espaco" /></span>
                       <span className="cand-votos"><Esq w="4.5rem" /><Esq w="3rem" h="0.75rem" className="esq-espaco" /></span>
                     </div>
@@ -165,7 +194,7 @@ export function BarraBusca({ cargos, href, onEscolher }: Props) {
                       <li className="busca-grupo">{i.cargoNome}</li>
                     )}
                     <li>
-                      <Link href={href(i)} onNavegar={() => { onEscolher(i); setAberto(false); }}>
+                      <Link href={href(i)} onNavegar={() => { onEscolher(i); setAberto(false); setExpandida(false); }}>
                         <img className="foto pequena" src={i.foto} alt="" loading="lazy"
                           onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
                         <span className="busca-info">

@@ -19,6 +19,7 @@ npm run simular-2turno  # regera a simulação do 2º turno em simulacao/ (ver "
 npm run dev:2turno # dev com a simulação do 2º turno ligada (SIMULACAO_2TURNO=1 FLAG_SEGUNDO_TURNO=on)
 npm run zonas      # regera dados/zonas-2026.json.gz (contorno estimado das zonas; ver "Zonas no mapa" abaixo)
 npm run icones     # regera os PNGs do PWA a partir de public/favicon.svg e public/icone-maskable.svg (precisa do rsvg-convert)
+npm run og         # regera public/og.png (1200×630) de server/scripts/og.html (precisa do chromium e de internet p/ as fontes)
 npm run build && npm start   # produção: o servidor Node serve dist/ e /api na porta 3001
 ```
 
@@ -84,12 +85,19 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
     Mapa.tsx           Choropleth SVG (projeção plana própria), tooltip, legenda, zoom no município;
                        zoom/arraste do leitor (roda, arrastar, pinça, botões +/−/Ajustar) via viewBox;
                        prop `zonas`: desenha as zonas sobre o município em foco, com a mesma projeção
-    PainelResultado.tsx Totais, % apurado, lista de candidatos com filtro local
+    Placar.tsx         Os dois primeiros (no 2º turno, os finalistas) acima do mapa: nome, % dos válidos em letras
+                       grandes, votos, regiões vencidas, exterior; barra 1º | outros | 2º com a marca dos 50%;
+                       `compacto` nas telas de UF/município/zona; antes dos votos do 2º turno, "––,––%" e o 1º turno
+    TickerUFs.tsx      Faixa rolável com o líder de cada UF (nível Brasil, majoritários), do mesmo /api/mapa
+    DiferencaUF.tsx    Ao lado do mapa do Brasil (Presidente): diferença entre os dois primeiros em cada UF
+    DestaquesUF.tsx    Ao lado do mapa da UF (majoritários): maiores eleitorados e disputas mais apertadas
+                       (acima de 75 mil eleitores), com `segundo`/`eleitorado` do /api/mapa
+    PainelResultado.tsx Tabela de todos os candidatos (filtro local) e o comparecimento; abre a ficha
     ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
     BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF/partido; só o partido lista
                        todos os candidatos dele, agrupados por cargo, em páginas ("Mostrar mais")
-    Duelo.tsx          2º turno: placar dos dois finalistas acima do mapa (fotos, % dos válidos, barra com a marca
-                       dos 50%, regiões vencidas) e `ListaDuelos` (cargos estaduais no nível Brasil, uma linha por UF)
+    Duelo.tsx          2º turno: finalistas e cores (`finalistas`, `coresFinalistas`) e `ListaDuelos` (cargos estaduais
+                       no nível Brasil, uma linha por UF)
     Hemiciclo.tsx      Composição da casa legislativa (uma bolinha por cadeira, cor do partido) abaixo do mapa,
                        via /api/composicao: Senado (sempre o Brasil, 54 cadeiras em disputa), Câmara (UF ou
                        Brasil), Assembleia/Câmara Legislativa (UF). Sem `st` oficial, usa os eleitos projetados.
@@ -101,22 +109,33 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
     Link.tsx           <a href> com navegação SPA no clique simples (ctrl/cmd/meio abrem nova aba); toda navegação
                        usa links de verdade para o Google rastrear
     Carregando.tsx     Barra fina no topo (conta requisições ativas em getJson) + esqueletos de página/painel/mapa
-    AvisoVotacao.tsx   Faixa "votação ainda não começou / em andamento (contagem regressiva) / urnas fechadas"
-    ProximaAtualizacao.tsx "a cada 30 s · próxima em 12 s" (usa `proxima` exposto pelo useApi)
+    AvisoVotacao.tsx   Faixa âmbar acima da faixa de status: "votação ainda não começou / em andamento (contagem
+                       HH:MM:SS) / urnas fechadas"
+    ProximaAtualizacao.tsx "a cada 30 s · próxima em 12 s" (usa `proxima` exposto pelo useApi); na faixa de status
     Num.tsx            Número ao vivo: conta do valor antigo ao novo e realça ao mudar; pulsa sob `.atualizando`
-  util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos
-  styles.css       Estilo único ("jornal") — tokens em variáveis CSS no :root
+  util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos e o ajuste delas ao tema (OKLCH)
+  tema.ts          useTema()/definirTema() (data-tema + prefers-color-scheme) e useCores() (cores de partido no tema)
+  styles.css       Tema único ("Plantão") — tokens em variáveis CSS no :root
 ```
 
 ### Estilo visual
 
-Um único tema, "jornal", todo em `src/styles.css`: tokens em variáveis CSS no `:root` (com versão escura
-"edição noturna" em `prefers-color-scheme: dark`), Fraunces nos títulos e Libre Franklin no corpo via
-Google Fonts (`index.html`), papel creme, filetes em vez de cartões, os 2 primeiros colocados como "manchete".
-Cor forte fica reservada aos partidos; evite verde-amarelo ou vermelho como cor de interface (são lidos
-como sinal político).
+Um único tema, "Plantão" (mesa de redação na noite da apuração), todo em `src/styles.css`: tokens em variáveis
+CSS no `:root` com duas edições, diurna (clara) e noturna (escura, `prefers-color-scheme: dark` ou o botão do topo,
+que grava `data-tema` no `<html>`). Archivo condensado (`font-stretch` 62–75%, 800, maiúsculas) nos títulos e
+números grandes, IBM Plex Mono nos rótulos, abas, tabelas e horários, Archivo no corpo (Google Fonts no
+`index.html`). Filetes finos, blocos invertidos para o que está ativo e **nenhum canto arredondado** (`--raio: 0`).
+Cor forte fica reservada aos partidos; `--ao-vivo` (âmbar) só em status (ao vivo, encerrada, contagem), nunca em
+dado. Evite verde-amarelo ou vermelho como cor de interface (são lidos como sinal político).
 
-Marca: ícone da urna (fenda + três barras) em `components/Logo.tsx`, ao lado de "Apuração 2026" no topo, e o mesmo
+Cores de partido: as do `util.ts` são a fonte; `useCores()` (`tema.ts`) devolve `preench(cor)` (no escuro, L OKLCH ≥
+0,62; o preto da UP vira a cor do texto) e `texto(cor)` (L ≥ 0,74 no escuro, ≤ 0,5 no claro). O SVG do mapa usa
+cores prontas (hex), por isso a mistura com `--superficie` (intensidade pela vantagem: 40% abaixo de 10 pts, 70% até
+20, cheia acima) é feita em TS com os tokens fixos `TOKENS` do `util.ts` — mudou um token no CSS, mude lá também.
+As faixas (topo, aviso, status) ocupam a largura toda: cada filho direto de `.app` recebe o recuo da coluna central
+(`--largura`, `--gutter`) como padding.
+
+Marca: ícone da urna (fenda + três barras) em `components/Logo.tsx`, ao lado de "Apuração.org" no topo, e o mesmo
 desenho em `public/favicon.svg` (inverte em `prefers-color-scheme: dark`). PWA: `public/manifest.webmanifest`
 (sem service worker) com PNGs 192/512, um maskable (desenho a 80%, dentro da zona segura) e `apple-touch-icon.png`;
 mudou o desenho, mude os dois SVGs e rode `npm run icones`.

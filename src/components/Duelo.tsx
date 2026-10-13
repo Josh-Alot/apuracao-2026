@@ -1,8 +1,7 @@
-import { type CSSProperties, useState } from 'react';
 import type { Candidato, MapaDados, Resultado } from '../types';
-import { Num } from './Num';
 import { Link } from './Link';
-import { coresDuelo, corPartido, fmt, fmtPct, titulo, UF_NOMES } from '../util';
+import { useCores } from '../tema';
+import { coresDuelo, corPartido, fmtPct, titulo, UF_NOMES } from '../util';
 
 /** Os dois finalistas na ordem do número de urna (fica estável: ninguém troca de lado quando a liderança muda). */
 export function finalistas(r: Resultado | null | undefined): [Candidato, Candidato] | null {
@@ -18,96 +17,6 @@ export function coresFinalistas(par: [Candidato, Candidato] | null): Map<string,
   return new Map([[par[0].numero, ca], [par[1].numero, cb]]);
 }
 
-interface Props {
-  resultado: Resultado;
-  cores: Map<string, string>;
-  /** Onde: "Brasil", "Rio de Janeiro"… */
-  local: string;
-  /** Regiões vencidas por cada um (UFs no Brasil, municípios na UF), do mapa. */
-  regioes?: { dados: MapaDados | null; rotulo: string } | null;
-  carregando?: boolean;
-}
-
-/**
- * Placar do 2º turno: os dois finalistas frente a frente, a barra dos votos válidos com a marca dos
- * 50% (maioria absoluta) e quantas regiões cada um venceu no mapa.
- */
-export function Duelo({ resultado: r, cores, local, regioes, carregando }: Props) {
-  const par = finalistas(r);
-  if (!par) return null;
-  const vencidas = (numero: string) => (regioes?.dados
-    ? Object.values(regioes.dados).filter((x) => x?.lider?.numero === numero).length
-    : null);
-  const pctApurado = r.secoes.pct;
-
-  return (
-    <section className={`duelo ${carregando ? 'atualizando' : ''}`} aria-label={`2º turno: ${r.cargo.nome}, ${local}`}>
-      <div className="duelo-topo">
-        {par.map((c, i) => (
-          <Lado key={c.sq} c={c} cor={cores.get(c.numero)!} lado={i === 0 ? 'a' : 'b'} />
-        ))}
-        <div className="duelo-meta" aria-hidden="true">
-          <span>50% dos válidos</span>
-          <span>para vencer</span>
-          <i />
-        </div>
-      </div>
-
-      <div
-        className="duelo-barra"
-        role="img"
-        aria-label={par.map((c) => `${titulo(c.nomeUrna)} ${fmtPct(c.pct)}`).join(', ')}
-      >
-        {par.map((c) => (
-          <i key={c.sq} style={{ width: `${c.pct}%`, background: cores.get(c.numero) }} />
-        ))}
-        <span className="duelo-marca" />
-      </div>
-
-      <div className="duelo-rodape">
-        {par.map((c, i) => {
-          const n = vencidas(c.numero);
-          return (
-            <div key={c.sq} className={i === 0 ? 'lado-a' : 'lado-b'}>
-              <strong><Num valor={c.pct} formatar={fmtPct} /> dos votos válidos</strong>
-              <span className="muted">
-                (<Num valor={c.votos} formatar={fmt} /> votos{n != null && regioes ? ` · venceu em ${n} ${regioes.rotulo}` : ''})
-              </span>
-            </div>
-          );
-        })}
-        <div className="duelo-apurado muted">
-          {local} · <Num valor={pctApurado} formatar={fmtPct} /> apurado
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Lado({ c, cor, lado }: { c: Candidato; cor: string; lado: 'a' | 'b' }) {
-  const [semFoto, setSemFoto] = useState(false);
-  const eleito = c.status === 'eleito' || c.matematicamente === 'eleito';
-  return (
-    <div className={`duelo-lado lado-${lado}`} style={{ '--cor': cor } as CSSProperties}>
-      {semFoto ? (
-        <span className="duelo-foto foto-vazia" style={{ background: cor }}>{c.nomeUrna.charAt(0)}</span>
-      ) : (
-        <img className="duelo-foto" src={c.foto} alt="" onError={() => setSemFoto(true)} />
-      )}
-      <div className="duelo-info">
-        <span className="duelo-pct"><Num valor={c.pct} formatar={fmtPct} /></span>
-        <span className="duelo-nome">
-          {eleito && (
-            <span className="duelo-check" title={c.status === 'eleito' ? 'Eleito' : 'Matematicamente eleito'} aria-label="Eleito">✓</span>
-          )}
-          {titulo(c.nomeUrna)}
-        </span>
-        <span className="duelo-partido">{c.partido} · {c.numero}</span>
-      </div>
-    </div>
-  );
-}
-
 /**
  * Cargos estaduais no nível Brasil: uma linha por UF com 2º turno — os dois finalistas e a barra
  * dos votos válidos, a partir do resumo do mapa. Clique abre a UF.
@@ -115,6 +24,7 @@ function Lado({ c, cor, lado }: { c: Candidato; cor: string; lado: 'a' | 'b' }) 
 export function ListaDuelos({ ufs, dados, href, onSelect }: {
   ufs: string[]; dados: MapaDados | null; href: (uf: string) => string; onSelect: (uf: string) => void;
 }) {
+  const tema = useCores();
   return (
     <ul className="lista-duelos">
       {ufs.map((uf) => {
@@ -124,7 +34,7 @@ export function ListaDuelos({ ufs, dados, href, onSelect }: {
           : null;
         // O líder fica com a cor do partido, como no mapa do Brasil; o rival muda se as cores se confundirem.
         const [cl, cs] = r?.lider && r.segundo ? coresDuelo(r.lider.partido, r.segundo.partido) : [];
-        const cores = par ? par.map((c) => (c.numero === r!.lider!.numero ? cl : cs)) : null;
+        const cores = par ? par.map((c) => tema.preench(c.numero === r!.lider!.numero ? cl! : cs!)) : null;
         return (
           <li key={uf}>
             <Link href={href(uf)} onNavegar={() => onSelect(uf)}>
@@ -142,9 +52,9 @@ export function ListaDuelos({ ufs, dados, href, onSelect }: {
                       </span>
                     ))}
                   </span>
-                  <span className="duelo-barra duelo-barra-mini" aria-hidden="true">
+                  <span className="placar-barra placar-barra-mini" aria-hidden="true">
                     {par.map((c, i) => <i key={c.numero} style={{ width: `${c.pct}%`, background: cores[i] }} />)}
-                    <span className="duelo-marca" />
+                    <span className="placar-marca" />
                   </span>
                   <span className="muted pequeno">{fmtPct(r!.pctApurado)} apurado</span>
                 </>

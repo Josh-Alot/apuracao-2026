@@ -1,7 +1,7 @@
 /**
  * Ícone da marca: a urna (bloco de tinta com a fenda no topo) e três barras subindo, a contagem.
  * Desenhado em `currentColor` com os vazados na cor do papel, então acompanha o tema claro/escuro.
- * Mesmo desenho do `public/favicon.svg`. Decorativo: o nome "Apuração 2026" vem ao lado, em texto.
+ * Mesmo desenho do `public/favicon.svg`. Decorativo: o nome "Apuração.org" vem ao lado, em texto.
  */
 export function Logo() {
   return (

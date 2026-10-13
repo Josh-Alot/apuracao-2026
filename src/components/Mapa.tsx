@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { geoPath, geoTransform, type GeoPath } from 'd3-geo';
 import type { Feature, FeatureCollection } from 'geojson';
 import type { MapaDados, ModoMapa, Resumo, ResumoCandidato } from '../types';
 import { EsqueletoMapa } from './Carregando';
-import { corApuracao, corPartido, fmt, fmtPct, titulo } from '../util';
+import { useCores } from '../tema';
+import { corApuracao, corPartido, fmt, fmtPct, misturar, titulo } from '../util';
 
 const W = 1000;
 const H = 820;
@@ -38,6 +39,10 @@ interface Props {
   /** Sigla de cada região escrita no mapa (UFs no mapa do Brasil). */
   rotulos?: boolean;
   onSelect: (chave: string) => void;
+  /** Dica no fim do tooltip de cada região (ex.: "Clique para abrir as zonas →"). */
+  dica?: (chave: string) => string | null;
+  /** Ao lado da legenda (ex.: o cartão do exterior). */
+  rodape?: ReactNode;
   /**
    * Zonas eleitorais da região em foco (`focar`), desenhadas por cima dela com a mesma projeção.
    * Contornos estimados (`properties.zona`), não oficiais.
@@ -53,6 +58,17 @@ interface Props {
 /** Estado de uma região no mapa do 2º turno. */
 const estado2t = (r: Resumo) => (r.virou ? 'virou' : r.pctApurado >= 100 ? 'venceu' : 'liderando');
 const ROTULO_ESTADO = { liderando: 'Liderando', venceu: 'Venceu', virou: 'Virou' } as const;
+
+/**
+ * Intensidade da cor do líder no 1º turno: pela vantagem sobre o 2º colocado (pontos percentuais),
+ * 40% abaixo de 10 pts, 70% até 20 e cheia a partir daí. Sem 2º colocado, cheia.
+ */
+const INTENSIDADES = [0.4, 0.7, 1] as const;
+function intensidade(r: Resumo) {
+  if (!r.lider || !r.segundo) return 1;
+  const v = r.lider.pct - r.segundo.pct;
+  return v < 10 ? INTENSIDADES[0] : v < 20 ? INTENSIDADES[1] : INTENSIDADES[2];
+}
 
 /** Percorre todas as coordenadas de uma geometria. */
 function cadaPonto(g: Feature['geometry'], fn: (x: number, y: number) => void) {
@@ -153,8 +169,9 @@ function projetar(fc: FeatureCollection) {
 
 export function Mapa({
   geo, chave, nome, dados, modo, selecionado, focar, rotuloRegiao, legendaPorPartido, segundoTurno, corLider, rotulos, onSelect,
-  zonas,
+  dica, rodape, zonas,
 }: Props) {
+  const tema = useCores();
   const ref = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ k: string; zona?: boolean; x: number; y: number } | null>(null);
 
@@ -286,26 +303,28 @@ export function Mapa({
   const noMaximo = vista.w <= W / ZOOM_MAX + 1e-6;
   const noMinimo = vista.w >= W - 1e-6;
 
-  const corDe = corLider ?? ((l: ResumoCandidato) => corPartido(l.partido));
+  // Cor de preenchimento do candidato, já ajustada ao tema (no escuro, PL/UP clareiam para não sumir).
+  const corDe = (l: ResumoCandidato) => tema.preench(corLider ? corLider(l) : corPartido(l.partido));
   const doisTurnos = segundoTurno && modo === 'lider';
   // Hachuras do "virou": uma por cor, com listras de largura fixa na tela (acompanham o zoom).
   const hachuras = useMemo(() => {
     if (!doisTurnos || !dados) return [];
     const todas = [...Object.values(dados), ...Object.values(zonas?.dados ?? {})];
     return [...new Set(todas.filter((r) => r?.virou && r.lider).map((r) => corDe(r!.lider!)))];
-  }, [doisTurnos, dados, zonas?.dados, corDe]);
+  }, [doisTurnos, dados, zonas?.dados, tema, corLider]);
   const cor = (r: Resumo | null | undefined) => {
-    if (!r) return 'var(--sem-dado)';
-    if (modo === 'apurado') return corApuracao(r.pctApurado);
-    if (!r.lider) return 'var(--sem-dado)';
-    if (doisTurnos && r.virou) return `url(#hachura-${hachuras.indexOf(corDe(r.lider))})`;
-    return corDe(r.lider);
+    if (!r) return tema.semDado;
+    if (modo === 'apurado') return corApuracao(r.pctApurado, tema.escuro);
+    if (!r.lider) return tema.semDado;
+    const base = corDe(r.lider);
+    if (doisTurnos) {
+      if (r.virou) return `url(#hachura-${hachuras.indexOf(base)})`;
+      return r.pctApurado >= 100 ? base : misturar(base, tema.superficie, 0.5);
+    }
+    return misturar(base, tema.superficie, intensidade(r));
   };
-  const opacidade = (r: Resumo | null | undefined) => {
-    if (modo !== 'lider' || !r?.lider) return 1;
-    if (doisTurnos) return r.pctApurado >= 100 ? 1 : 0.5;
-    return 0.45 + 0.55 * Math.min(1, r.lider.pct / 60);
-  };
+  // Só a região/zona em foco fica com a cor cheia; as outras, atenuadas.
+  const opacidade = (atenuar: boolean) => (atenuar ? 0.35 : 1);
   const escala = vista.w / W; // 1 = mapa inteiro; menor = ampliado
 
   // 2º turno: um item por finalista, com as amostras de "liderando", "venceu" e "virou".
@@ -321,11 +340,11 @@ export function Mapa({
 
   const legenda = useMemo(() => {
     if (!dados || modo !== 'lider') return [];
-    const cont = new Map<string, { nome: string; partido: string; n: number }>();
+    const cont = new Map<string, { nome: string; partido: string; lider: ResumoCandidato; n: number }>();
     for (const r of Object.values(dados)) {
       if (!r?.lider) continue;
       const id = legendaPorPartido ? r.lider.partido : `${r.lider.numero}|${r.lider.partido}`;
-      const e = cont.get(id) ?? { nome: legendaPorPartido ? '' : titulo(r.lider.nome), partido: r.lider.partido, n: 0 };
+      const e = cont.get(id) ?? { nome: legendaPorPartido ? '' : titulo(r.lider.nome), partido: r.lider.partido, lider: r.lider, n: 0 };
       e.n++;
       cont.set(id, e);
     }
@@ -388,7 +407,7 @@ export function Mapa({
               d={r.d}
               // Com as zonas por cima, o município não é pintado: a cor dele vazaria pelas zonas atenuadas.
               fill={desenhoZonas.length && r.k === focar ? 'none' : cor(res)}
-              fillOpacity={focar && !sel ? opacidade(res) * 0.35 : opacidade(res)}
+              fillOpacity={opacidade(!!focar && !sel)}
               className={sel ? 'regiao selecionada' : 'regiao'}
               vectorEffect="non-scaling-stroke"
               onClick={clicar(() => onSelect(r.k))}
@@ -401,7 +420,7 @@ export function Mapa({
             key={`z-${z.k}`}
             d={z.d}
             fill={cor(zonas.dados?.[z.k])}
-            fillOpacity={zonaFoco && z !== zonaFoco ? opacidade(zonas.dados?.[z.k]) * 0.35 : opacidade(zonas.dados?.[z.k])}
+            fillOpacity={opacidade(!!zonaFoco && z !== zonaFoco)}
             className={z.k === zonas.selecionada ? 'regiao zona selecionada' : 'regiao zona'}
             vectorEffect="non-scaling-stroke"
             onClick={clicar(() => zonas.onSelect(z.k))}
@@ -445,98 +464,108 @@ export function Mapa({
         <div
           className="tooltip"
           style={{
-            left: Math.min(hover.x + 14, (ref.current?.clientWidth ?? 0) - 230),
+            left: Math.max(0, Math.min(hover.x + 14, (ref.current?.clientWidth ?? 0) - 236)),
             top: hover.y + 14,
           }}
         >
-          <strong>{hover.zona ? `Zona ${Number(hover.k)}` : nome(hover.k)}</strong>
-          {info && doisTurnos && info.lider ? (
+          <strong className="tooltip-nome">{hover.zona ? `Zona ${Number(hover.k)}` : nome(hover.k)}</strong>
+          {info ? (
             <>
-              {[info.lider, info.segundo].filter((c): c is ResumoCandidato => !!c).map((c) => (
-                <div key={c.numero} className="tooltip-linha">
-                  <span className="bolinha" style={{ background: corDe(c) }} />
+              <div className="muted tooltip-meta">
+                {info.eleitorado != null && `${fmt(info.eleitorado)} eleitores · `}
+                {fmtPct(info.pctApurado)} apurado
+              </div>
+              {[info.lider, info.segundo].filter((c): c is ResumoCandidato => !!c).map((c, i) => (
+                <div key={c.numero} className={`tooltip-linha ${i === 0 ? 'lider' : ''}`}>
+                  <i className="amostra" style={{ background: corDe(c) }} />
                   <span>{titulo(c.nome)} <span className="muted">({c.partido})</span></span>
-                  <strong>{fmtPct(c.pct)}</strong>
+                  <span>{fmtPct(c.pct)}</span>
                 </div>
               ))}
-              <div className="muted">
-                {ROTULO_ESTADO[estado2t(info)]}
-                {info.virou && ' (2º no 1º turno)'} · {fmtPct(info.pctApurado)} apurado
-              </div>
-            </>
-          ) : info ? (
-            <>
-              {info.lider && (
-                <div>
-                  <span className="bolinha" style={{ background: corPartido(info.lider.partido) }} />
-                  {titulo(info.lider.nome)} ({info.lider.partido}) — {fmtPct(info.lider.pct)}
-                  <div className="muted">{fmt(info.lider.votos)} votos</div>
+              {doisTurnos && info.lider && (
+                <div className="muted">
+                  {ROTULO_ESTADO[estado2t(info)]}
+                  {info.virou && ' (2º no 1º turno)'}
                 </div>
               )}
-              <div className="muted">{fmtPct(info.pctApurado)} das seções apuradas</div>
+              {!info.lider && modo === 'lider' && <div className="muted">Nenhum voto apurado ainda</div>}
             </>
           ) : (
             <div className="muted">{(hover.zona ? zonas?.dados : dados) ? 'Sem dados' : 'Carregando…'}</div>
           )}
+          {!hover.zona && dica?.(hover.k) && <div className="tooltip-dica">{dica(hover.k)}</div>}
         </div>
       )}
 
-      <div className="legenda">
-        {modo === 'apurado' ? (
-          <div className="legenda-gradiente">
-            <span>0%</span>
-            <i style={{ background: `linear-gradient(90deg, ${corApuracao(0)}, ${corApuracao(50)}, ${corApuracao(100)})` }} />
-            <span>100% apurado</span>
-          </div>
-        ) : legenda2t.length ? (
-          <div className="legenda-2t">
-            {legenda2t.map(({ c, n }) => (
-              <div key={c.numero} className="legenda-2t-linha">
-                <span className="legenda-2t-nome">{titulo(c.nome)}</span>
-                <AmostrasEstado cor={corDe(c)} />
-                <span className="muted">{n} {rotuloRegiao}</span>
-              </div>
-            ))}
-            <div className="legenda-2t-linha legenda-2t-rotulos muted" aria-hidden="true">
-              <span />
-              {Object.values(ROTULO_ESTADO).map((t) => <span key={t}>{t}</span>)}
+      <div className="mapa-rodape">
+        <div className="legenda">
+          {modo === 'apurado' ? (
+            <div className="legenda-gradiente">
+              <span>0%</span>
+              <i style={{ background: `linear-gradient(90deg, ${[0, 50, 100].map((p) => corApuracao(p, tema.escuro)).join(', ')})` }} />
+              <span>100% apurado</span>
             </div>
-          </div>
-        ) : legenda.length ? (
-          legenda.map((l) => (
-            <span key={l.nome + l.partido} className="legenda-item">
-              <span className="bolinha" style={{ background: corPartido(l.partido) }} />
-              {l.nome ? <>{l.nome}&nbsp;<span className="muted">({l.partido})</span></> : l.partido}
-              <span className="muted">&nbsp;· {l.n} {rotuloRegiao}</span>
-            </span>
-          )).concat(doisTurnos ? [
-            <span key="estados" className="legenda-item legenda-estados muted">
-              <AmostrasEstado cor="var(--muted)" rotulos />
-            </span>,
-          ] : [])
-        ) : (
-          dados && <span className="muted">Nenhum voto apurado ainda nesta área.</span>
-        )}
+          ) : legenda2t.length ? (
+            <>
+              {legenda2t.map(({ c, n }) => (
+                <div key={c.numero} className="legenda-linha">
+                  <AmostrasEstado cor={corDe(c)} />
+                  <span className="legenda-nome">{titulo(c.nome)}</span>
+                  <span>{n} {rotuloRegiao}</span>
+                </div>
+              ))}
+              <div className="legenda-linha legenda-escala">
+                <span />
+                <span>{Object.values(ROTULO_ESTADO).join(' · ')}</span>
+              </div>
+            </>
+          ) : legenda.length ? (
+            <>
+              {legenda.map((l) => (
+                <div key={l.nome + l.partido} className="legenda-linha">
+                  <span className="amostras">
+                    {INTENSIDADES.map((t) => <i key={t} style={{ background: misturar(corDe(l.lider), tema.superficie, t) }} />)}
+                  </span>
+                  <span className="legenda-nome">{l.nome ? <>{l.nome} <span className="muted">({l.partido})</span></> : l.partido}</span>
+                  <span>{l.n} {rotuloRegiao}</span>
+                </div>
+              ))}
+              {doisTurnos ? (
+                <div className="legenda-linha legenda-escala">
+                  <AmostrasEstado cor="var(--muted)" />
+                  <span>{Object.values(ROTULO_ESTADO).join(' · ')}</span>
+                </div>
+              ) : (
+                <div className="legenda-linha legenda-escala">
+                  <span />
+                  <span>Vantagem &lt;10 · 10–20 · 20+ pts</span>
+                </div>
+              )}
+            </>
+          ) : (
+            dados && <span>Nenhum voto apurado ainda nesta área.</span>
+          )}
+        </div>
+        {rodape}
       </div>
     </div>
   );
 }
 
 /** Amostras "liderando / venceu / virou" de uma cor (legenda do 2º turno). */
-function AmostrasEstado({ cor, rotulos }: { cor: string; rotulos?: boolean }) {
+function AmostrasEstado({ cor }: { cor: string }) {
+  const tema = useCores();
   return (
-    <>
+    <span className="amostras">
       {(['liderando', 'venceu', 'virou'] as const).map((e) => (
-        <span key={e} className="amostra-estado" title={ROTULO_ESTADO[e]}>
-          <i
-            className={e}
-            style={e === 'virou'
-              ? { backgroundImage: `repeating-linear-gradient(45deg, ${cor} 0 3px, transparent 3px 6px)` }
-              : { background: cor }}
-          />
-          {rotulos && ROTULO_ESTADO[e]}
-        </span>
+        <i
+          key={e}
+          title={ROTULO_ESTADO[e]}
+          style={e === 'virou'
+            ? { backgroundImage: `repeating-linear-gradient(45deg, ${cor} 0 3px, transparent 3px 6px)` }
+            : { background: e === 'liderando' && cor.startsWith('#') ? misturar(cor, tema.superficie, 0.5) : cor, opacity: e === 'liderando' && !cor.startsWith('#') ? 0.5 : undefined }}
+        />
       ))}
-    </>
+    </span>
   );
 }

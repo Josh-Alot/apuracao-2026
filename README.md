@@ -29,6 +29,7 @@ npm run demo    # mesmo app, com votos simulados (antes de as urnas fecharem)
 | `npm run simular-2turno` | regera a simulação do 2º turno em `simulacao/`, com os votos de 2022 |
 | `npm run zonas` | regera o contorno estimado das zonas eleitorais no mapa |
 | `npm run icones` | regera os ícones PNG do PWA a partir dos SVGs em `public/` (precisa do `rsvg-convert`) |
+| `npm run og` | regera a imagem de compartilhamento `public/og.png` a partir de `server/scripts/og.html` (precisa do `chromium`) |
 
 Fontes: [TSE – Resultados](https://resultados.tse.jus.br) · [IBGE – Malhas](https://servicodados.ibge.gov.br/api/docs/malhas).
 Projeto independente, sem vínculo com o TSE. Detalhes técnicos em [CLAUDE.md](CLAUDE.md).

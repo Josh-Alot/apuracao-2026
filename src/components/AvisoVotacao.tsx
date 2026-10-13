@@ -30,12 +30,22 @@ export function useAgora(ativo: boolean) {
   return agora;
 }
 
-function falta(ms: number) {
-  const min = Math.max(1, Math.ceil(ms / 60_000));
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (!h) return `${m} min`;
-  return m ? `${h}h ${m}min` : `${h}h`;
+/** "03:12:45" até o fechamento. */
+function contagem(ms: number) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  return [Math.floor(t / 3600), Math.floor(t / 60) % 60, t % 60].map((n) => String(n).padStart(2, '0')).join(':');
+}
+
+/** Relógio de 1 s, só enquanto a contagem regressiva está na tela. */
+function useSegundos(ativo: boolean) {
+  const [agora, setAgora] = useState(Date.now);
+  useEffect(() => {
+    if (!ativo) return;
+    setAgora(Date.now());
+    const id = setInterval(() => setAgora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [ativo]);
+  return agora;
 }
 
 const hora = (iso: string) =>
@@ -51,49 +61,42 @@ interface Props {
   agora: number;
 }
 
-/** Faixa de aviso exibida enquanto não há resultados a divulgar. */
-export function AvisoVotacao({ cargo, fase, agora }: Props) {
+/** Faixa de largura total, acima da faixa de status, enquanto não há resultados a divulgar. */
+export function AvisoVotacao({ cargo, fase, agora: agoraMinuto }: Props) {
+  const agora = useSegundos(fase === 'votando');
   if (fase === 'apurando' || fase === 'carregando' || !cargo.abertura || !cargo.encerramento) return null;
   const turno = `${cargo.turno}º turno`;
   const fim = hora(cargo.encerramento);
+  const [titulo, frase] = {
+    antes: [
+      `A votação do ${turno} ainda não começou`,
+      `Será ${dia(cargo.abertura)}, das ${hora(cargo.abertura)} às ${fim} (horário de Brasília). Os resultados começam a ser divulgados pelo TSE após o fechamento das urnas.`,
+    ],
+    votando: [
+      'Votação em andamento',
+      `O TSE só divulga resultados depois que as urnas fecham. Esta página passa a atualizar sozinha às ${fim}.`,
+    ],
+    aguardando: [
+      'Urnas fechadas',
+      'Aguardando os primeiros boletins do TSE; esta página se atualiza sozinha assim que a apuração começar.',
+    ],
+    indisponivel: [
+      'TSE indisponível no momento',
+      'O site de resultados do TSE não respondeu às últimas consultas (costuma ser sobrecarga passageira). Os números aparecem aqui assim que ele voltar — não é preciso recarregar a página.',
+    ],
+  }[fase];
 
   return (
-    <aside className={`aviso-votacao aviso-${fase}`} role="status" aria-live="polite">
-      {fase === 'antes' && (
-        <>
-          <strong>A votação do {turno} ainda não começou.</strong>
-          <span>
-            Será {dia(cargo.abertura)}, das {hora(cargo.abertura)} às {fim} (horário de Brasília).
-            Os resultados começam a ser divulgados pelo TSE após o fechamento das urnas.
-          </span>
-        </>
-      )}
+    <aside className={`aviso-votacao aviso-${fase}`}>
+      <div className="aviso-texto" role="status" aria-live="polite">
+        <strong>{titulo}</strong>
+        <span>{frase}</span>
+      </div>
       {fase === 'votando' && (
-        <>
-          <strong>Votação em andamento.</strong>
-          <span>
-            As urnas fecham às {fim} (horário de Brasília) — faltam <b>{falta(Date.parse(cargo.encerramento) - agora)}</b>.
-            Até lá o TSE não divulga resultados — nem os do exterior —, por isso os números abaixo estão zerados.
-            A atualização automática começa às {fim}.
-          </span>
-        </>
-      )}
-      {fase === 'aguardando' && (
-        <>
-          <strong>Urnas fechadas.</strong>
-          <span>
-            Aguardando os primeiros boletins do TSE; esta página se atualiza sozinha assim que a apuração começar.
-          </span>
-        </>
-      )}
-      {fase === 'indisponivel' && (
-        <>
-          <strong>TSE indisponível no momento.</strong>
-          <span>
-            O site de resultados do TSE não respondeu às últimas consultas (costuma ser sobrecarga passageira).
-            Os números aparecem aqui assim que ele voltar — não é preciso recarregar a página.
-          </span>
-        </>
+        <div className="aviso-contagem" title={`Faltam ${Math.ceil((Date.parse(cargo.encerramento) - agoraMinuto) / 60_000)} min`}>
+          <span>Urnas fecham em</span>
+          <b>{contagem(Date.parse(cargo.encerramento) - agora)}</b>
+        </div>
       )}
     </aside>
   );
