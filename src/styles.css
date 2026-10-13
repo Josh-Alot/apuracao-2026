@@ -185,6 +185,7 @@ h1, h2, h3, .marca-titulo { margin: 0; line-height: 1.2; font-family: var(--font
 .zoom-controles button:hover:not(:disabled) { background: var(--destaque-suave); }
 .zoom-controles button:disabled { color: var(--muted); border-color: var(--borda); cursor: default; }
 .zoom-controles .zoom-reset { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px; }
+.quadro-ilha { fill: none; stroke: var(--borda); stroke-width: 1; pointer-events: none; }
 .contorno-selecao { fill: none; stroke: var(--texto); stroke-width: 2.5; pointer-events: none; }
 .tooltip {
   position: absolute; pointer-events: none; z-index: 10; width: 220px;

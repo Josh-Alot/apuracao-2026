@@ -53,30 +53,92 @@ function cadaPonto(g: Feature['geometry'], fn: (x: number, y: number) => void) {
   if (g && 'coordinates' in g) anda(g.coordinates);
 }
 
+type Caixa = [number, number, number, number]; // x0, y0, x1, y1
+const caixaDe = (g: Feature['geometry']): Caixa => {
+  const b: Caixa = [Infinity, Infinity, -Infinity, -Infinity];
+  cadaPonto(g, (x, y) => {
+    if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y;
+    if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y;
+  });
+  return b;
+};
+const distancia = (a: Caixa, b: Caixa) =>
+  Math.hypot(Math.max(0, a[0] - b[2], b[0] - a[2]), Math.max(0, a[1] - b[3], b[1] - a[3]));
+
+/** Lado mínimo (unidades do viewBox) de uma região desenhada em quadro à parte. */
+const LADO_QUADRO = 70;
+/** Folga do quadro à direita para não ficar sob os botões de zoom. */
+const FOLGA_ZOOM = 60;
+
+interface Quadro { x: number; y: number; w: number; h: number }
+
 /**
  * Projeção plana (equiretangular com correção cos(lat)) ajustada ao viewBox.
  * É plana de propósito: as malhas do IBGE não seguem a orientação de anéis que
  * as projeções esféricas do d3 exigem, e para um país/estado a distorção é irrelevante.
+ *
+ * Ilhas oceânicas não entram no enquadramento (achatariam o estado num canto): partes de município
+ * longe do resto (Trindade, em Vitória-ES) são descartadas; município inteiro longe do resto
+ * (Fernando de Noronha-PE) vai para um quadro no canto do mapa, do lado em que fica.
  */
 function projetar(fc: FeatureCollection) {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const f of fc.features) {
-    cadaPonto(f.geometry, (x, y) => {
-      if (x < x0) x0 = x; if (x > x1) x1 = x;
-      if (y < y0) y0 = y; if (y > y1) y1 = y;
+  // Partes (polígonos) de cada feature; o núcleo cresce a partir da maior, juntando o que está perto.
+  const partes = fc.features.flatMap((f, i) => {
+    const g = f.geometry;
+    const polis = g?.type === 'MultiPolygon' ? g.coordinates : g?.type === 'Polygon' ? [g.coordinates] : [];
+    return polis.map((p) => {
+      const b = caixaDe({ type: 'Polygon', coordinates: p });
+      return { i, p, b, area: (b[2] - b[0]) * (b[3] - b[1]), nucleo: false };
     });
+  });
+  partes.sort((a, b) => b.area - a.area);
+  const nucleo: Caixa = partes.length ? [...partes[0].b] : [0, 0, 1, 1];
+  if (partes.length) partes[0].nucleo = true;
+  for (let mudou = true; mudou;) {
+    mudou = false;
+    const limite = Math.max(0.5, 0.1 * Math.hypot(nucleo[2] - nucleo[0], nucleo[3] - nucleo[1]));
+    for (const p of partes) {
+      if (p.nucleo || distancia(p.b, nucleo) > limite) continue;
+      p.nucleo = mudou = true;
+      nucleo[0] = Math.min(nucleo[0], p.b[0]); nucleo[1] = Math.min(nucleo[1], p.b[1]);
+      nucleo[2] = Math.max(nucleo[2], p.b[2]); nucleo[3] = Math.max(nucleo[3], p.b[3]);
+    }
   }
+
+  const [x0, y0, x1, y1] = nucleo;
   const k = Math.cos((((y0 + y1) / 2) * Math.PI) / 180);
   const s = Math.min((W - 2 * MARGEM) / ((x1 - x0) * k), (H - 2 * MARGEM) / (y1 - y0));
   const ox = (W - (x1 - x0) * k * s) / 2;
   const oy = (H - (y1 - y0) * s) / 2;
-  return geoPath(
-    geoTransform({
-      point(x, y) {
-        this.stream.point(ox + (x - x0) * k * s, oy + (y1 - y) * s);
-      },
-    }),
-  );
+  const plano = (t: (x: number, y: number) => [number, number]) =>
+    geoPath(geoTransform({ point(x, y) { this.stream.point(...t(x, y)); } }));
+  const principal = plano((x, y) => [ox + (x - x0) * k * s, oy + (y1 - y) * s]);
+
+  const quadros: Quadro[] = [];
+  const desenhos = fc.features.map((f, i) => {
+    const minhas = partes.filter((p) => p.i === i);
+    const perto = minhas.filter((p) => p.nucleo);
+    if (perto.length === minhas.length) return { f, path: principal };
+    if (perto.length) {
+      // Descarta só as partes distantes; o município continua no mapa principal.
+      const geometry = { type: 'MultiPolygon' as const, coordinates: perto.map((p) => p.p) };
+      return { f: { ...f, geometry }, path: principal };
+    }
+    // Município inteiro distante: quadro no canto do lado em que ele fica, ampliado até LADO_QUADRO.
+    const [a, b, c, d] = caixaDe(f.geometry);
+    const fator = Math.max(1, LADO_QUADRO / Math.max((c - a) * k * s, (d - b) * s));
+    const w = (c - a) * k * s * fator;
+    const h = (d - b) * s * fator;
+    const leste = (a + c) / 2 > (x0 + x1) / 2;
+    const norte = (b + d) / 2 > (y0 + y1) / 2;
+    const pad = 10;
+    const empilhados = quadros.length * (LADO_QUADRO + 3 * pad);
+    const qx = leste ? W - MARGEM - FOLGA_ZOOM - w - 2 * pad : MARGEM;
+    const qy = norte ? MARGEM + empilhados : H - MARGEM - h - 2 * pad - empilhados;
+    quadros.push({ x: qx, y: qy, w: w + 2 * pad, h: h + 2 * pad });
+    return { f, path: plano((x, y) => [qx + pad + (x - a) * k * s * fator, qy + pad + (d - y) * s * fator]) };
+  });
+  return { desenhos, quadros };
 }
 
 export function Mapa({
@@ -85,12 +147,13 @@ export function Mapa({
   const ref = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ k: string; x: number; y: number } | null>(null);
 
-  const regioes = useMemo(() => {
-    if (!geo) return [];
-    const path = projetar(geo);
-    return geo.features
-      .map((f) => ({ k: chave(f), d: path(f) ?? '', b: path.bounds(f), c: path.centroid(f) }))
+  const { regioes, quadros } = useMemo(() => {
+    if (!geo) return { regioes: [], quadros: [] };
+    const { desenhos, quadros } = projetar(geo);
+    const regioes = desenhos
+      .map(({ f, path }) => ({ k: chave(f), d: path(f) ?? '', b: path.bounds(f), c: path.centroid(f) }))
       .filter((r): r is { k: string; d: string; b: [[number, number], [number, number]]; c: [number, number] } => !!r.k);
+    return { regioes, quadros };
   }, [geo, chave]);
 
   // Enquadramento padrão: o mapa inteiro, ou a região em foco.
@@ -278,6 +341,9 @@ export function Mapa({
             ))}
           </defs>
         )}
+        {quadros.map((q, i) => (
+          <rect key={`q-${i}`} x={q.x} y={q.y} width={q.w} height={q.h} className="quadro-ilha" vectorEffect="non-scaling-stroke" />
+        ))}
         {regioes.map((r) => {
           const res = dados?.[r.k];
           const sel = r.k === selecionado;
