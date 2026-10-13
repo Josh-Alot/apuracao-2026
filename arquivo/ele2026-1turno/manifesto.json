@@ -341,36 +341,36 @@
    "final": true,
    "regioes": 136,
    "faltando": 0,
-   "bytes": 17166,
-   "tse": "05/10/2026 06:08:16",
-   "arquivado": "2026-10-05T12:56:07.423Z"
+   "bytes": 16941,
+   "tse": "10/10/2026 10:14:53",
+   "arquivado": "2026-10-13T11:49:37.365Z"
   },
   "6259/am-c0005": {
    "cargo": "Senador",
    "final": true,
    "regioes": 136,
    "faltando": 0,
-   "bytes": 20523,
-   "tse": "05/10/2026 06:08:16",
-   "arquivado": "2026-10-05T13:20:27.344Z"
+   "bytes": 20532,
+   "tse": "10/10/2026 10:14:53",
+   "arquivado": "2026-10-13T11:51:19.147Z"
   },
   "6259/am-c0006": {
    "cargo": "Deputado Federal",
    "final": true,
    "regioes": 136,
    "faltando": 0,
-   "bytes": 49067,
-   "tse": "05/10/2026 06:08:17",
-   "arquivado": "2026-10-05T13:44:48.669Z"
+   "bytes": 49087,
+   "tse": "10/10/2026 10:14:54",
+   "arquivado": "2026-10-13T11:53:01.324Z"
   },
   "6259/am-c0007": {
    "cargo": "Deputado Estadual",
    "final": true,
    "regioes": 136,
    "faltando": 0,
-   "bytes": 60236,
-   "tse": "05/10/2026 06:08:17",
-   "arquivado": "2026-10-05T14:09:18.784Z"
+   "bytes": 60167,
+   "tse": "10/10/2026 10:14:54",
+   "arquivado": "2026-10-13T11:54:44.445Z"
   },
   "6259/ap-c0003": {
    "cargo": "Governador",
@@ -413,18 +413,18 @@
    "final": true,
    "regioes": 867,
    "faltando": 0,
-   "bytes": 83912,
-   "tse": "05/10/2026 00:51:54",
-   "arquivado": "2026-10-05T12:57:56.129Z"
+   "bytes": 82164,
+   "tse": "05/10/2026 11:41:49",
+   "arquivado": "2026-10-13T11:59:28.526Z"
   },
   "6259/ba-c0005": {
    "cargo": "Senador",
    "final": true,
    "regioes": 867,
    "faltando": 0,
-   "bytes": 101333,
-   "tse": "05/10/2026 00:51:54",
-   "arquivado": "2026-10-05T13:22:16.173Z"
+   "bytes": 101104,
+   "tse": "05/10/2026 11:41:50",
+   "arquivado": "2026-10-13T12:10:16.763Z"
   },
   "6259/ba-c0006": {
    "cargo": "Deputado Federal",
@@ -629,18 +629,18 @@
    "final": true,
    "regioes": 1751,
    "faltando": 0,
-   "bytes": 202665,
-   "tse": "05/10/2026 00:51:57",
-   "arquivado": "2026-10-05T13:05:41.246Z"
+   "bytes": 206616,
+   "tse": "05/10/2026 11:45:42",
+   "arquivado": "2026-10-13T12:03:08.079Z"
   },
   "6259/mg-c0005": {
    "cargo": "Senador",
    "final": true,
    "regioes": 1751,
    "faltando": 0,
-   "bytes": 239597,
-   "tse": "05/10/2026 00:51:58",
-   "arquivado": "2026-10-05T13:30:01.792Z"
+   "bytes": 239387,
+   "tse": "05/10/2026 11:45:45",
+   "arquivado": "2026-10-13T12:13:56.489Z"
   },
   "6259/mg-c0006": {
    "cargo": "Deputado Federal",
@@ -737,27 +737,27 @@
    "final": true,
    "regioes": 304,
    "faltando": 0,
-   "bytes": 34463,
-   "tse": "04/10/2026 23:56:32",
-   "arquivado": "2026-10-05T13:06:19.610Z"
+   "bytes": 34436,
+   "tse": "05/10/2026 11:42:28",
+   "arquivado": "2026-10-13T12:03:46.361Z"
   },
   "6259/pa-c0005": {
    "cargo": "Senador",
    "final": true,
    "regioes": 304,
    "faltando": 0,
-   "bytes": 48755,
-   "tse": "04/10/2026 23:56:32",
-   "arquivado": "2026-10-05T13:30:40.146Z"
+   "bytes": 48673,
+   "tse": "05/10/2026 11:42:29",
+   "arquivado": "2026-10-13T12:14:34.695Z"
   },
   "6259/pa-c0006": {
    "cargo": "Deputado Federal",
    "final": true,
    "regioes": 304,
    "faltando": 0,
-   "bytes": 123104,
-   "tse": "04/10/2026 23:56:34",
-   "arquivado": "2026-10-05T13:55:03.274Z"
+   "bytes": 124904,
+   "tse": "05/10/2026 11:42:32",
+   "arquivado": "2026-10-13T12:19:56.103Z"
   },
   "6259/pa-c0007": {
    "cargo": "Deputado Estadual",
@@ -809,36 +809,36 @@
    "final": true,
    "regioes": 394,
    "faltando": 0,
-   "bytes": 41591,
-   "tse": "04/10/2026 22:55:50",
-   "arquivado": "2026-10-05T13:09:49.079Z"
+   "bytes": 41560,
+   "tse": "06/10/2026 16:59:15",
+   "arquivado": "2026-10-13T11:50:26.844Z"
   },
   "6259/pe-c0005": {
    "cargo": "Senador",
    "final": true,
    "regioes": 394,
    "faltando": 0,
-   "bytes": 62396,
-   "tse": "04/10/2026 22:55:51",
-   "arquivado": "2026-10-05T13:34:09.361Z"
+   "bytes": 62367,
+   "tse": "06/10/2026 16:59:15",
+   "arquivado": "2026-10-13T11:52:08.796Z"
   },
   "6259/pe-c0006": {
    "cargo": "Deputado Federal",
    "final": true,
    "regioes": 394,
    "faltando": 0,
-   "bytes": 219916,
-   "tse": "04/10/2026 22:55:58",
-   "arquivado": "2026-10-06T12:47:35.175Z"
+   "bytes": 176183,
+   "tse": "06/10/2026 16:59:21",
+   "arquivado": "2026-10-13T11:53:51.542Z"
   },
   "6259/pe-c0007": {
    "cargo": "Deputado Estadual",
    "final": true,
    "regioes": 394,
    "faltando": 0,
-   "bytes": 260681,
-   "tse": "04/10/2026 22:56:01",
-   "arquivado": "2026-10-06T13:07:06.162Z"
+   "bytes": 194865,
+   "tse": "06/10/2026 16:59:23",
+   "arquivado": "2026-10-13T11:55:34.637Z"
   },
   "6259/pi-c0003": {
    "cargo": "Governador",
@@ -881,18 +881,18 @@
    "final": true,
    "regioes": 820,
    "faltando": 0,
-   "bytes": 89643,
-   "tse": "04/10/2026 22:44:22",
-   "arquivado": "2026-10-05T13:08:59.635Z"
+   "bytes": 89866,
+   "tse": "05/10/2026 11:46:40",
+   "arquivado": "2026-10-13T12:05:29.449Z"
   },
   "6259/pr-c0005": {
    "cargo": "Senador",
    "final": true,
    "regioes": 820,
    "faltando": 0,
-   "bytes": 105260,
-   "tse": "04/10/2026 22:44:22",
-   "arquivado": "2026-10-05T13:33:19.907Z"
+   "bytes": 105364,
+   "tse": "05/10/2026 11:46:40",
+   "arquivado": "2026-10-13T12:16:17.891Z"
   },
   "6259/pr-c0006": {
    "cargo": "Deputado Federal",
@@ -917,36 +917,36 @@
    "final": true,
    "regioes": 275,
    "faltando": 0,
-   "bytes": 54139,
-   "tse": "04/10/2026 22:23:10",
-   "arquivado": "2026-10-05T13:11:20.613Z"
+   "bytes": 47960,
+   "tse": "10/10/2026 15:09:50",
+   "arquivado": "2026-10-13T11:51:01.576Z"
   },
   "6259/rj-c0005": {
    "cargo": "Senador",
    "final": true,
    "regioes": 275,
    "faltando": 0,
-   "bytes": 58624,
-   "tse": "04/10/2026 22:23:10",
-   "arquivado": "2026-10-05T13:35:41.125Z"
+   "bytes": 58544,
+   "tse": "10/10/2026 15:09:50",
+   "arquivado": "2026-10-13T11:52:43.875Z"
   },
   "6259/rj-c0006": {
    "cargo": "Deputado Federal",
    "final": true,
    "regioes": 275,
    "faltando": 0,
-   "bytes": 313760,
-   "tse": "04/10/2026 22:23:21",
-   "arquivado": "2026-10-05T14:00:05.455Z"
+   "bytes": 313523,
+   "tse": "10/10/2026 15:09:58",
+   "arquivado": "2026-10-13T11:54:26.910Z"
   },
   "6259/rj-c0007": {
    "cargo": "Deputado Estadual",
    "final": true,
    "regioes": 275,
    "faltando": 0,
-   "bytes": 393251,
-   "tse": "04/10/2026 22:23:26",
-   "arquivado": "2026-10-05T14:24:37.592Z"
+   "bytes": 392644,
+   "tse": "10/10/2026 15:10:03",
+   "arquivado": "2026-10-13T11:56:10.623Z"
   },
   "6259/rn-c0003": {
    "cargo": "Governador",
@@ -971,18 +971,18 @@
    "final": true,
    "regioes": 339,
    "faltando": 0,
-   "bytes": 91280,
-   "tse": "04/10/2026 23:02:12",
-   "arquivado": "2026-10-06T12:48:21.540Z"
+   "bytes": 77523,
+   "tse": "07/10/2026 14:33:12",
+   "arquivado": "2026-10-13T11:56:55.074Z"
   },
   "6259/rn-c0007": {
    "cargo": "Deputado Estadual",
    "final": true,
    "regioes": 339,
    "faltando": 0,
-   "bytes": 119678,
-   "tse": "04/10/2026 23:02:13",
-   "arquivado": "2026-10-06T13:07:48.894Z"
+   "bytes": 94760,
+   "tse": "07/10/2026 14:33:22",
+   "arquivado": "2026-10-13T11:57:38.059Z"
   },
   "6259/ro-c0003": {
    "cargo": "Governador",
@@ -1169,18 +1169,18 @@
    "final": true,
    "regioes": 1424,
    "faltando": 0,
-   "bytes": 154878,
-   "tse": "04/10/2026 22:59:12",
-   "arquivado": "2026-10-05T13:18:39.798Z"
+   "bytes": 154931,
+   "tse": "05/10/2026 11:44:29",
+   "arquivado": "2026-10-13T12:08:27.828Z"
   },
   "6259/sp-c0005": {
    "cargo": "Senador",
    "final": true,
    "regioes": 1424,
    "faltando": 0,
-   "bytes": 225735,
-   "tse": "04/10/2026 22:59:13",
-   "arquivado": "2026-10-05T13:43:01.074Z"
+   "bytes": 226437,
+   "tse": "05/10/2026 11:44:31",
+   "arquivado": "2026-10-13T12:19:16.557Z"
   },
   "6259/sp-c0006": {
    "cargo": "Deputado Federal",

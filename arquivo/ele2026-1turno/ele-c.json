@@ -1,8 +1,8 @@
 {
- "dg": "02/10/2026",
- "hg": "18:30:57",
+ "dg": "10/10/2026",
+ "hg": "17:29:51",
  "f": "o",
- "idg": "980407",
+ "idg": "3483277",
  "arq": [
   {
    "tp": "ft",
@@ -2122,6 +2122,308 @@
         {
          "cd": "25",
          "ds": "Conselheiro Distrital",
+         "tp": "1"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "cd": "3221",
+   "cdpr": "1219",
+   "c": "ele2026",
+   "dt": "25/10/2026",
+   "dtlim": "25/10/2034",
+   "e": [
+    {
+     "cd": "6284",
+     "cdt2": "",
+     "sqele": "10628402024",
+     "nm": "Eleição Suplementar - Narandiba",
+     "t": "1",
+     "tp": "4",
+     "abr": [
+      {
+       "cd": "sp",
+       "mu": [
+        {
+         "cd": "67458",
+         "cdi": "3532207"
+        }
+       ],
+       "cp": [
+        {
+         "cd": "11",
+         "ds": "Prefeito",
+         "tp": "1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6282",
+     "cdt2": "",
+     "sqele": "10628202024",
+     "nm": "Eleição Suplementar - Macedônia",
+     "t": "1",
+     "tp": "4",
+     "abr": [
+      {
+       "cd": "sp",
+       "mu": [
+        {
+         "cd": "66656",
+         "cdi": "3528205"
+        }
+       ],
+       "cp": [
+        {
+         "cd": "11",
+         "ds": "Prefeito",
+         "tp": "1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6283",
+     "cdt2": "",
+     "sqele": "10628302024",
+     "nm": "Eleição Suplementar - Martinópolis",
+     "t": "1",
+     "tp": "4",
+     "abr": [
+      {
+       "cd": "sp",
+       "mu": [
+        {
+         "cd": "66850",
+         "cdi": "3529203"
+        }
+       ],
+       "cp": [
+        {
+         "cd": "11",
+         "ds": "Prefeito",
+         "tp": "1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6290",
+     "cdt2": "",
+     "sqele": "10629002024",
+     "nm": "Eleição Suplementar - Arroio Do Sal",
+     "t": "1",
+     "tp": "4",
+     "abr": [
+      {
+       "cd": "rs",
+       "mu": [
+        {
+         "cd": "85308",
+         "cdi": "4301057"
+        }
+       ],
+       "cp": [
+        {
+         "cd": "11",
+         "ds": "Prefeito",
+         "tp": "1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6285",
+     "cdt2": "",
+     "sqele": "10628502024",
+     "nm": "Eleição Suplementar - Itaguaí",
+     "t": "1",
+     "tp": "4",
+     "abr": [
+      {
+       "cd": "rj",
+       "mu": [
+        {
+         "cd": "58394",
+         "cdi": "3302007"
+        }
+       ],
+       "cp": [
+        {
+         "cd": "11",
+         "ds": "Prefeito",
+         "tp": "1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6288",
+     "cdt2": "",
+     "nm": "Consulta Popular - Mato Grosso",
+     "t": "1",
+     "tp": "6",
+     "abr": [
+      {
+       "cd": "mt",
+       "cp": [
+        {
+         "cd": "26",
+         "ds": "Você é favorável ao desmembramento das \"Ilhas de Ocupação\" do Projeto de Assentamento Nova Cotriguaçu do Município de Colniza e a sua incorporação ao Município de Cotriguaçu?",
+         "tp": "3"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6289",
+     "cdt2": "",
+     "nm": "Consulta Popular - Mato Grosso",
+     "t": "1",
+     "tp": "6",
+     "abr": [
+      {
+       "cd": "mt",
+       "cp": [
+        {
+         "cd": "27",
+         "ds": "Você é favorável ao desmembramento do Distrito de Nova Poxoréu do Município de Poxoréu e a sua incorporação ao Município de Primavera do Leste?",
+         "tp": "3"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6260",
+     "cdt2": "",
+     "sqele": "20322002026",
+     "nm": "Eleição Ordinária Estadual - 2026 2º Turno",
+     "t": "2",
+     "tp": "1",
+     "abr": [
+      {
+       "cd": "am",
+       "cp": [
+        {
+         "cd": "3",
+         "ds": "Governador",
+         "tp": "1"
+        }
+       ]
+      },
+      {
+       "cd": "rn",
+       "cp": [
+        {
+         "cd": "3",
+         "ds": "Governador",
+         "tp": "1"
+        }
+       ]
+      },
+      {
+       "cd": "df",
+       "cp": [
+        {
+         "cd": "3",
+         "ds": "Governador",
+         "tp": "1"
+        }
+       ]
+      },
+      {
+       "cd": "es",
+       "cp": [
+        {
+         "cd": "3",
+         "ds": "Governador",
+         "tp": "1"
+        }
+       ]
+      },
+      {
+       "cd": "ac",
+       "cp": [
+        {
+         "cd": "3",
+         "ds": "Governador",
+         "tp": "1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6258",
+     "cdt2": "",
+     "sqele": "20322002026",
+     "nm": "Eleição Ordinária Federal - 2026 2º Turno",
+     "t": "2",
+     "tp": "8",
+     "abr": [
+      {
+       "cd": "br",
+       "cp": [
+        {
+         "cd": "1",
+         "ds": "Presidente",
+         "tp": "1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6287",
+     "cdt2": "",
+     "nm": "Consulta Popular - Paraná",
+     "t": "1",
+     "tp": "6",
+     "abr": [
+      {
+       "cd": "pr",
+       "cp": [
+        {
+         "cd": "25",
+         "ds": "Você é a favor da separação e transferência da \"Comunidade do Alto Mirim\" de Chopinzinho para São João?",
+         "tp": "3"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "cd": "6293",
+     "cdt2": "",
+     "sqele": "10629302024",
+     "nm": "Eleição Suplementar - Santana Do Itararé",
+     "t": "1",
+     "tp": "4",
+     "abr": [
+      {
+       "cd": "pr",
+       "mu": [
+        {
+         "cd": "78557",
+         "cdi": "4124004"
+        }
+       ],
+       "cp": [
+        {
+         "cd": "11",
+         "ds": "Prefeito",
          "tp": "1"
         }
        ]
