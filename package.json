@@ -15,6 +15,7 @@
     "simular-2turno": "node server/scripts/simular-2turno.mjs",
     "zonas": "node server/scripts/zonas.mjs",
     "icones": "cd public && rsvg-convert -w 192 -h 192 favicon.svg -o icone-192.png && rsvg-convert -w 512 -h 512 favicon.svg -o icone-512.png && rsvg-convert -w 512 -h 512 icone-maskable.svg -o icone-maskable-512.png && rsvg-convert -w 180 -h 180 icone-maskable.svg -o apple-touch-icon.png",
+    "og": "chromium --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size=1200,630 --virtual-time-budget=8000 --screenshot=public/og.png \"file://$PWD/server/scripts/og.html\"",
     "dev:2turno": "SIMULACAO_2TURNO=1 FLAG_SEGUNDO_TURNO=on npm run dev"
   },
   "dependencies": {

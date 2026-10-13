@@ -715,7 +715,10 @@ tr.clicavel:hover .cand-abrir { text-decoration: underline; text-underline-offse
 .aviso-mapa-barra span { display: block; height: 100%; background: var(--ao-vivo); transition: width 0.6s ease; }
 .aviso-mapa-erro { border-left-color: var(--erro); background: color-mix(in srgb, var(--erro) 8%, transparent); }
 .aviso-mapa-erro strong { color: var(--erro); }
-.aviso-simulacao { margin-top: 16px; }
+/* Nota na coluna central, não de ponta a ponta como as faixas. */
+.app > .aviso-simulacao {
+  margin: 16px max(var(--gutter), calc((100% - var(--largura)) / 2)) 0; padding-inline: 16px;
+}
 
 /* ======================= carregamento ======================= */
 

@@ -51,7 +51,7 @@ export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'A
     if (!proxima) {
       return (
         <span className="proxima pausada" title="Todas as seções foram totalizadas: os números não mudam mais. A página consulta o TSE só ao abrir e ao navegar.">
-          Apuração encerrada · sem atualização automática
+          {compacto ? 'Sem atualização automática' : 'Apuração encerrada · sem atualização automática'}
         </span>
       );
     }
