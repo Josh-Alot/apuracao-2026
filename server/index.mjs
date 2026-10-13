@@ -4,6 +4,7 @@ import http from 'node:http';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
   getConfig, getMunicipios, getResultado, getResultadosRapidos, getAbrangencia, resumo, fetchJson, UFS,
@@ -299,6 +300,26 @@ async function geo(alvo) {
   return data;
 }
 
+// Contorno estimado das zonas nos municípios com mais de uma zona (gerado por `npm run zonas`, ~0,3 MB):
+// lido no 1º pedido e mantido em memória.
+let zonasGeo = null;
+async function geoZonas(mun) {
+  zonasGeo ??= fs.readFile(path.join(ROOT, 'dados', 'zonas-2026.json.gz'))
+    .then((b) => JSON.parse(zlib.gunzipSync(b)))
+    .catch(() => ({ municipios: {} }));
+  const { municipios, gerado } = await zonasGeo;
+  const zonas = municipios[mun];
+  if (!zonas) throw new HttpError(404, 'município sem contorno de zonas');
+  return {
+    type: 'FeatureCollection',
+    mun,
+    gerado,
+    features: Object.entries(zonas).map(([zona, coordinates]) => ({
+      type: 'Feature', properties: { zona }, geometry: { type: 'MultiPolygon', coordinates },
+    })),
+  };
+}
+
 /**
  * Configuração + `encerrada` por cargo (com a apuração encerrada o front não fica consultando o TSE),
  * só com os cargos que as flags liberam — o turno mais recente primeiro, que é o que o front abre —
@@ -399,6 +420,13 @@ const server = http.createServer(async (req, res) => {
     if (geoMatch) {
       const alvo = geoMatch[1] === 'br' ? 'br' : uf(geoMatch[1]);
       const data = await geo(alvo);
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=86400' });
+      return res.end(JSON.stringify(data));
+    }
+    const zonasMatch = url.pathname.match(/^\/api\/geo\/([a-z]{2})\/(\d{5})$/);
+    if (zonasMatch) {
+      uf(zonasMatch[1]);
+      const data = await geoZonas(zonasMatch[2]);
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=86400' });
       return res.end(JSON.stringify(data));
     }

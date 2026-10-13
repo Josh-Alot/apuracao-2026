@@ -298,6 +298,12 @@ export default function App() {
   const porIbge = useMemo(() => new Map(munsUf.filter((m) => m.ibge).map((m) => [m.ibge!, m])), [munsUf]);
   const porCd = useMemo(() => new Map(munsUf.map((m) => [m.cd, m])), [munsUf]);
   const munAtual = local.mun ? porCd.get(local.mun) : undefined;
+  // Contorno estimado das zonas (só existe para municípios com mais de uma zona).
+  const { data: geoZonas } = useApi<FeatureCollection & { mun: string }>(
+    temMalha && munAtual && munAtual.zonas.length > 1 ? `/api/geo/${uf}/${munAtual.cd}` : null,
+  );
+  // Ao trocar de município o dado anterior fica até o novo chegar: só vale o do município aberto.
+  const zonasNoMapa = munAtual && geoZonas?.mun === munAtual.cd ? geoZonas : null;
 
   const chave = useCallback(
     (f: Feature) => (temMalha ? porIbge.get(String(f.properties?.ibge))?.cd : f.properties?.uf),
@@ -520,9 +526,21 @@ export default function App() {
               corLider={segundoTurno && !(!uf && cargo.escopo === 'uf') ? corLider : undefined}
               rotulos={segundoTurno && !uf}
               onSelect={(k) => ir(uf ? { uf, mun: k } : { uf: k })}
+              zonas={zonasNoMapa && munAtual ? {
+                geo: zonasNoMapa,
+                dados: mapaZonas.data,
+                selecionada: local.zona,
+                onSelect: (z) => ir({ uf, mun: munAtual.cd, zona: z }),
+              } : undefined}
             />
           )}
 
+          {zonasNoMapa && (
+            <p className="muted pequeno nota-mapa">
+              Limites das zonas eleitorais estimados pelos locais de votação (cada área fica com a zona do local mais
+              próximo). O TSE não publica limites oficiais das zonas.
+            </p>
+          )}
           <p className="muted pequeno nota-mapa">
             <ProximaAtualizacao
               rotulo="Mapa atualizado"

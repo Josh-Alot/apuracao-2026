@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { geoPath, geoTransform } from 'd3-geo';
+import { geoPath, geoTransform, type GeoPath } from 'd3-geo';
 import type { Feature, FeatureCollection } from 'geojson';
 import type { MapaDados, ModoMapa, Resumo, ResumoCandidato } from '../types';
 import { EsqueletoMapa } from './Carregando';
@@ -38,6 +38,16 @@ interface Props {
   /** Sigla de cada região escrita no mapa (UFs no mapa do Brasil). */
   rotulos?: boolean;
   onSelect: (chave: string) => void;
+  /**
+   * Zonas eleitorais da região em foco (`focar`), desenhadas por cima dela com a mesma projeção.
+   * Contornos estimados (`properties.zona`), não oficiais.
+   */
+  zonas?: {
+    geo: FeatureCollection;
+    dados: MapaDados | null;
+    selecionada?: string;
+    onSelect: (zona: string) => void;
+  };
 }
 
 /** Estado de uma região no mapa do 2º turno. */
@@ -143,18 +153,31 @@ function projetar(fc: FeatureCollection) {
 
 export function Mapa({
   geo, chave, nome, dados, modo, selecionado, focar, rotuloRegiao, legendaPorPartido, segundoTurno, corLider, rotulos, onSelect,
+  zonas,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState<{ k: string; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<{ k: string; zona?: boolean; x: number; y: number } | null>(null);
 
-  const { regioes, quadros } = useMemo(() => {
-    if (!geo) return { regioes: [], quadros: [] };
+  const { regioes, quadros, caminhos } = useMemo(() => {
+    if (!geo) return { regioes: [], quadros: [], caminhos: new Map<string, GeoPath>() };
     const { desenhos, quadros } = projetar(geo);
+    const caminhos = new Map<string, GeoPath>();
     const regioes = desenhos
-      .map(({ f, path }) => ({ k: chave(f), d: path(f) ?? '', b: path.bounds(f), c: path.centroid(f) }))
+      .map(({ f, path }) => {
+        const k = chave(f);
+        if (k) caminhos.set(k, path);
+        return { k, d: path(f) ?? '', b: path.bounds(f), c: path.centroid(f) };
+      })
       .filter((r): r is { k: string; d: string; b: [[number, number], [number, number]]; c: [number, number] } => !!r.k);
-    return { regioes, quadros };
+    return { regioes, quadros, caminhos };
   }, [geo, chave]);
+
+  // Zonas: a projeção da região em foco (a do mapa principal ou a do quadro, se for uma ilha).
+  const desenhoZonas = useMemo(() => {
+    const path = focar ? caminhos.get(focar) : undefined;
+    if (!path || !zonas) return [];
+    return zonas.geo.features.map((f) => ({ k: String(f.properties?.zona), d: path(f) ?? '' }));
+  }, [caminhos, focar, zonas?.geo]);
 
   // Enquadramento padrão: o mapa inteiro, ou a região em foco.
   const base = useMemo<Vista>(() => {
@@ -266,8 +289,9 @@ export function Mapa({
   // Hachuras do "virou": uma por cor, com listras de largura fixa na tela (acompanham o zoom).
   const hachuras = useMemo(() => {
     if (!doisTurnos || !dados) return [];
-    return [...new Set(Object.values(dados).filter((r) => r?.virou && r.lider).map((r) => corDe(r!.lider!)))];
-  }, [doisTurnos, dados, corDe]);
+    const todas = [...Object.values(dados), ...Object.values(zonas?.dados ?? {})];
+    return [...new Set(todas.filter((r) => r?.virou && r.lider).map((r) => corDe(r!.lider!)))];
+  }, [doisTurnos, dados, zonas?.dados, corDe]);
   const cor = (r: Resumo | null | undefined) => {
     if (!r) return 'var(--sem-dado)';
     if (modo === 'apurado') return corApuracao(r.pctApurado);
@@ -306,7 +330,16 @@ export function Mapa({
     return [...cont.values()].sort((a, b) => b.n - a.n).slice(0, 8);
   }, [dados, modo, legendaPorPartido]);
 
-  const info = hover ? dados?.[hover.k] : null;
+  const info = hover ? (hover.zona ? zonas?.dados : dados)?.[hover.k] : null;
+  const pairar = (k: string, zona?: boolean) => (e: React.MouseEvent) => {
+    if (gesto.current?.arrastou) return;
+    const box = ref.current!.getBoundingClientRect();
+    setHover({ k, zona, x: e.clientX - box.left, y: e.clientY - box.top });
+  };
+  const clicar = (fn: () => void) => () => {
+    if (cliqueSuprimido.current) cliqueSuprimido.current = false;
+    else fn();
+  };
 
   return (
     <div className="mapa" ref={ref} onMouseLeave={() => setHover(null)}>
@@ -355,21 +388,29 @@ export function Mapa({
               fillOpacity={focar && !sel ? opacidade(res) * 0.35 : opacidade(res)}
               className={sel ? 'regiao selecionada' : 'regiao'}
               vectorEffect="non-scaling-stroke"
-              onClick={() => {
-                if (cliqueSuprimido.current) cliqueSuprimido.current = false;
-                else onSelect(r.k);
-              }}
-              onMouseMove={(e) => {
-                if (gesto.current?.arrastou) return;
-                const box = ref.current!.getBoundingClientRect();
-                setHover({ k: r.k, x: e.clientX - box.left, y: e.clientY - box.top });
-              }}
+              onClick={clicar(() => onSelect(r.k))}
+              onMouseMove={pairar(r.k)}
             />
           );
         })}
+        {zonas && desenhoZonas.map((z) => (
+          <path
+            key={`z-${z.k}`}
+            d={z.d}
+            fill={cor(zonas.dados?.[z.k])}
+            fillOpacity={opacidade(zonas.dados?.[z.k])}
+            className={z.k === zonas.selecionada ? 'regiao zona selecionada' : 'regiao zona'}
+            vectorEffect="non-scaling-stroke"
+            onClick={clicar(() => zonas.onSelect(z.k))}
+            onMouseMove={pairar(z.k, true)}
+          />
+        ))}
         {/* Redesenha a selecionada por cima para o contorno não ficar escondido */}
         {selecionado && regioes.filter((r) => r.k === selecionado).map((r) => (
           <path key="sel" d={r.d} className="contorno-selecao" vectorEffect="non-scaling-stroke" />
+        ))}
+        {zonas?.selecionada && desenhoZonas.filter((z) => z.k === zonas.selecionada).map((z) => (
+          <path key="sel-zona" d={z.d} className="contorno-selecao" vectorEffect="non-scaling-stroke" />
         ))}
         {rotulos && regioes.map((r) => (
           <text
@@ -405,7 +446,7 @@ export function Mapa({
             top: hover.y + 14,
           }}
         >
-          <strong>{nome(hover.k)}</strong>
+          <strong>{hover.zona ? `Zona ${Number(hover.k)}` : nome(hover.k)}</strong>
           {info && doisTurnos && info.lider ? (
             <>
               {[info.lider, info.segundo].filter((c): c is ResumoCandidato => !!c).map((c) => (
@@ -432,7 +473,7 @@ export function Mapa({
               <div className="muted">{fmtPct(info.pctApurado)} das seções apuradas</div>
             </>
           ) : (
-            <div className="muted">{dados ? 'Sem dados' : 'Carregando…'}</div>
+            <div className="muted">{(hover.zona ? zonas?.dados : dados) ? 'Sem dados' : 'Carregando…'}</div>
           )}
         </div>
       )}

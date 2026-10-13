@@ -17,6 +17,7 @@ npm run candidatos # regera dados/candidatos-2026.tsv.gz (perfil e bens, Dados A
 npm run arquivar   # guarda os resultados finais em arquivo/ (ver "Arquivo próprio" abaixo)
 npm run simular-2turno  # regera a simulação do 2º turno em simulacao/ (ver "Simulação do 2º turno")
 npm run dev:2turno # dev com a simulação do 2º turno ligada (SIMULACAO_2TURNO=1 FLAG_SEGUNDO_TURNO=on)
+npm run zonas      # regera dados/zonas-2026.json.gz (contorno estimado das zonas; ver "Zonas no mapa" abaixo)
 npm run build && npm start   # produção: o servidor Node serve dist/ e /api na porta 3001
 ```
 
@@ -55,7 +56,8 @@ Com `ADMIN_TOKEN` definido:
 
 ```
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
-  index.mjs        Rotas HTTP, busca, malhas do IBGE (cache em disco em .cache/geo), arquivos estáticos
+  index.mjs        Rotas HTTP, busca, malhas do IBGE (cache em disco em .cache/geo), contorno das zonas
+                   (/api/geo/<uf>/<mun>, de dados/zonas-2026.json.gz), arquivos estáticos
   aovivo.mjs       Stream SSE /api/ao-vivo: 1 vigia por resultado consulta o TSE a cada 5 s e empurra só quando muda
   tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
   demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais); arquivo com votos (arquivo
@@ -69,7 +71,8 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   scripts/candidatos.mjs  `npm run candidatos`: baixa os CSVs dos Dados Abertos e gera o .tsv.gz
   scripts/arquivar.mjs    `npm run arquivar`: baixa os resultados finais e grava em arquivo/
   scripts/simular-2turno.mjs  `npm run simular-2turno`: gera simulacao/ a partir do 2º turno de 2022
-dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz)
+  scripts/zonas.mjs       `npm run zonas`: contorno estimado das zonas a partir dos locais de votação
+dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz, zonas-2026.json.gz)
 arquivo/           Resultados finais arquivados e versionados (<ciclo>-<turno>turno/)
 simulacao/         2º turno simulado (mesmo formato do arquivo/), versionado
 src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths SVG
@@ -78,7 +81,8 @@ src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths 
   api.ts           useApi(url, intervalo) — fetch + polling mantendo o dado anterior
   components/
     Mapa.tsx           Choropleth SVG (projeção plana própria), tooltip, legenda, zoom no município;
-                       zoom/arraste do leitor (roda, arrastar, pinça, botões +/−/Ajustar) via viewBox
+                       zoom/arraste do leitor (roda, arrastar, pinça, botões +/−/Ajustar) via viewBox;
+                       prop `zonas`: desenha as zonas sobre o município em foco, com a mesma projeção
     PainelResultado.tsx Totais, % apurado, lista de candidatos com filtro local
     ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
     BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF/partido; só o partido lista
@@ -186,7 +190,25 @@ Base: `https://resultados.tse.jus.br/oficial`
 - Não existe arquivo agregado "vencedor por município": o mapa estadual faz 1 requisição por
   município (SP = 645), com concorrência limitada (`mapLimit`) e cache de 60 s. Por isso, cargos
   proporcionais (arquivos de centenas de KB) usam só o `-ab.json` no mapa estadual.
-- Zonas eleitorais **não têm malha geográfica pública**; por isso aparecem como lista, não no mapa.
+- Zonas eleitorais **não têm malha geográfica pública**: o contorno no mapa é estimado (ver "Zonas no mapa").
+
+## Zonas no mapa (contorno estimado)
+
+O TSE não publica limites das zonas. `npm run zonas` (opção `--uf sp,rj`; ~15 s para o Brasil) monta um contorno
+aproximado para os ~190 municípios com mais de uma zona (725 zonas; nos demais a zona é o município inteiro):
+- Locais de votação com latitude/longitude dos Dados Abertos (`eleitorado_local_votacao_<ano>.zip`, ~176 MB, guardado
+  em `.cache/dados-abertos`; apague o zip para baixar a versão nova). Eleitores por local = soma das seções.
+- Divisão simples (Voronoi): cada ponto do município fica com a zona do local mais próximo (distância em coordenadas
+  planas, lon·cos(lat)); as células da mesma zona são juntadas e recortadas pelo contorno do município — a mesma
+  malha do IBGE do mapa (`.cache/geo/<uf>.json`), para os limites baterem. Locais no mesmo ponto ficam com a zona de
+  mais eleitores; local a mais de 1 km fora do município é descartado (o script avisa).
+- Dependências só do script (devDependencies): `d3-delaunay` e `polygon-clipping`. O servidor só lê o `.json.gz`
+  (`{ gerado, municipios: { <cd TSE>: { <zona4>: MultiPolygon } } }`), em memória no 1º pedido.
+- Front: com o município aberto, `App.tsx` pede `/api/geo/<uf>/<mun>` (404 = sem contorno) e o `Mapa` pinta as
+  zonas sobre o município (mesmas cores/modos, tooltip, clique abre a zona); a lista de zonas continua abaixo. Uma
+  nota sob o mapa avisa que os limites são estimados. Parques, represas e área rural também ficam com alguma zona
+  (ex.: o extremo sul de SP vira uma zona enorme) — limitação aceita da divisão simples.
+- Rode de novo quando o TSE atualizar o cadastro de locais (antes de outra eleição) e faça commit.
 
 ## 2º turno
 

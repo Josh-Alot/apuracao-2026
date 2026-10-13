@@ -13,6 +13,7 @@
     "candidatos": "node server/scripts/candidatos.mjs",
     "arquivar": "node server/scripts/arquivar.mjs",
     "simular-2turno": "node server/scripts/simular-2turno.mjs",
+    "zonas": "node server/scripts/zonas.mjs",
     "dev:2turno": "SIMULACAO_2TURNO=1 FLAG_SEGUNDO_TURNO=on npm run dev"
   },
   "dependencies": {
@@ -27,6 +28,8 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.5",
+    "d3-delaunay": "^6.0.4",
+    "polygon-clipping": "^0.15.7",
     "typescript": "^7.0.2",
     "vite": "^8.3.2"
   },
