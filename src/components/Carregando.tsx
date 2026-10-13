@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { useCarregandoGlobal } from '../api';
+import { Logo } from './Logo';
 
 /**
  * Barra fina no topo da página enquanto houver requisições em andamento.
@@ -89,7 +90,7 @@ export function EsqueletoPagina() {
     <div className="app" aria-busy="true">
       <header className="topo">
         <div className="marca">
-          <p className="marca-titulo">Apuração 2026</p>
+          <p className="marca-titulo"><Logo />Apuração 2026</p>
           <div className="dataline"><Esq w="22rem" h="0.8rem" /></div>
         </div>
         <div className="busca"><Esq h="2.5rem" /></div>

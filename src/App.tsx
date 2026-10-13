@@ -16,6 +16,7 @@ import { BotaoTema } from './components/BotaoTema';
 import { Hemiciclo } from './components/Hemiciclo';
 import { Duelo, ListaDuelos, coresFinalistas, corDoLider, finalistas } from './components/Duelo';
 import { Link } from './components/Link';
+import { Logo } from './components/Logo';
 import { caminho, caminhoCandidato, cargoPorSlug, lerCaminho, slugCargo, tituloPagina } from './rotas.mjs';
 
 /** "25/10/2026" → "25 de outubro" */
@@ -368,7 +369,7 @@ export default function App() {
       <header className="topo">
         <div className="marca">
           {/* A marca não é o <h1>: o <h1> descreve a tela (título do painel). */}
-          <p className="marca-titulo">Apuração 2026</p>
+          <p className="marca-titulo"><Logo />Apuração 2026</p>
           <span className="muted pequeno">Dados oficiais do TSE · {cargo.turno}º turno em {cargo.data}</span>
           {config.demo && <span className="selo selo-demo" title="Votos sintéticos sobre os candidatos reais">MODO DEMO</span>}
           {cargo.simulado && (

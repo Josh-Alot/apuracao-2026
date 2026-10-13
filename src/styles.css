@@ -90,7 +90,8 @@ h1, h2, h3, .marca-titulo { margin: 0; line-height: 1.2; font-family: var(--font
   padding: 16px 0 12px;
 }
 .marca { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
-.marca-titulo { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+.marca-titulo { display: inline-flex; align-items: center; gap: 0.28em; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+.logo { width: 0.82em; height: 0.82em; flex: none; }
 
 .selo {
   display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 99px;

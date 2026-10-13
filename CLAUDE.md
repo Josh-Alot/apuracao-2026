@@ -18,6 +18,7 @@ npm run arquivar   # guarda os resultados finais em arquivo/ (ver "Arquivo próp
 npm run simular-2turno  # regera a simulação do 2º turno em simulacao/ (ver "Simulação do 2º turno")
 npm run dev:2turno # dev com a simulação do 2º turno ligada (SIMULACAO_2TURNO=1 FLAG_SEGUNDO_TURNO=on)
 npm run zonas      # regera dados/zonas-2026.json.gz (contorno estimado das zonas; ver "Zonas no mapa" abaixo)
+npm run icones     # regera os PNGs do PWA a partir de public/favicon.svg e public/icone-maskable.svg (precisa do rsvg-convert)
 npm run build && npm start   # produção: o servidor Node serve dist/ e /api na porta 3001
 ```
 
@@ -114,6 +115,11 @@ Um único tema, "jornal", todo em `src/styles.css`: tokens em variáveis CSS no 
 Google Fonts (`index.html`), papel creme, filetes em vez de cartões, os 2 primeiros colocados como "manchete".
 Cor forte fica reservada aos partidos; evite verde-amarelo ou vermelho como cor de interface (são lidos
 como sinal político).
+
+Marca: ícone da urna (fenda + três barras) em `components/Logo.tsx`, ao lado de "Apuração 2026" no topo, e o mesmo
+desenho em `public/favicon.svg` (inverte em `prefers-color-scheme: dark`). PWA: `public/manifest.webmanifest`
+(sem service worker) com PNGs 192/512, um maskable (desenho a 80%, dentro da zona segura) e `apple-touch-icon.png`;
+mudou o desenho, mude os dois SVGs e rode `npm run icones`.
 
 ## SEO
 
