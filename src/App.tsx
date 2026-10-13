@@ -369,7 +369,7 @@ export default function App() {
       <header className="topo">
         <div className="marca">
           {/* A marca não é o <h1>: o <h1> descreve a tela (título do painel). */}
-          <p className="marca-titulo"><Logo />Apuração 2026</p>
+          <p className="marca-titulo"><Logo />Apuração.org</p>
           <span className="muted pequeno">Dados oficiais do TSE · {cargo.turno}º turno em {cargo.data}</span>
           {config.demo && <span className="selo selo-demo" title="Votos sintéticos sobre os candidatos reais">MODO DEMO</span>}
           {cargo.simulado && (

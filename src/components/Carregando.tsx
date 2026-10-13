@@ -90,7 +90,7 @@ export function EsqueletoPagina() {
     <div className="app" aria-busy="true">
       <header className="topo">
         <div className="marca">
-          <p className="marca-titulo"><Logo />Apuração 2026</p>
+          <p className="marca-titulo"><Logo />Apuração.org</p>
           <div className="dataline"><Esq w="22rem" h="0.8rem" /></div>
         </div>
         <div className="busca"><Esq h="2.5rem" /></div>

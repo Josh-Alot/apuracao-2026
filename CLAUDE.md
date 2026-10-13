@@ -116,7 +116,7 @@ Google Fonts (`index.html`), papel creme, filetes em vez de cartões, os 2 prime
 Cor forte fica reservada aos partidos; evite verde-amarelo ou vermelho como cor de interface (são lidos
 como sinal político).
 
-Marca: ícone da urna (fenda + três barras) em `components/Logo.tsx`, ao lado de "Apuração 2026" no topo, e o mesmo
+Marca: ícone da urna (fenda + três barras) em `components/Logo.tsx`, ao lado de "Apuração.org" no topo, e o mesmo
 desenho em `public/favicon.svg` (inverte em `prefers-color-scheme: dark`). PWA: `public/manifest.webmanifest`
 (sem service worker) com PNGs 192/512, um maskable (desenho a 80%, dentro da zona segura) e `apple-touch-icon.png`;
 mudou o desenho, mude os dois SVGs e rode `npm run icones`.
