@@ -206,7 +206,8 @@ aproximado para os ~190 municípios com mais de uma zona (725 zonas; nos demais 
   (`{ gerado, municipios: { <cd TSE>: { <zona4>: MultiPolygon } } }`), em memória no 1º pedido.
 - Front: com o município aberto, `App.tsx` pede `/api/zonas?uf=<uf>&mun=<mun>` (404 = sem contorno;
   ETag + `no-cache` como as demais rotas, para uma regeração chegar no deploy) e o `Mapa` pinta as
-  zonas sobre o município (mesmas cores/modos, tooltip, clique abre a zona); a lista de zonas continua abaixo. Uma
+  zonas sobre o município (mesmas cores/modos, tooltip, clique abre a zona; a zona aberta é enquadrada e as outras
+  atenuadas, como o município); a lista de zonas continua abaixo. Uma
   nota sob o mapa avisa que os limites são estimados. Parques, represas e área rural também ficam com alguma zona
   (ex.: o extremo sul de SP vira uma zona enorme) — limitação aceita da divisão simples.
 - Rode de novo quando o TSE atualizar o cadastro de locais (antes de outra eleição) e faça commit.

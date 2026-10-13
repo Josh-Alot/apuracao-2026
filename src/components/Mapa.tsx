@@ -176,18 +176,20 @@ export function Mapa({
   const desenhoZonas = useMemo(() => {
     const path = focar ? caminhos.get(focar) : undefined;
     if (!path || !zonas) return [];
-    return zonas.geo.features.map((f) => ({ k: String(f.properties?.zona), d: path(f) ?? '' }));
+    return zonas.geo.features.map((f) => ({ k: String(f.properties?.zona), d: path(f) ?? '', b: path.bounds(f) }));
   }, [caminhos, focar, zonas?.geo]);
 
-  // Enquadramento padrão: o mapa inteiro, ou a região em foco.
+  // Enquadramento padrão: o mapa inteiro, a região em foco ou, dentro dela, a zona selecionada.
+  const zonaFoco = zonas?.selecionada ? desenhoZonas.find((z) => z.k === zonas.selecionada) : undefined;
   const base = useMemo<Vista>(() => {
-    const alvo = focar && regioes.find((r) => r.k === focar);
+    const alvo = zonaFoco ?? (focar ? regioes.find((r) => r.k === focar) : undefined);
     if (!alvo) return { x: 0, y: 0, w: W, h: H };
     const [[a, b], [c, d]] = alvo.b;
-    const lado = Math.max(c - a, (d - b) * (W / H), 60) * 1.8;
+    // Lado mínimo menor para a zona: com o do município, as zonas de uma capital nem ampliariam.
+    const lado = Math.max(c - a, (d - b) * (W / H), zonaFoco ? 20 : 60) * 1.8;
     const alt = lado * (H / W);
     return { x: (a + c) / 2 - lado / 2, y: (b + d) / 2 - alt / 2, w: lado, h: alt };
-  }, [focar, regioes]);
+  }, [focar, regioes, zonaFoco]);
 
   // Zoom/arraste do leitor; volta ao enquadramento padrão quando ele muda.
   const [zoom, setZoom] = useState<Vista | null>(null);
@@ -384,7 +386,8 @@ export function Mapa({
             <path
               key={r.k}
               d={r.d}
-              fill={cor(res)}
+              // Com as zonas por cima, o município não é pintado: a cor dele vazaria pelas zonas atenuadas.
+              fill={desenhoZonas.length && r.k === focar ? 'none' : cor(res)}
               fillOpacity={focar && !sel ? opacidade(res) * 0.35 : opacidade(res)}
               className={sel ? 'regiao selecionada' : 'regiao'}
               vectorEffect="non-scaling-stroke"
@@ -398,7 +401,7 @@ export function Mapa({
             key={`z-${z.k}`}
             d={z.d}
             fill={cor(zonas.dados?.[z.k])}
-            fillOpacity={opacidade(zonas.dados?.[z.k])}
+            fillOpacity={zonaFoco && z !== zonaFoco ? opacidade(zonas.dados?.[z.k]) * 0.35 : opacidade(zonas.dados?.[z.k])}
             className={z.k === zonas.selecionada ? 'regiao zona selecionada' : 'regiao zona'}
             vectorEffect="non-scaling-stroke"
             onClick={clicar(() => zonas.onSelect(z.k))}
