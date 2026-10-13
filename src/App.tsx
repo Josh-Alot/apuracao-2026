@@ -159,6 +159,12 @@ export default function App() {
     },
     [irPara, cargo?.id],
   );
+  /** Home (/): o cargo padrão no Brasil, sem ficha aberta. */
+  const irHome = useCallback(() => {
+    setFiltroCand(undefined);
+    if (location.pathname !== '/' || location.hash || rotaRef.current.candidato) history.pushState(null, '', '/');
+    setRota({ tela: {} });
+  }, [setRota]);
 
   // Link antigo (#/6257-1/sp/…): troca pelo caminho novo sem recarregar a página.
   useEffect(() => {
@@ -492,7 +498,7 @@ export default function App() {
       <header className="topo">
         <div className="marca">
           {/* A marca não é o <h1>: o <h1> descreve a tela. */}
-          <p className="marca-titulo"><Logo />Apuração.org</p>
+          <Link className="marca-titulo" href="/" onNavegar={irHome}><Logo />Apuração.org</Link>
           {config.demo && <span className="selo selo-demo" title="Votos sintéticos sobre os candidatos reais">Modo demo</span>}
           {cargo.simulado && (
             <span className="selo selo-demo" title="Votos do 2º turno de 2022 aplicados aos candidatos que foram ao 2º turno de 2026">

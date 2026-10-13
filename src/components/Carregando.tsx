@@ -82,7 +82,7 @@ export function EsqueletoPagina() {
   return (
     <div className="app" aria-busy="true">
       <header className="topo">
-        <p className="marca-titulo"><Logo />Apuração.org</p>
+        <a className="marca-titulo" href="/"><Logo />Apuração.org</a>
         <nav className="cargos">
           {[7, 8, 6, 10, 10, 11].map((w, i) => <Esq key={i} w={`${w}rem`} h="1rem" />)}
         </nav>

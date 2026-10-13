@@ -94,7 +94,7 @@ p { margin: 0; }
 :focus-visible { outline: 2px solid var(--texto); outline-offset: 2px; }
 /* Links internos com cara de botão/aba (navegação com <a href> rastreável, ver components/Link.tsx). */
 .cargos a, .turnos a, .trilha a, .lista-regioes li a, .lista-duelos li a, .busca-resultados li a, .ticker a,
-.diferenca-uf a, .destaques-uf a, .cand-abrir, .cartao-exterior, .indice-regioes a, .placar-nome {
+.diferenca-uf a, .destaques-uf a, .cand-abrir, .cartao-exterior, .indice-regioes a, .placar-nome, .marca-titulo {
   color: inherit; text-decoration: none;
 }
 /* Só para leitores de tela e buscadores (ex.: o cargo no <h1> da tela). */
