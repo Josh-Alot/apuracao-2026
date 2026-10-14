@@ -34,6 +34,13 @@ export function useConsulta<T>(c: Consulta<T> | null, { intervalo = 0, incomplet
     refetchInterval: (query) => ritmo(query.state.data, query.state.error),
   });
 
+  // A atualização periódica acabou de ligar (ex.: urnas fechadas às 17h): o que venceu é consultado na hora, sem
+  // esperar o primeiro ciclo.
+  const periodico = intervalo > 0 && !!c && !sse;
+  useEffect(() => {
+    if (periodico && q.isStale && !q.isFetching) q.refetch();
+  }, [periodico]);
+
   function ritmo(dado: T | undefined, erro: unknown) {
     if (!c || sse) return 0;
     if (intervalo > 0) return intervalo;
