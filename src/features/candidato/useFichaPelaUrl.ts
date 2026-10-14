@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { getJson, qs } from '../../api/cliente';
-import type { Config, DetalheCandidato, ItemBusca } from '../../lib/types';
+import { consultas } from '../../api/consultas';
+import type { Config, ItemBusca } from '../../lib/types';
 import type { EstadoFicha, Rota, Tela } from '../../rota/rota';
 import { slugCargo } from '../../rotas.mjs';
 
@@ -14,6 +16,7 @@ const BUSCA_FICHA_ESPERA_MS = 4_000;
  * caminho (a busca é bloqueada no robots.txt, então para o Google só vale o perfil).
  */
 export function useFichaPelaUrl(config: Config | null, rota: Rota, setRota: (r: Rota) => void) {
+  const qc = useQueryClient();
   useEffect(() => {
     if (!config || !rota.candidato || rota.temBase) return;
     const sq = rota.candidato;
@@ -48,7 +51,9 @@ export function useFichaPelaUrl(config: Config | null, rota: Rota, setRota: (r: 
     };
     (async () => {
       try {
-        const d = await getJson<DetalheCandidato>(`/api/candidato/${sq}`, ctrl.signal);
+        // Pelo cache: a ficha que abre em seguida usa o mesmo perfil, sem consultar de novo.
+        const d = await qc.fetchQuery(consultas.candidato(sq));
+        if (ctrl.signal.aborted) return;
         if (d.candidatura && achou(d.candidatura.cargoId, d.candidatura.uf)) return;
       } catch (e) {
         if ((e as Error).name === 'AbortError') return;
@@ -56,5 +61,5 @@ export function useFichaPelaUrl(config: Config | null, rota: Rota, setRota: (r: 
       pelaBusca(1);
     })();
     return () => { ctrl.abort(); clearTimeout(espera); };
-  }, [config, rota.candidato, rota.temBase, setRota]);
+  }, [config, rota.candidato, rota.temBase, setRota, qc]);
 }

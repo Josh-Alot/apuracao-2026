@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { Local } from '../lib/types';
 
 // ---------- contador global de requisições em andamento (alimenta a barra do topo) ----------
@@ -15,38 +15,28 @@ export function useCarregandoGlobal() {
   );
 }
 
-// ---------- cache do cliente (mostra o último dado na hora e atualiza por trás) ----------
-// Em memória para tudo que passa pelo useApi; espelhado no sessionStorage (só respostas pequenas)
-// para o F5 também abrir com dado. Dado com mais de CACHE_VALIDADE_MS não é mostrado.
+// ---------- cache do cliente no sessionStorage (para o F5 abrir com dado) ----------
+// O cache em memória é o do TanStack Query (useConsulta); aqui ficam só as respostas pequenas, para a página
+// recarregada mostrar o último dado na hora. Dado com mais de CACHE_VALIDADE_MS não é mostrado.
 
-const CACHE_MAX_ITENS = 80;
-const CACHE_VALIDADE_MS = 30 * 60_000;
+export const CACHE_VALIDADE_MS = 30 * 60_000;
 const STORAGE_PREFIXO = 'apuracao:';
 const STORAGE_MAX_CHARS = 150_000;
-const memoria = new Map<string, { data: unknown; ts: number }>();
 
-function lerCacheCliente<T>(url: string): T | null {
-  let e = memoria.get(url);
-  if (!e) {
-    try {
-      const txt = sessionStorage.getItem(STORAGE_PREFIXO + url);
-      if (txt) e = JSON.parse(txt);
-    } catch { /* storage bloqueado ou corrompido */ }
-  }
-  if (!e || Date.now() - e.ts > CACHE_VALIDADE_MS) return null;
-  memoria.delete(url);
-  memoria.set(url, e); // LRU: mais recente no fim
-  return e.data as T;
+export function lerCacheCliente<T>(url: string): { data: T; ts: number } | undefined {
+  let e: { data: T; ts: number } | undefined;
+  try {
+    const txt = sessionStorage.getItem(STORAGE_PREFIXO + url);
+    if (txt) e = JSON.parse(txt);
+  } catch { /* storage bloqueado ou corrompido */ }
+  if (!e || Date.now() - e.ts > CACHE_VALIDADE_MS) return undefined;
+  return e;
 }
 
-function guardarCacheCliente(url: string, data: unknown) {
-  const e = { data, ts: Date.now() };
-  memoria.delete(url);
-  memoria.set(url, e);
-  while (memoria.size > CACHE_MAX_ITENS) memoria.delete(memoria.keys().next().value!);
+export function guardarCacheCliente(url: string, data: unknown) {
   let txt: string;
   try {
-    txt = JSON.stringify(e);
+    txt = JSON.stringify({ data, ts: Date.now() });
   } catch {
     return;
   }
@@ -132,129 +122,3 @@ export interface AoVivo {
 
 /** Sem atualização periódica (apuração encerrada): espera para repetir uma busca que falhou ou veio incompleta. */
 export const RETENTAR_MS = 15_000;
-
-/**
- * Busca `url` e, se `intervalo` > 0, refaz a busca periodicamente.
- * Com `incompleto` e sem `intervalo`, repete a busca (a cada RETENTAR_MS) só enquanto ela falhar ou
- * `incompleto(dado)` — ex.: o mapa, cujas regiões o servidor completa aos poucos.
- * Com `sseUrl`, em vez de consultar periodicamente, assina o stream "ao vivo" do servidor,
- * que empurra o dado sempre que o TSE publica algo novo.
- * Mantém o dado anterior enquanto recarrega ou troca de modo (evita "piscar" a tela).
- */
-export function useApi<T>(
-  url: string | null, intervalo = 0, sseUrl: string | null = null, incompleto?: (d: T) => boolean,
-) {
-  const [aoVivo, setAoVivo] = useState<AoVivo | null>(null);
-  const [data, setData] = useState<T | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(false);
-  /** Quando será a próxima consulta automática (ms desde epoch), ou null se não houver. */
-  const [proxima, setProxima] = useState<number | null>(null);
-  const urlAtual = useRef(url);
-  const urlComDados = useRef<string | null>(null);
-  const incompletoAtual = useRef(incompleto);
-  incompletoAtual.current = incompleto;
-
-  useEffect(() => {
-    urlAtual.current = url;
-    if (!url) {
-      setData(null);
-      setErro(null);
-      setProxima(null);
-      urlComDados.current = null;
-      return;
-    }
-    let ctrl = new AbortController();
-    let primeira = true;
-    let deCache = false; // a tela abriu com o dado do cache do cliente (ainda não confirmado pelo servidor)
-    let retentar: ReturnType<typeof setTimeout> | undefined;
-    const carregar = async () => {
-      ctrl.abort();
-      clearTimeout(retentar);
-      ctrl = new AbortController();
-      const sinal = ctrl.signal;
-      let deNovo = false;
-      setCarregando(true);
-      setProxima(intervalo > 0 ? Date.now() + intervalo : null);
-      try {
-        const d = await getJson<T>(url, sinal);
-        deNovo = !!incompletoAtual.current?.(d);
-        guardarCacheCliente(url, d);
-        if (urlAtual.current === url) {
-          setData(d);
-          setErro(null);
-          urlComDados.current = url;
-        }
-      } catch (e) {
-        if ((e as Error).name === 'AbortError') return;
-        deNovo = !!incompletoAtual.current;
-        if (urlAtual.current === url) {
-          setErro((e as Error).message);
-          if (primeira && !deCache) setData(null); // com dado do cache, melhor mantê-lo junto do erro
-        }
-      } finally {
-        primeira = false;
-        // Cancelada (troca de aba, nova consulta): quem a substituiu é que encerra o "carregando".
-        if (!sinal.aborted && urlAtual.current === url) setCarregando(false);
-        if (deNovo && !intervalo && !sinal.aborted) {
-          retentar = setTimeout(carregar, RETENTAR_MS);
-          setProxima(Date.now() + RETENTAR_MS);
-        }
-      }
-    };
-    // Só troca o dado ao mudar de URL; ligar/desligar o "ao vivo" mantém o que já está na tela.
-    // Com a URL já vista (cache do cliente), o último dado aparece na hora enquanto atualiza;
-    // sem cache, a tela volta ao esqueleto. O erro da URL anterior também sai, senão a aba nova
-    // "herda" a falha enquanto carrega.
-    if (urlComDados.current !== url) {
-      const emCache = lerCacheCliente<T>(url);
-      setData(emCache);
-      setErro(null);
-      deCache = !!emCache;
-      if (emCache) urlComDados.current = url;
-    }
-
-    if (sseUrl) {
-      setProxima(null);
-      setCarregando(urlComDados.current !== url || deCache);
-      const es = new EventSource(sseUrl);
-      let estado: AoVivo = { intervalo: 0, verificadoEm: null, conectado: false };
-      const atualizar = (parcial: Partial<AoVivo>) => {
-        estado = { ...estado, ...parcial };
-        if (urlAtual.current === url) setAoVivo(estado);
-      };
-      es.onopen = () => atualizar({ conectado: true });
-      es.onerror = () => atualizar({ conectado: false }); // o EventSource reconecta sozinho
-      es.addEventListener('config', (e) => atualizar({ intervalo: JSON.parse(e.data).intervalo }));
-      es.addEventListener('verificado', (e) => atualizar({ verificadoEm: Number(e.data), conectado: true }));
-      es.addEventListener('resultado', (e) => {
-        if (urlAtual.current !== url) return;
-        const d = JSON.parse(e.data);
-        guardarCacheCliente(url, d);
-        setData(d);
-        setErro(null);
-        setCarregando(false);
-        urlComDados.current = url;
-      });
-      es.addEventListener('erro', (e) => {
-        if (urlAtual.current !== url) return;
-        setErro(JSON.parse((e as MessageEvent).data).erro);
-        setCarregando(false);
-      });
-      return () => {
-        es.close();
-        setAoVivo(null);
-      };
-    }
-
-    carregar();
-    const id = intervalo > 0 ? setInterval(carregar, intervalo) : undefined;
-    return () => {
-      ctrl.abort();
-      clearInterval(id);
-      clearTimeout(retentar);
-    };
-  }, [url, intervalo, sseUrl]);
-
-  return { data, erro, carregando, proxima, aoVivo };
-}

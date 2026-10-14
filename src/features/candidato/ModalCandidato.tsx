@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
-import type { Candidato, DetalheCandidato } from '../../lib/types';
-import { useApi } from '../../api/cliente';
+import type { Candidato } from '../../lib/types';
+import { consultas } from '../../api/consultas';
+import { useConsulta } from '../../api/useConsulta';
 import { useCores } from '../../lib/tema';
 import { caminhoCandidato } from '../../rotas.mjs';
 import { Num } from '../../ui/Num';
@@ -41,7 +42,7 @@ function situacao(c: Candidato) {
 /** Ficha do candidato: o que já veio no resultado + perfil e bens dos Dados Abertos do TSE. */
 export function ModalCandidato({ c, pos, cargo, local, vencidas, onFechar }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
-  const { data: d, erro } = useApi<DetalheCandidato>(`/api/candidato/${c.sq}`);
+  const { data: d, erro } = useConsulta(consultas.candidato(c.sq));
   const [todosBens, setTodosBens] = useState(false);
   const tema = useCores();
   const cor = corPartido(c.partido);

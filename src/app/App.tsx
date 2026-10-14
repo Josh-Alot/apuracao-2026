@@ -1,8 +1,10 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import type { Feature, FeatureCollection } from 'geojson';
-import { RETENTAR_MS, urlAoVivo, urlMapa, urlResultado, useApi } from '../api/cliente';
+import type { Feature } from 'geojson';
+import { RETENTAR_MS, urlAoVivo } from '../api/cliente';
+import { VALE_PARADO_MS, consultas } from '../api/consultas';
+import { useConsulta } from '../api/useConsulta';
 import type {
-  Candidato, Cargo, Composicao, Config, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado,
+  Candidato, Cargo, Composicao, ItemBusca, Local, ModoMapa,
 } from '../lib/types';
 import { UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../lib/util';
 import { Mapa } from '../features/mapa/Mapa';
@@ -48,7 +50,7 @@ export default function App() {
   const [filtroCand, setFiltroCand] = useState<string | undefined>();
   const [indiceAberto, setIndiceAberto] = useState(false);
 
-  const { data: config, erro: erroConfig } = useApi<Config>('/api/config');
+  const { data: config, erro: erroConfig } = useConsulta(consultas.config());
   const tela = rota.tela;
   const cargo = config && tela.cargo
     ? config.cargos.find((c) => c.id === tela.cargo) ?? cargoPorSlug(config.cargos, tela.cargo) ?? config.cargos[0]
@@ -61,10 +63,10 @@ export default function App() {
 
   // Com o "ao vivo" desligado no servidor (kill switch), tudo passa a ser atualização periódica.
   const {
-    agora, apuracaoAberta, encerrada, aoVivo, intervaloMapa, intervaloResultado, completarMapa, completarResultado,
+    agora, apuracaoAberta, encerrada, aoVivo, intervaloMapa, intervaloResultado, vale, completarMapa, completarResultado,
   } = useFaseApuracao(cargo, auto && !!flags?.aoVivo);
 
-  const { data: municipios } = useApi<Municipios>(cargo ? `/api/municipios?cargo=${cargo.eleicao}-${cargo.cargo}` : null);
+  const { data: municipios } = useConsulta(cargo ? consultas.municipios(cargo.eleicao, cargo.cargo) : null);
 
   const limparFiltro = useCallback(() => setFiltroCand(undefined), []);
   const { caminhoDe, irPara, ir, irHome, abrirCandidato, fecharCandidato } = useNavegacao({
@@ -73,25 +75,20 @@ export default function App() {
   useFichaPelaUrl(config, rota, setRota);
 
   const temMalha = !!uf && uf !== 'zz';
-  const { data: geo } = useApi<FeatureCollection>(cargo ? `/api/geo/${temMalha ? uf : 'br'}` : null);
+  const { data: geo } = useConsulta(cargo ? consultas.geo(temMalha ? uf : 'br') : null);
 
-  const mapaBr = useApi<MapaDados>(cargo && !uf ? urlMapa(cargo.id, 'br') : null, intervaloMapa, null, completarMapa);
-  const mapaUf = useApi<MapaDados>(cargo && uf ? urlMapa(cargo.id, uf) : null, intervaloMapa, null, completarMapa);
-  const mapaZonas = useApi<MapaDados>(
-    cargo && uf && local.mun ? urlMapa(cargo.id, uf, local.mun) : null,
-    intervaloMapa,
-    null,
-    completarMapa,
-  );
+  const atualizaMapa = { intervalo: intervaloMapa, incompleto: completarMapa };
+  const mapaBr = useConsulta(cargo && !uf ? consultas.mapa(cargo.id, 'br', undefined, vale) : null, atualizaMapa);
+  const mapaUf = useConsulta(cargo && uf ? consultas.mapa(cargo.id, uf, undefined, vale) : null, atualizaMapa);
+  const mapaZonas = useConsulta(cargo && uf && local.mun ? consultas.mapa(cargo.id, uf, local.mun, vale) : null, atualizaMapa);
 
   // Cargos estaduais não têm resultado nacional: no nível Brasil mostramos o resumo por estado.
   const precisaUf = cargo?.escopo === 'uf' && !uf;
-  const resultado = useApi<Resultado>(
-    cargo && !precisaUf ? urlResultado(cargo.id, local) : null,
-    intervaloResultado,
-    aoVivo && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
-    completarResultado,
-  );
+  const resultado = useConsulta(cargo && !precisaUf ? consultas.resultado(cargo.id, local, vale) : null, {
+    intervalo: intervaloResultado,
+    sse: aoVivo && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
+    incompleto: completarResultado,
+  });
 
   // 2º turno: os dois finalistas, com as cores usadas no placar e no mapa.
   const segundoTurno = cargo?.turno === 2;
@@ -100,20 +97,18 @@ export default function App() {
   const cores = useMemo(() => coresFinalistas(par), [chavePar]);
   const corLider = useMemo(() => corDoLider(cores), [cores]);
   // 2º turno ainda sem votos: o placar mostra o 1º turno da mesma região como referência (do arquivo, já final).
-  const resultado1t = useApi<Resultado>(
+  const resultado1t = useConsulta(
     segundoTurno && cargo?.primeiroTurno && !precisaUf && resultado.data?.votos.validos === 0
-      ? urlResultado(cargo.primeiroTurno, local)
+      ? consultas.resultado(cargo.primeiroTurno, local, VALE_PARADO_MS)
       : null,
   );
 
   // Composição da casa legislativa: Senado sempre nacional; Dep. Federal da UF ou do Brasil; assembleias da UF.
   const casa = cargo && flags?.hemiciclo ? casaLegislativa(cargo.cargo, uf) : null;
-  const composicao = useApi<Composicao>(
-    cargo && casa ? `/api/composicao?cargo=${cargo.id}${casa.nacional ? '' : `&uf=${uf}`}` : null,
-    intervaloMapa,
-    null,
-    encerrada ? (d: Composicao) => d.faltando > 0 : undefined,
-  );
+  const composicao = useConsulta(cargo && casa ? consultas.composicao(cargo.id, casa.nacional ? undefined : uf, vale) : null, {
+    intervalo: intervaloMapa,
+    incompleto: encerrada ? (d: Composicao) => d.faltando > 0 : undefined,
+  });
 
   // Fase da eleição (antes / votando / aguardando boletins / apurando) para o aviso do topo.
   const mapaAtual = uf ? mapaUf : mapaBr;
@@ -136,8 +131,8 @@ export default function App() {
   const porCd = useMemo(() => new Map(munsUf.map((m) => [m.cd, m])), [munsUf]);
   const munAtual = local.mun ? porCd.get(local.mun) : undefined;
   // Contorno estimado das zonas (só existe para municípios com mais de uma zona).
-  const { data: geoZonas } = useApi<FeatureCollection & { mun: string }>(
-    temMalha && munAtual && munAtual.zonas.length > 1 ? `/api/zonas?uf=${uf}&mun=${munAtual.cd}` : null,
+  const { data: geoZonas } = useConsulta(
+    temMalha && munAtual && munAtual.zonas.length > 1 ? consultas.zonas(uf, munAtual.cd) : null,
   );
   // Ao trocar de município o dado anterior fica até o novo chegar: só vale o do município aberto.
   const zonasNoMapa = munAtual && geoZonas?.mun === munAtual.cd ? geoZonas : null;

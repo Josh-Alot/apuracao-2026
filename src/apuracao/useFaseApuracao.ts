@@ -1,4 +1,5 @@
 import type { Cargo, MapaDados } from '../lib/types';
+import { VALE_APURANDO_MS, VALE_PARADO_MS } from '../api/consultas';
 import { useAgora } from './AvisoVotacao';
 
 // Com "ao vivo" ligado, os resultados chegam por stream (o servidor verifica o TSE a cada 5 s)
@@ -34,6 +35,8 @@ export function useFaseApuracao(cargo: Cargo | undefined, aoVivo: boolean) {
     aoVivo: tempoReal && aoVivo,
     intervaloMapa: !tempoReal ? 0 : aoVivo ? ATUALIZA_MAPA_AO_VIVO_MS : ATUALIZA_MAPA_MS,
     intervaloResultado: !tempoReal || aoVivo ? 0 : ATUALIZA_RESULTADO_MS,
+    /** Por quanto tempo um resultado/mapa já consultado vale ao voltar a uma tela (sem nova consulta). */
+    vale: tempoReal ? VALE_APURANDO_MS : VALE_PARADO_MS,
     completarMapa: encerrada ? mapaIncompleto : undefined,
     completarResultado: encerrada ? nuncaIncompleto : undefined,
   };
