@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type AoVivo, RETENTAR_MS, guardarCacheCliente, lerCacheCliente } from './cliente';
 import type { Consulta } from './consultas';
 
@@ -24,8 +24,8 @@ export function useConsulta<T>(c: Consulta<T> | null, { intervalo = 0, incomplet
   const stream = useStream(c, sse);
   const q = useQuery<T, Error, T, readonly unknown[]>({
     queryKey: c?.queryKey ?? ['nenhuma'],
-    queryFn: c?.queryFn,
-    enabled: !!c && !sse,
+    // Sem consulta, ou com o "ao vivo" (o dado chega pelo stream): o cache é lido, mas nada é buscado.
+    queryFn: c && !sse ? c.queryFn : skipToken,
     staleTime: c?.staleTime ?? 0,
     // Dado do sessionStorage (F5): aparece na hora, mas conta como vencido, para ser confirmado pelo servidor
     // mesmo nas consultas que valem para sempre (config, municípios).

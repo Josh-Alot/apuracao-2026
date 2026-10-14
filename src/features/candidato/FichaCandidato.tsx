@@ -1,5 +1,8 @@
+import { Suspense, lazy } from 'react';
 import type { Resultado } from '../../lib/types';
-import { ModalCandidato } from './ModalCandidato';
+
+// Só baixada quando uma ficha abre.
+const ModalCandidato = lazy(() => import('./ModalCandidato').then((m) => ({ default: m.ModalCandidato })));
 
 interface Props {
   resultado: Resultado | null;
@@ -18,13 +21,15 @@ export function FichaCandidato({ resultado: r, sq, local, vencidas, onFechar }: 
   if (!r || i < 0) return null;
   const c = r.candidatos[i];
   return (
-    <ModalCandidato
-      c={c}
-      pos={i + 1}
-      cargo={r.cargo.nome}
-      local={local}
-      vencidas={vencidas?.(c.numero) ?? null}
-      onFechar={onFechar}
-    />
+    <Suspense fallback={null}>
+      <ModalCandidato
+        c={c}
+        pos={i + 1}
+        cargo={r.cargo.nome}
+        local={local}
+        vencidas={vencidas?.(c.numero) ?? null}
+        onFechar={onFechar}
+      />
+    </Suspense>
   );
 }
