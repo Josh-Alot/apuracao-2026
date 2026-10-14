@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import type { MapaDados } from '../types';
+import type { MapaDados } from '../lib/types';
 import { Esq } from './Carregando';
-import { Link } from './Link';
-import { corPartido, fmtPct, semAcento, titulo as capitalizar } from '../util';
+import { Link } from '../rota/Link';
+import { corPartido, fmtPct, semAcento, titulo as capitalizar } from '../lib/util';
 
 interface Props {
   titulo: string;

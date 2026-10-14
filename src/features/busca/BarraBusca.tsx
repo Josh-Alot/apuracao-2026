@@ -1,11 +1,11 @@
 import { type CSSProperties, Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { getJson, qs } from '../api';
-import { Esq } from './Carregando';
-import { Num } from './Num';
-import { Link } from './Link';
-import { SeloSituacao } from './SeloSituacao';
-import type { Cargo, ItemBusca } from '../types';
-import { PARTIDOS, UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../util';
+import { getJson, qs } from '../../api/cliente';
+import { Esq } from '../../ui/Carregando';
+import { Num } from '../../ui/Num';
+import { Link } from '../../rota/Link';
+import { SeloSituacao } from '../../ui/SeloSituacao';
+import type { Cargo, ItemBusca } from '../../lib/types';
+import { PARTIDOS, UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../../lib/util';
 
 interface Props {
   cargos: Cargo[];

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import type { Local } from './types';
+import type { Local } from '../lib/types';
 
 // ---------- contador global de requisições em andamento (alimenta a barra do topo) ----------
 

@@ -1,4 +1,4 @@
-import { definirTema, useTema } from '../tema';
+import { definirTema, useTema } from '../lib/tema';
 
 /** Botão de ícone claro/escuro: sol no escuro (vai para a edição diurna), lua no claro. Sem escolha salva, segue o sistema. */
 export function BotaoTema() {

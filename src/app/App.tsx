@@ -1,29 +1,35 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
-import { RETENTAR_MS, getJson, qs, urlAoVivo, urlMapa, urlResultado, useApi } from './api';
+import { RETENTAR_MS, getJson, qs, urlAoVivo, urlMapa, urlResultado, useApi } from '../api/cliente';
 import type {
-  Candidato, Cargo, Composicao, Config, DetalheCandidato, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado, Resumo, ResumoCandidato,
-} from './types';
-import { UF_NOMES, corPartido, fmt, fmtPct, titulo } from './util';
-import { useCores } from './tema';
-import { Mapa } from './components/Mapa';
-import { PainelResultado } from './components/PainelResultado';
-import { BarraBusca } from './components/BarraBusca';
-import { ListaRegioes } from './components/ListaRegioes';
-import { BarraTopo, EsqueletoPagina } from './components/Carregando';
-import { ProximaAtualizacao } from './components/ProximaAtualizacao';
-import { AvisoVotacao, faseVotacao, useAgora } from './components/AvisoVotacao';
-import { BotaoTema } from './components/BotaoTema';
-import { Hemiciclo } from './components/Hemiciclo';
-import { ListaDuelos, coresFinalistas, corDoLider, finalistas } from './components/Duelo';
-import { LinhaRotulo, Placar } from './components/Placar';
-import { TickerUFs } from './components/TickerUFs';
-import { DiferencaUF } from './components/DiferencaUF';
-import { DestaquesUF } from './components/DestaquesUF';
-import { Num } from './components/Num';
-import { Link } from './components/Link';
-import { Logo } from './components/Logo';
-import { caminho, caminhoCandidato, cargoPorSlug, lerCaminho, slugCargo, tituloPagina } from './rotas.mjs';
+  Candidato, Cargo, Composicao, Config, DetalheCandidato, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado,
+} from '../lib/types';
+import { UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../lib/util';
+import { Mapa } from '../features/mapa/Mapa';
+import { PainelResultado } from '../features/resultado/PainelResultado';
+import { BarraBusca } from '../features/busca/BarraBusca';
+import { ListaRegioes } from '../ui/ListaRegioes';
+import { BarraTopo, EsqueletoPagina } from '../ui/Carregando';
+import { ProximaAtualizacao } from '../apuracao/ProximaAtualizacao';
+import { AvisoVotacao, faseVotacao, useAgora } from '../apuracao/AvisoVotacao';
+import { BotaoTema } from '../ui/BotaoTema';
+import { Hemiciclo } from '../features/composicao/Hemiciclo';
+import { ListaDuelos, coresFinalistas, corDoLider, finalistas } from '../features/resultado/Duelo';
+import { LinhaRotulo, Placar } from '../features/resultado/Placar';
+import { TickerUFs } from '../features/mapa/TickerUFs';
+import { DiferencaUF } from '../features/mapa/DiferencaUF';
+import { DestaquesUF } from '../features/mapa/DestaquesUF';
+import { Num } from '../ui/Num';
+import { Link } from '../rota/Link';
+import { Logo } from '../ui/Logo';
+import { SeletorMunicipio } from '../ui/SeletorMunicipio';
+import { ProximoPlantao } from '../apuracao/ProximoPlantao';
+import { AvisoMapa } from '../features/mapa/AvisoMapa';
+import { CartaoExterior } from '../features/mapa/CartaoExterior';
+import { IndiceRegioes } from '../features/mapa/IndiceRegioes';
+import { casaLegislativa } from '../features/composicao/casa';
+import { FichaCandidato } from '../features/candidato/FichaCandidato';
+import { caminho, caminhoCandidato, cargoPorSlug, lerCaminho, slugCargo, tituloPagina } from '../rotas.mjs';
 
 // Com "ao vivo" ligado, os resultados chegam por stream (o servidor verifica o TSE a cada 5 s)
 // e o mapa é consultado com mais frequência. Desligado, tudo é atualizado periodicamente.
@@ -777,163 +783,23 @@ export default function App() {
           resultado={resultado.data}
           erro={resultado.erro}
           carregando={resultado.carregando}
-          local={tituloPainel}
           filtroInicial={filtroCand}
-          candidatoAberto={rota.candidato}
-          vencidas={vencidas}
           lateral={proximoPlantao}
           onAbrirCandidato={abrirCandidato}
-          onFecharCandidato={fecharCandidato}
         />
       )}
+
+      <FichaCandidato
+        resultado={resultado.data}
+        sq={rota.candidato}
+        local={tituloPainel}
+        vencidas={vencidas}
+        onFechar={fecharCandidato}
+      />
 
       <footer className="rodape muted pequeno">
         Fonte: TSE (resultados.tse.jus.br) e IBGE (malhas). Projeto independente, sem vínculo com o TSE.
       </footer>
-    </div>
-  );
-}
-
-/** Caixa "Próximo plantão": o 2º turno já está na config e a votação ainda não começou. */
-function ProximoPlantao({ cargo }: { cargo: Cargo }) {
-  const [d, m, a] = cargo.data.split('/').map(Number);
-  const semana = new Date(a, m - 1, d).toLocaleDateString('pt-BR', { weekday: 'long' });
-  const hora = (iso: string | null) => (iso
-    ? new Date(iso).toLocaleTimeString('pt-BR', { hour: 'numeric', timeZone: 'America/Sao_Paulo' }).replace(/:00$/, '').replace(/^0/, '') + 'h'
-    : '');
-  return (
-    <section className="proximo-plantao">
-      <span className="rotulo-secao">Próximo plantão</span>
-      <strong>2º turno · {semana}, {cargo.data.slice(0, 5)}</strong>
-      <p>
-        Urnas abertas das {hora(cargo.abertura)} às {hora(cargo.encerramento)} (Brasília). Resultados ao vivo a partir
-        das {hora(cargo.encerramento)}.
-      </p>
-    </section>
-  );
-}
-
-/** Exterior no mapa do Brasil: não tem malha, então vira um cartão ao lado da legenda. */
-function CartaoExterior({ dados, corLider, href, onAbrir }: {
-  dados: Resumo; corLider: (l: ResumoCandidato) => string; href: string; onAbrir: () => void;
-}) {
-  const tema = useCores();
-  const cands = [dados.lider, dados.segundo].filter((c): c is ResumoCandidato => !!c);
-  return (
-    <Link className="cartao-exterior" href={href} onNavegar={onAbrir} title="Ver votos por cidade no exterior">
-      <strong>Exterior →</strong>
-      <span className="cartao-exterior-cands">
-        {cands.map((c) => (
-          <span key={c.numero}>
-            <i className="quadrado" style={{ background: tema.preench(corLider(c)) }} />
-            {titulo(c.nome)}&nbsp;<b>{fmtPct(c.pct)}</b>
-          </span>
-        ))}
-      </span>
-      <span className="muted">{fmtPct(dados.pctApurado)} apurado</span>
-    </Link>
-  );
-}
-
-/**
- * Links para as regiões do mapa (fechado por padrão). O SVG do mapa não usa <a href> (arrastar um link inicia o
- * "arrastar e soltar" do navegador e o toque longo abre a prévia do link, o que atrapalharia o zoom/arraste);
- * sem esta lista, as páginas de UF e de município não teriam link rastreável.
- */
-function IndiceRegioes({ rotulo, itens, aberto, onAlternar, href, onSelect }: {
-  rotulo: string; itens: { chave: string; nome: string }[]; aberto: boolean; onAlternar: (aberto: boolean) => void;
-  href: (k: string) => string; onSelect: (k: string) => void;
-}) {
-  return (
-    <details className="indice-regioes" id="indice-regioes" open={aberto} onToggle={(e) => onAlternar(e.currentTarget.open)}>
-      <summary>{rotulo} ({fmt(itens.length)})</summary>
-      <ul>
-        {itens.map((i) => (
-          <li key={i.chave}><Link href={href(i.chave)} onNavegar={() => onSelect(i.chave)}>{i.nome}</Link></li>
-        ))}
-      </ul>
-    </details>
-  );
-}
-
-/** Casa legislativa do cargo na abrangência atual (null se o cargo não elege uma). */
-interface Casa { nacional: boolean; casaInteira: boolean; titulo: string; subtitulo?: string }
-
-function casaLegislativa(cargo: string, uf: string | undefined): Casa | null {
-  const nomeUf = uf ? UF_NOMES[uf] : '';
-  if (cargo === '5') {
-    return {
-      nacional: true, casaInteira: false, titulo: 'Senado Federal: eleitos em 2026',
-      subtitulo: '2 das 3 cadeiras de cada UF (54 de 81); as outras 27 seguem até 2031',
-    };
-  }
-  if (uf === 'zz') return null;
-  if (cargo === '6') {
-    return uf
-      ? { nacional: false, casaInteira: false, titulo: `Câmara dos Deputados: ${nomeUf}`, subtitulo: 'Bancada do estado; a Câmara inteira aparece no nível Brasil' }
-      : { nacional: true, casaInteira: true, titulo: 'Câmara dos Deputados' };
-  }
-  if (!uf) return null;
-  if (cargo === '7') return { nacional: false, casaInteira: true, titulo: `Assembleia Legislativa: ${nomeUf}` };
-  if (cargo === '8') return { nacional: false, casaInteira: true, titulo: 'Câmara Legislativa do Distrito Federal' };
-  return null;
-}
-
-function SeletorMunicipio({ rotulo, municipios, onEscolher }: {
-  rotulo: string; municipios: { cd: string; nome: string }[]; onEscolher: (cd: string) => void;
-}) {
-  const [valor, setValor] = useState('');
-  return (
-    <label className="campo-rotulado seletor-municipio">
-      <span>{rotulo}</span>
-      <input
-        list="lista-municipios"
-        placeholder="ir para…"
-        value={valor}
-        onChange={(e) => {
-          setValor(e.target.value);
-          const m = municipios.find((x) => x.nome.toLowerCase() === e.target.value.toLowerCase());
-          if (m) { onEscolher(m.cd); setValor(''); }
-        }}
-      />
-      <datalist id="lista-municipios">
-        {municipios.map((m) => <option key={m.cd} value={m.nome} />)}
-      </datalist>
-    </label>
-  );
-}
-
-/** Aviso acima do mapa: falha/timeout ao carregar, ou regiões que ainda não chegaram do TSE. */
-function AvisoMapa({ erro, temDados, regioes, semDado, rotulo, intervalo }: {
-  erro: string | null; temDados: boolean; regioes: number; semDado: number; rotulo: string; intervalo: number;
-}) {
-  const novaTentativa = intervalo
-    ? `Nova tentativa em ${Math.round(intervalo / 1000)} s.`
-    : 'Recarregue a página para tentar de novo.';
-  if (erro) {
-    return (
-      <div className="aviso-mapa aviso-mapa-erro" role="status">
-        <strong>Não foi possível {temDados ? 'atualizar' : 'carregar'} o mapa</strong>
-        <p>{erro}. {novaTentativa}</p>
-      </div>
-    );
-  }
-  if (!semDado) return null;
-  const chegaram = regioes - semDado;
-  return (
-    <div className="aviso-mapa" role="status">
-      <strong>
-        {chegaram === 0
-          ? `Mapa carregando: os ${regioes} ${rotulo} ainda estão chegando do TSE`
-          : `Mapa incompleto: ${chegaram} de ${regioes} ${rotulo}`}
-      </strong>
-      <div className="aviso-mapa-barra" aria-hidden="true">
-        <span style={{ width: `${(100 * chegaram) / regioes}%` }} />
-      </div>
-      <p>
-        Faltam {semDado} {rotulo}. O servidor consulta o TSE aos poucos para não ser bloqueado, e o mapa se
-        completa a cada atualização — as regiões em branco ainda não chegaram.
-      </p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AoVivo } from '../api';
+import type { AoVivo } from '../api/cliente';
 
 interface Props {
   /** Horário (ms) da próxima consulta automática; null = atualização pausada. */

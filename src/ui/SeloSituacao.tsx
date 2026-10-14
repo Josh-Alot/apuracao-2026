@@ -1,4 +1,4 @@
-import type { Candidato } from '../types';
+import type { Candidato } from '../lib/types';
 
 const EXPLICA_DETALHE: Record<string, string> = {
   'por QP': 'Eleito pelo quociente partidário: a votação do partido/federação garantiu a vaga.',

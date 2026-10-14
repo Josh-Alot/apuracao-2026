@@ -1,11 +1,11 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
-import type { Candidato, DetalheCandidato } from '../types';
-import { useApi } from '../api';
-import { useCores } from '../tema';
-import { caminhoCandidato } from '../rotas.mjs';
-import { Num } from './Num';
-import { SeloSituacao } from './SeloSituacao';
-import { corPartido, fmt, fmtPct, fmtReais, frase, semAcento, titulo } from '../util';
+import type { Candidato, DetalheCandidato } from '../../lib/types';
+import { useApi } from '../../api/cliente';
+import { useCores } from '../../lib/tema';
+import { caminhoCandidato } from '../../rotas.mjs';
+import { Num } from '../../ui/Num';
+import { SeloSituacao } from '../../ui/SeloSituacao';
+import { corPartido, fmt, fmtPct, fmtReais, frase, semAcento, titulo } from '../../lib/util';
 
 interface Props {
   c: Candidato;
