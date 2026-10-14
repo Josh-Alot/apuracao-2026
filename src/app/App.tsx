@@ -1,8 +1,8 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
-import { RETENTAR_MS, getJson, qs, urlAoVivo, urlMapa, urlResultado, useApi } from '../api/cliente';
+import { RETENTAR_MS, urlAoVivo, urlMapa, urlResultado, useApi } from '../api/cliente';
 import type {
-  Candidato, Cargo, Composicao, Config, DetalheCandidato, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado,
+  Candidato, Cargo, Composicao, Config, ItemBusca, Local, MapaDados, ModoMapa, Municipios, Resultado,
 } from '../lib/types';
 import { UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../lib/util';
 import { Mapa } from '../features/mapa/Mapa';
@@ -11,7 +11,7 @@ import { BarraBusca } from '../features/busca/BarraBusca';
 import { ListaRegioes } from '../ui/ListaRegioes';
 import { BarraTopo, EsqueletoPagina } from '../ui/Carregando';
 import { ProximaAtualizacao } from '../apuracao/ProximaAtualizacao';
-import { AvisoVotacao, faseVotacao, useAgora } from '../apuracao/AvisoVotacao';
+import { AvisoVotacao, faseVotacao } from '../apuracao/AvisoVotacao';
 import { BotaoTema } from '../ui/BotaoTema';
 import { Hemiciclo } from '../features/composicao/Hemiciclo';
 import { ListaDuelos, coresFinalistas, corDoLider, finalistas } from '../features/resultado/Duelo';
@@ -29,63 +29,11 @@ import { CartaoExterior } from '../features/mapa/CartaoExterior';
 import { IndiceRegioes } from '../features/mapa/IndiceRegioes';
 import { casaLegislativa } from '../features/composicao/casa';
 import { FichaCandidato } from '../features/candidato/FichaCandidato';
-import { caminho, caminhoCandidato, cargoPorSlug, lerCaminho, slugCargo, tituloPagina } from '../rotas.mjs';
-
-// Com "ao vivo" ligado, os resultados chegam por stream (o servidor verifica o TSE a cada 5 s)
-// e o mapa é consultado com mais frequência. Desligado, tudo é atualizado periodicamente.
-const ATUALIZA_RESULTADO_MS = 30_000;
-const ATUALIZA_MAPA_MS = 60_000;
-const ATUALIZA_MAPA_AO_VIVO_MS = 30_000;
-
-// Apuração encerrada: o mapa só é consultado de novo enquanto houver região que ainda não chegou;
-// o resultado, só se a consulta falhar.
-const mapaIncompleto = (d: MapaDados) => Object.values(d).some((x) => x == null);
-const nuncaIncompleto = () => false;
-
-// ---------- rota no caminho da URL (formato em rotas.mjs, o mesmo do servidor) ----------
-
-/** Tela do funil. `cargo` = slug da URL (ex. "governador"); num link antigo (#/6257-1/…), o id da config. */
-interface Tela extends Local { cargo?: string }
-
-/** Estado guardado no history junto de /candidato/<sq>: a tela por baixo da ficha e se ela foi aberta no app. */
-interface EstadoFicha { base: Tela; dentro: boolean }
-
-interface Rota {
-  tela: Tela;
-  /** Ficha aberta (sq do candidato). */
-  candidato?: string;
-  /** Tela por baixo da ficha já conhecida (veio do history); senão, sai da busca pelo nome da URL. */
-  temBase?: boolean;
-  /** A ficha foi aberta de dentro do app: fechar = voltar no histórico. */
-  dentro?: boolean;
-  /** Link antigo no hash: o caminho novo é escrito assim que a config chega. */
-  legado?: boolean;
-}
-
-/** Tela de um caminho do funil (`{}` para a home, um caminho inválido ou o de uma ficha). */
-function telaDe(pathname: string): Tela {
-  const r = lerCaminho(pathname);
-  return r && r.candidato === undefined ? r : {};
-}
-
-function lerRota(): Rota {
-  // Links antigos: #/<cargoId>/<uf>/<mun>/<zona>
-  const hash = /^#\/(.*)$/.exec(location.hash);
-  if (hash) {
-    const [cargo, uf, mun, zona] = hash[1].split('/').filter(Boolean);
-    return { tela: { cargo, uf, mun, zona }, legado: true };
-  }
-  const r = lerCaminho(location.pathname);
-  // Formato inválido (o servidor já respondeu 404): mostra a tela padrão.
-  if (!r) return { tela: {} };
-  if (r.candidato !== undefined) {
-    const st = history.state as EstadoFicha | null;
-    return st?.base
-      ? { tela: st.base, candidato: r.candidato, temBase: true, dentro: st.dentro }
-      : { tela: {}, candidato: r.candidato };
-  }
-  return { tela: r };
-}
+import { cargoPorSlug, tituloPagina } from '../rotas.mjs';
+import { useRota } from '../rota/rota';
+import { useNavegacao } from '../rota/useNavegacao';
+import { ATUALIZA_RESULTADO_MS, useFaseApuracao } from '../apuracao/useFaseApuracao';
+import { useFichaPelaUrl } from '../features/candidato/useFichaPelaUrl';
 
 /** Nome do cargo como no <title> (e no <title> que o servidor injeta): "Governador", "Presidente 2º turno". */
 const nomeCargo = (c: Cargo) => {
@@ -93,25 +41,12 @@ const nomeCargo = (c: Cargo) => {
   return c.turno === 2 ? `${base} 2º turno` : base;
 };
 
-/** Tentativas da busca que acha a candidatura de uma ficha aberta direto pela URL (o índice pode estar incompleto). */
-const BUSCA_FICHA_TENTATIVAS = 5;
-const BUSCA_FICHA_ESPERA_MS = 4_000;
-
 export default function App() {
-  const [rota, setRotaEstado] = useState<Rota>(lerRota);
-  // Cópia para os handlers não dependerem do render (ex.: fechar a ficha duas vezes antes do popstate).
-  const rotaRef = useRef(rota);
-  const setRota = useCallback((r: Rota) => { rotaRef.current = r; setRotaEstado(r); }, []);
+  const { rota, rotaRef, setRota } = useRota();
   const [modo, setModo] = useState<ModoMapa>('lider');
   const [auto, setAuto] = useState(true);
   const [filtroCand, setFiltroCand] = useState<string | undefined>();
   const [indiceAberto, setIndiceAberto] = useState(false);
-
-  useEffect(() => {
-    const on = () => setRota(lerRota());
-    addEventListener('popstate', on);
-    return () => removeEventListener('popstate', on);
-  }, [setRota]);
 
   const { data: config, erro: erroConfig } = useApi<Config>('/api/config');
   const tela = rota.tela;
@@ -119,132 +54,23 @@ export default function App() {
     ? config.cargos.find((c) => c.id === tela.cargo) ?? cargoPorSlug(config.cargos, tela.cargo) ?? config.cargos[0]
     : config?.cargos[0];
   const flags = config?.flags;
-  // Com o "ao vivo" desligado no servidor (kill switch), tudo passa a ser atualização periódica.
-  const aoVivo = auto && !!flags?.aoVivo;
 
   // Ao trocar para um cargo que não existe na UF atual (ex.: Dep. Distrital fora do DF), volta ao Brasil.
   const uf = tela.uf && cargo && !cargo.ufs.includes(tela.uf) ? undefined : tela.uf;
   const local: Local = uf ? { uf, mun: tela.mun, zona: tela.mun ? tela.zona : undefined } : {};
 
-  // Antes das 17h (fechamento das urnas) o TSE não divulga nada: carrega uma vez e não fica consultando.
-  // O relógio anda a cada 15 s, então "ao vivo"/atualização periódica ligam sozinhos às 17h.
-  const agora = useAgora(!!cargo?.encerramento);
-  const apuracaoAberta = !cargo?.encerramento || agora >= Date.parse(cargo.encerramento);
-  // Com 100% das seções totalizadas os números não mudam mais: sem "ao vivo" nem atualização periódica,
-  // os dados vêm ao abrir a página e a cada navegação.
-  const encerrada = !!cargo?.encerrada;
-  const tempoReal = apuracaoAberta && !encerrada;
-  const intervaloMapa = !tempoReal ? 0 : aoVivo ? ATUALIZA_MAPA_AO_VIVO_MS : ATUALIZA_MAPA_MS;
-  const completarMapa = encerrada ? mapaIncompleto : undefined;
+  // Com o "ao vivo" desligado no servidor (kill switch), tudo passa a ser atualização periódica.
+  const {
+    agora, apuracaoAberta, encerrada, aoVivo, intervaloMapa, intervaloResultado, completarMapa, completarResultado,
+  } = useFaseApuracao(cargo, auto && !!flags?.aoVivo);
 
   const { data: municipios } = useApi<Municipios>(cargo ? `/api/municipios?cargo=${cargo.eleicao}-${cargo.cargo}` : null);
 
-  /** Caminho de uma tela (cargo = id da config), com o nome do município quando a lista já chegou. */
-  const caminhoDe = useCallback(
-    (l: Local, cargoId = cargo?.id) => {
-      const c = config?.cargos.find((x) => x.id === cargoId);
-      const munNome = l.uf && l.mun ? municipios?.[l.uf]?.municipios.find((m) => m.cd === l.mun)?.nome : undefined;
-      return caminho({ cargo: c && slugCargo(c), uf: l.uf, mun: l.mun, munNome, zona: l.zona });
-    },
-    [config, cargo?.id, municipios],
-  );
-
-  /** Navega para uma tela (nova entrada no histórico); `ir` também limpa o filtro vindo da busca. */
-  const irPara = useCallback(
-    (l: Local, cargoId = cargo?.id) => {
-      const destino = caminhoDe(l, cargoId);
-      if (destino !== location.pathname || location.hash || rotaRef.current.candidato) history.pushState(null, '', destino);
-      setRota({ tela: telaDe(destino) });
-    },
-    [caminhoDe, cargo?.id, setRota],
-  );
-  const ir = useCallback(
-    (l: Local, cargoId = cargo?.id) => {
-      setFiltroCand(undefined);
-      irPara(l, cargoId);
-    },
-    [irPara, cargo?.id],
-  );
-  /** Home (/): o cargo padrão no Brasil, sem ficha aberta. */
-  const irHome = useCallback(() => {
-    setFiltroCand(undefined);
-    if (location.pathname !== '/' || location.hash || rotaRef.current.candidato) history.pushState(null, '', '/');
-    setRota({ tela: {} });
-  }, [setRota]);
-
-  // Link antigo (#/6257-1/sp/…): troca pelo caminho novo sem recarregar a página.
-  useEffect(() => {
-    if (!config || !rota.legado) return;
-    if (local.mun && !municipios) return; // espera a lista para pôr o nome do município no caminho
-    const destino = tela.cargo ? caminhoDe(local, cargo?.id) : '/';
-    history.replaceState(null, '', destino);
-    setRota({ tela: telaDe(destino) });
-    // Só ao chegar a config/lista (ou outro link antigo): a tela é a mesma, muda só a URL.
-  }, [config, municipios, rota.legado]);
-
-  // ---------- ficha do candidato com URL própria (/candidato/<sq>-<nome>) ----------
-
-  const abrirCandidato = useCallback((c: Candidato) => {
-    const estado: EstadoFicha = { base: telaDe(location.pathname), dentro: true };
-    history.pushState(estado, '', caminhoCandidato(c.sq, c.nomeUrna));
-    setRota({ tela: rotaRef.current.tela, candidato: c.sq, temBase: true, dentro: true });
-  }, [setRota]);
-
-  const fecharCandidato = useCallback(() => {
-    const r = rotaRef.current;
-    if (!r.candidato) return;
-    setRota({ tela: r.tela });
-    // Aberta no app: volta à entrada anterior (a tela por baixo). Aberta direto pela URL: troca pela tela por baixo.
-    if (r.dentro) history.back();
-    else history.replaceState(null, '', caminhoDe(local, cargo?.id));
-  }, [setRota, caminhoDe, local, cargo?.id]);
-
-  // Ficha aberta direto pela URL: falta saber a tela por baixo dela (cargo/UF da candidatura). Vem do perfil
-  // (/api/candidato/:sq, campo `candidatura`, quando o servidor o envia) ou, sem ele, da busca pelo nome que vem no
-  // caminho (a busca é bloqueada no robots.txt, então para o Google só vale o perfil).
-  useEffect(() => {
-    if (!config || !rota.candidato || rota.temBase) return;
-    const sq = rota.candidato;
-    const nome = /^\d+-(.+)$/.exec(location.pathname.split('/').pop() ?? '')?.[1].replace(/-/g, ' ');
-    const ctrl = new AbortController();
-    let espera: ReturnType<typeof setTimeout> | undefined;
-    const achou = (cargoId: string, ufCand: string | null | undefined) => {
-      const c = config.cargos.find((x) => x.id === cargoId);
-      if (!c) return false;
-      const base: Tela = { cargo: slugCargo(c), uf: ufCand && ufCand !== 'br' ? ufCand : undefined };
-      history.replaceState({ base, dentro: false } satisfies EstadoFicha, '', location.pathname);
-      setRota({ tela: base, candidato: sq, temBase: true, dentro: false });
-      return true;
-    };
-    // Sem como achar a candidatura: fica a tela padrão, sem a ficha (a URL fica; o servidor já mostrou o resumo).
-    const semFicha = () => setRota({ tela: {} });
-    const pelaBusca = async (tentativa: number) => {
-      if (!nome || !config.flags.busca) return semFicha();
-      try {
-        const r = await getJson<{ itens: ItemBusca[]; parcial: unknown }>(`/api/busca?${qs({ q: nome, limite: '200' })}`, ctrl.signal);
-        // O mesmo sq pode estar nos dois turnos: fica o cargo que vem antes na config (o turno mais recente).
-        const ordem = (i: ItemBusca) => config.cargos.findIndex((c) => c.id === i.cargoId);
-        const item = r.itens.filter((i) => i.sq === sq && ordem(i) >= 0).sort((a, b) => ordem(a) - ordem(b))[0];
-        if (item && achou(item.cargoId, item.uf)) return;
-        if (r.parcial && tentativa < BUSCA_FICHA_TENTATIVAS) espera = setTimeout(() => pelaBusca(tentativa + 1), BUSCA_FICHA_ESPERA_MS);
-        else semFicha();
-      } catch (e) {
-        if ((e as Error).name === 'AbortError') return;
-        if (tentativa < BUSCA_FICHA_TENTATIVAS) espera = setTimeout(() => pelaBusca(tentativa + 1), BUSCA_FICHA_ESPERA_MS);
-        else semFicha();
-      }
-    };
-    (async () => {
-      try {
-        const d = await getJson<DetalheCandidato>(`/api/candidato/${sq}`, ctrl.signal);
-        if (d.candidatura && achou(d.candidatura.cargoId, d.candidatura.uf)) return;
-      } catch (e) {
-        if ((e as Error).name === 'AbortError') return;
-      }
-      pelaBusca(1);
-    })();
-    return () => { ctrl.abort(); clearTimeout(espera); };
-  }, [config, rota.candidato, rota.temBase, setRota]);
+  const limparFiltro = useCallback(() => setFiltroCand(undefined), []);
+  const { caminhoDe, irPara, ir, irHome, abrirCandidato, fecharCandidato } = useNavegacao({
+    config, cargo, municipios, local, rota, rotaRef, setRota, aoSair: limparFiltro,
+  });
+  useFichaPelaUrl(config, rota, setRota);
 
   const temMalha = !!uf && uf !== 'zz';
   const { data: geo } = useApi<FeatureCollection>(cargo ? `/api/geo/${temMalha ? uf : 'br'}` : null);
@@ -262,9 +88,9 @@ export default function App() {
   const precisaUf = cargo?.escopo === 'uf' && !uf;
   const resultado = useApi<Resultado>(
     cargo && !precisaUf ? urlResultado(cargo.id, local) : null,
-    !tempoReal || aoVivo ? 0 : ATUALIZA_RESULTADO_MS,
-    tempoReal && aoVivo && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
-    encerrada ? nuncaIncompleto : undefined,
+    intervaloResultado,
+    aoVivo && cargo && !precisaUf ? urlAoVivo(cargo.id, local) : null,
+    completarResultado,
   );
 
   // 2º turno: os dois finalistas, com as cores usadas no placar e no mapa.
@@ -284,7 +110,7 @@ export default function App() {
   const casa = cargo && flags?.hemiciclo ? casaLegislativa(cargo.cargo, uf) : null;
   const composicao = useApi<Composicao>(
     cargo && casa ? `/api/composicao?cargo=${cargo.id}${casa.nacional ? '' : `&uf=${uf}`}` : null,
-    tempoReal ? intervaloMapa : 0,
+    intervaloMapa,
     null,
     encerrada ? (d: Composicao) => d.faltando > 0 : undefined,
   );
@@ -411,7 +237,7 @@ export default function App() {
     : fase === 'aguardando' ? 'Urnas fechadas'
     : fase === 'indisponivel' ? 'TSE indisponível'
     : encerrada ? 'Apuração encerrada'
-    : aoVivo && tempoReal ? 'Ao vivo' : 'Atualização periódica';
+    : aoVivo ? 'Ao vivo' : 'Atualização periódica';
   const fonteAtualizacao = precisaUf ? mapaBr : resultado;
 
   const cargo2t = config.cargos.find((c) => c.turno === 2);
