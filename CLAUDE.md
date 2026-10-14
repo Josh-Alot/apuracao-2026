@@ -151,6 +151,74 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
   styles.css       Tema único ("Plantão") — tokens em variáveis CSS no :root
 ```
 
+### Arquitetura do front
+
+**Arquitetura por funcionalidade** (*feature-based*/*package by feature*, no estilo do Bulletproof React), com o
+TanStack Query como camada de estado do servidor. Reforma feita em outubro de 2026 (branch `feature/architecture`),
+antes do 2º turno, em fases que podem ser revertidas uma a uma.
+
+**Camadas e regra de importação** (só para baixo; nunca entre features):
+
+```
+app/            composição: junta rota, config, fase e consultas e distribui por props
+  ↓
+features/*      uma pasta por funcionalidade (mapa, resultado, candidato, busca, composicao)
+  ↓
+api/  rota/  apuracao/      infraestrutura do app: consultas, URL/navegação, fase da apuração
+  ↓
+ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilitários/tipos
+```
+- Uma feature não importa outra. O que duas usam sobe para `ui/` ou `lib/`; o que precisa das duas é montado no
+  App (ex.: a ficha saiu de dentro do `PainelResultado` e virou `FichaCandidato`, renderizada pelo App, porque o
+  `<dialog>` modal não depende de onde está no DOM).
+- `src/rotas.mjs` fica fora das pastas porque é compartilhado com o servidor (`server/seo.mjs`): mudou o formato
+  de uma rota, muda nos dois lados.
+
+**Fluxo de dados**
+
+1. `useRota()` lê a URL → `resolverTela(config, tela)` dá cargo, UF e local (o mesmo para a tela atual e para o
+   prefetch dos links).
+2. `useFaseApuracao(cargo, aoVivo)` decide o ritmo: antes das 17h nada se repete; durante a apuração, SSE (resultado)
+   + polling (mapa, composição); encerrada, só repete o que veio incompleto. Também dá o `vale` (`staleTime`).
+3. O App chama `useConsulta(consultas.<recurso>(…, vale), { intervalo, incompleto, sse })` e passa `data`/`erro`/
+   `carregando` aos componentes. Os componentes não buscam dados sozinhos, exceto a ficha (perfil) e a busca.
+4. Com SSE, o stream grava no cache da consulta (`setQueryData`); a consulta fica com `skipToken` (sem buscar).
+
+**Decisões (e o que foi descartado)**
+
+| Tema | Escolha | Por quê | Descartado |
+|---|---|---|---|
+| Pastas | Por funcionalidade, regra de importação em um sentido | `App.tsx` com 939 linhas e `components/` plano já não escalavam | Feature-Sliced Design (camadas `pages`/`widgets`/`entities` demais para ~30 componentes) |
+| Estado do servidor | TanStack Query 5 (versão fixa, sem `^`) | Dedup por chave, `staleTime`, polling condicional, prefetch, cache entre telas; antes era tudo à mão no `useApi` | SWR (sem prefetch/devtools tão completos), RTK Query (traz Redux), manter o `useApi` |
+| Roteamento | Roteador próprio (`rotas.mjs` + `useRota`/`useNavegacao`) | O mesmo arquivo valida rotas e gera títulos no servidor (SEO, 404 de verdade) | TanStack Router e React Router 7 (duplicariam as rotas e arriscariam o SEO) |
+| Estado da interface | `useState` no App + props; um contexto só (`PrefetchContext`) | O estado global de verdade é rota + config | Zustand, Jotai, Redux |
+| Dado no F5 | sessionStorage próprio (`guardarCacheCliente`), lido como `initialData` vencido | Mantém o limite de 150 KB por resposta e não serializa o cache inteiro a cada mudança | `@tanstack/query-sync-storage-persister` |
+| Prefetch | Só o resultado, com o ponteiro parado 120 ms ou com foco | Barato e com cache no servidor | Prefetch do mapa da UF (centenas de consultas ao TSE por UF) |
+| Code splitting | `React.lazy` só na ficha e no hemiciclo | Aparecem sob interação ou abaixo do mapa | `BarraBusca` (fica no topo: carregar depois faria o layout pular) |
+
+**Regras do TanStack Query neste projeto**
+
+- Toda consulta nova entra em `api/consultas.ts` (recurso + URL = chave; `staleTime` explícito) e é lida com
+  `useConsulta`; nada de `fetch` solto em componente (perde dedup, cache e a barra de carregamento).
+- **Nunca `staleTime: Infinity`**: com ele o TanStack ignora a data do dado e não confirma nem o que veio do
+  sessionStorage (a config de uma aba recarregada ficaria velha). Para "não muda na visita", use `VALE_SEMPRE_MS` (24 h).
+- Sem `retry` automático (`providers.tsx`): quem repete é o polling ou o `incompleto`, no ritmo combinado com o
+  servidor; repetir sozinho multiplicaria as consultas ao TSE quando ele estiver lento.
+- `refetchIntervalInBackground: false` e `refetchOnWindowFocus: true`: aba oculta não faz polling; ao voltar, o
+  que venceu é consultado na hora. O SSE fica aberto em segundo plano (é ele que mantém o "ao vivo").
+- Quando o polling liga (ex.: 17h), o `useConsulta` consulta na hora o que venceu, sem esperar o primeiro ciclo.
+- No dev, cada consulta aparece em dobro no Network (a primeira cancelada): é o StrictMode, não bug.
+
+**Como acrescentar uma funcionalidade**
+
+1. Pasta em `features/<nome>/` com os componentes e hooks dela.
+2. Recurso novo da API: função em `consultas.ts`; no servidor, decidir se a rota entra no `robots.txt` (ver "SEO").
+3. Ligar no `App.tsx` (consulta + props). Se a feature precisar de algo de outra, suba esse algo para `ui/`/`lib/`.
+
+**Próximos passos possíveis** (fora da reforma, por risco perto da eleição): mover as consultas do App para dentro
+das features e usar `select` (menos re-render a cada SSE), prefetch ao passar o ponteiro no mapa SVG, e avaliar o
+TanStack Router se as rotas crescerem.
+
 ### Estilo visual
 
 Um único tema, "Plantão" (mesa de redação na noite da apuração), todo em `src/styles.css`: tokens em variáveis
