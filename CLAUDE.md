@@ -259,7 +259,10 @@ mudou o desenho, mude os dois SVGs e rode `npm run icones`.
   e SSE seguem bloqueados. Ao criar rota de API, decida se entra nessa lista.
 - Sitemaps: `/sitemap.xml` (índice) → `sitemap-geral.xml`, um `sitemap-<cargo>.xml` por cargo (municípios) e
   `sitemap-candidatos.xml`; sem zonas e sem o 2º turno enquanto a flag pública estiver desligada; 1 h em memória.
-- Cache: `/assets/*` `immutable` por 1 ano; HTML `no-cache`. Imagem de compartilhamento: `public/og.png` (1200×630).
+- Cache: `/assets/*` `immutable` por 1 ano; HTML `no-cache`. Imagem de compartilhamento: `public/og.png` (1200×630),
+  com `?v=<hash do arquivo>` na URL do `og:image` (as redes guardam a imagem pela URL; regerou, a URL muda sozinha).
+- Nome do site: `NOME_SITE` (`Apuração.org`) em `seo.mjs`; o JSON-LD `WebSite` leva o nome antigo (`Apuração 2026`)
+  em `alternateName`.
 
 ## Deploy no Render (instância Starter, US$ 7/mês)
 

@@ -8,6 +8,7 @@
 
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import zlib from 'node:zlib';
 import { getConfig, getMunicipios, getResultadoSemTse, resultadoUrl, CICLO, TSE_BASE } from './tse.mjs';
 import { getCandidato, geradoEm } from './candidatos.mjs';
@@ -15,12 +16,14 @@ import { dataFinal, eleicaoFinal } from './arquivo.mjs';
 import { cargoVisivel, flagsDe } from './flags.mjs';
 import { slugCargo, cargoPorSlug, caminho, caminhoCandidato, lerCaminho, tituloPagina } from '../src/rotas.mjs';
 
-const NOME_SITE = 'Apuração 2026';
+const NOME_SITE = 'Apuração.org';
+// Nome anterior do site, para o Google ligar a marca nova à antiga nos dados estruturados.
+const NOME_ANTIGO = 'Apuração 2026';
 const PRAZO_MS = 300;
 
 // ---------- endereço público ----------
 
-// SITE_URL (ex. https://apuracao2026.com.br): base do canonical, og:url e sitemap. Com ela definida, pedido que chega
+// SITE_URL (ex. https://apuracao.org): base do canonical, og:url e sitemap. Com ela definida, pedido que chega
 // por outro host (o *.onrender.com) recebe 301 para o mesmo caminho nela — menos /api/*, para não quebrar o SSE,
 // o health check do Render e quem já está com a página aberta.
 const SITE_URL = (process.env.SITE_URL || '').trim().replace(/\/+$/, '');
@@ -341,10 +344,17 @@ async function paginaCandidato(sq, cargos, cfg) {
 // ---------- HTML ----------
 
 let modelo = null;
+// Versão do og.png na URL (hash do arquivo): WhatsApp, Facebook e X guardam a imagem pela URL, então uma imagem nova
+// (`npm run og`) só aparece nos compartilhamentos se a URL mudar.
+let versaoOg = '';
 /** dist/index.html, lido uma vez. Marcadores: <title>, <!--seo-->…<!--/seo--> no head e <!--seo:conteudo--> no #root. */
 export function lerModelo(arquivo) {
-  modelo ??= fs.readFile(arquivo, 'utf8').then((html) => {
+  modelo ??= fs.readFile(arquivo, 'utf8').then(async (html) => {
     if (!html.includes('<!--seo:conteudo-->') || !html.includes('<!--/seo-->')) console.warn('index.html sem os marcadores de SEO');
+    try {
+      const og = await fs.readFile(path.join(path.dirname(arquivo), 'og.png'));
+      versaoOg = `?v=${createHash('sha1').update(og).digest('hex').slice(0, 8)}`;
+    } catch {}
     return html;
   }).catch((err) => {
     modelo = null;
@@ -355,7 +365,7 @@ export function lerModelo(arquivo) {
 
 function renderizar(html, p, base) {
   const url = `${base}${p.caminho ?? ''}`;
-  const imagem = `${base}/og.png`;
+  const imagem = `${base}/og.png${versaoOg}`;
   const cab = [`<meta name="description" content="${esc(p.descricao)}" />`];
   if (p.status === 404) {
     cab.push('<meta name="robots" content="noindex" />');
@@ -379,7 +389,7 @@ function renderizar(html, p, base) {
     );
     // Dados estruturados só do que o resumo abaixo mostra: o site (início), as migalhas e a pessoa (ficha).
     const grafo = [];
-    if (p.site) grafo.push({ '@type': 'WebSite', name: NOME_SITE, url: `${base}/`, inLanguage: 'pt-BR', description: p.descricao });
+    if (p.site) grafo.push({ '@type': 'WebSite', name: NOME_SITE, alternateName: NOME_ANTIGO, url: `${base}/`, inLanguage: 'pt-BR', description: p.descricao });
     if (p.migalhas) {
       grafo.push({
         '@type': 'BreadcrumbList',
