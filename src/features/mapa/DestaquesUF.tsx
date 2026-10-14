@@ -1,9 +1,9 @@
 import { type CSSProperties } from 'react';
-import type { Candidato, MapaDados } from '../types';
-import { Link } from './Link';
+import type { Candidato, MapaDados } from '../../lib/types';
+import { Link } from '../../rota/Link';
 import { pctNaRegiao, primeiroNome } from './DiferencaUF';
-import { useCores } from '../tema';
-import { corPartido, fmt, fmtPct, titulo } from '../util';
+import { useCores } from '../../lib/tema';
+import { corPartido, fmt, fmtPct, titulo } from '../../lib/util';
 
 const pf2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

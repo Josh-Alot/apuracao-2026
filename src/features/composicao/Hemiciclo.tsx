@@ -1,7 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import type { Composicao, Eleito } from '../types';
-import { corPartido, fmt, fmtPct, titulo as nomeProprio } from '../util';
-import { Esq } from './Carregando';
+import type { Composicao, Eleito } from '../../lib/types';
+import { corPartido, fmt, fmtPct, titulo as nomeProprio } from '../../lib/util';
+import { Esq } from '../../ui/Carregando';
 
 interface Props {
   dados: Composicao | null;

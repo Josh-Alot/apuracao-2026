@@ -1,10 +1,10 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { geoPath, geoTransform, type GeoPath } from 'd3-geo';
 import type { Feature, FeatureCollection } from 'geojson';
-import type { MapaDados, ModoMapa, Resumo, ResumoCandidato } from '../types';
-import { EsqueletoMapa } from './Carregando';
-import { useCores } from '../tema';
-import { corApuracao, corPartido, fmt, fmtPct, misturar, titulo } from '../util';
+import type { MapaDados, ModoMapa, Resumo, ResumoCandidato } from '../../lib/types';
+import { EsqueletoMapa } from '../../ui/Carregando';
+import { useCores } from '../../lib/tema';
+import { corApuracao, corPartido, fmt, fmtPct, misturar, titulo } from '../../lib/util';
 
 const W = 1000;
 const H = 820;

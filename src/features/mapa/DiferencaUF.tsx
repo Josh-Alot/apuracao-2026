@@ -1,8 +1,8 @@
 import { type CSSProperties } from 'react';
-import type { Candidato, MapaDados, Resumo } from '../types';
-import { Link } from './Link';
-import { useCores } from '../tema';
-import { UF_NOMES } from '../util';
+import type { Candidato, MapaDados, Resumo } from '../../lib/types';
+import { Link } from '../../rota/Link';
+import { useCores } from '../../lib/tema';
+import { UF_NOMES } from '../../lib/util';
 
 const pf1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'always' });
 

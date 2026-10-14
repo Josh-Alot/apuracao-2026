@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useCarregandoGlobal } from '../api';
+import { useCarregandoGlobal } from '../api/cliente';
 import { Logo } from './Logo';
 
 /**

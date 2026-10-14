@@ -1,7 +1,7 @@
-import type { Candidato, MapaDados, Resultado } from '../types';
-import { Link } from './Link';
-import { useCores } from '../tema';
-import { coresDuelo, corPartido, fmtPct, titulo, UF_NOMES } from '../util';
+import type { Candidato, MapaDados, Resultado } from '../../lib/types';
+import { Link } from '../../rota/Link';
+import { useCores } from '../../lib/tema';
+import { coresDuelo, corPartido, fmtPct, titulo, UF_NOMES } from '../../lib/util';
 
 /** Os dois finalistas na ordem do número de urna (fica estável: ninguém troca de lado quando a liderança muda). */
 export function finalistas(r: Resultado | null | undefined): [Candidato, Candidato] | null {

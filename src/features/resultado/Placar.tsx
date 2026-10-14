@@ -1,10 +1,10 @@
 import { type CSSProperties, type ReactNode } from 'react';
-import type { Candidato, MapaDados, Resultado, Resumo } from '../types';
-import { Num } from './Num';
-import { cliqueSimples } from './Link';
-import { useCores } from '../tema';
-import { fmt, fmtPct, titulo } from '../util';
-import { caminhoCandidato } from '../rotas.mjs';
+import type { Candidato, MapaDados, Resultado, Resumo } from '../../lib/types';
+import { Num } from '../../ui/Num';
+import { cliqueSimples } from '../../rota/Link';
+import { useCores } from '../../lib/tema';
+import { fmt, fmtPct, titulo } from '../../lib/util';
+import { caminhoCandidato } from '../../rotas.mjs';
 
 const pf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtNumPct = (n: number) => pf.format(n);

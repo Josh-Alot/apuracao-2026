@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Cargo } from '../types';
+import type { Cargo } from '../lib/types';
 
 export type FaseVotacao = 'antes' | 'votando' | 'carregando' | 'aguardando' | 'indisponivel' | 'apurando';
 
