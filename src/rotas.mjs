@@ -86,7 +86,7 @@ export function lerCaminho(pathname) {
  */
 export function tituloPagina({ cargoNome, ufNome, uf, munNome, zona, candidato, partido }) {
   if (candidato) return `${candidato}${partido ? ` (${partido})` : ''}: votos, perfil e bens em 2026`;
-  if (!cargoNome) return 'Apuração 2026: resultados das eleições ao vivo';
+  if (!cargoNome) return 'Apuração.org: resultados das Eleições 2026 ao vivo';
   const exterior = uf === 'zz'; // cidades no exterior: "(exterior)" no lugar da sigla, "no exterior" no lugar da UF
   const sigla = exterior ? 'exterior' : uf?.toUpperCase();
   if (munNome && zona) return `${cargoNome} em ${munNome} (${sigla}), zona ${Number(zona)}: resultado 2026`;
