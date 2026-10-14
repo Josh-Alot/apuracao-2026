@@ -77,44 +77,77 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
 dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz, zonas-2026.json.gz)
 arquivo/           Resultados finais arquivados e versionados (<ciclo>-<turno>turno/)
 simulacao/         2º turno simulado (mesmo formato do arquivo/), versionado
-src/               React 19 + TypeScript + Vite; d3-geo só para gerar os paths SVG
-  rotas.mjs        Rotas públicas e títulos das páginas, JS puro compartilhado com o servidor (tipos em rotas.d.mts)
-  App.tsx          Estado da navegação (no caminho da URL, pushState/popstate), polling e composição das telas
-  api.ts           useApi(url, intervalo) — fetch + polling mantendo o dado anterior
-  components/
-    Mapa.tsx           Choropleth SVG (projeção plana própria), tooltip, legenda, zoom no município;
-                       zoom/arraste do leitor (roda, arrastar, pinça, botões +/−/Ajustar) via viewBox;
-                       prop `zonas`: desenha as zonas sobre o município em foco, com a mesma projeção
-    Placar.tsx         Os dois primeiros (no 2º turno, os finalistas) acima do mapa: nome, % dos válidos em letras
-                       grandes, votos, regiões vencidas, exterior; barra 1º | outros | 2º com a marca dos 50%;
-                       `compacto` nas telas de UF/município/zona; antes dos votos do 2º turno, "––,––%" e o 1º turno
-    TickerUFs.tsx      Faixa rolável com o líder de cada UF (nível Brasil, majoritários), do mesmo /api/mapa
-    DiferencaUF.tsx    Ao lado do mapa do Brasil (Presidente): diferença entre os dois primeiros em cada UF
-    DestaquesUF.tsx    Ao lado do mapa da UF (majoritários): maiores eleitorados e disputas mais apertadas
-                       (acima de 75 mil eleitores), com `segundo`/`eleitorado` do /api/mapa
-    PainelResultado.tsx Tabela de todos os candidatos (filtro local) e o comparecimento; abre a ficha
-    ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
-    BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF/partido; só o partido lista
-                       todos os candidatos dele, agrupados por cargo, em páginas ("Mostrar mais")
-    Duelo.tsx          2º turno: finalistas e cores (`finalistas`, `coresFinalistas`) e `ListaDuelos` (cargos estaduais
-                       no nível Brasil, uma linha por UF)
-    Hemiciclo.tsx      Composição da casa legislativa (uma bolinha por cadeira, cor do partido) abaixo do mapa,
-                       via /api/composicao: Senado (sempre o Brasil, 54 cadeiras em disputa), Câmara (UF ou
-                       Brasil), Assembleia/Câmara Legislativa (UF). Sem `st` oficial, usa os eleitos projetados.
-                       Cadeiras na ordem dos `eleitos` da API (partido por bancada, depois votos); a lista abaixo
-                       mostra cada cadeira e seu dono, agrupada por partido: cabeçalho do partido destaca a
-                       bancada, linha/bolinha destaca a cadeira e abre a ficha do eleito sobre o plenário;
-                       clique fixa a cadeira em foco até um clique fora do componente ou ESC
-    ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
+src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só para gerar os paths SVG
+                   Pastas por funcionalidade: uma pasta de features/ nunca importa outra (só api/, rota/, apuracao/,
+                   ui/ e lib/); o que duas features usam sobe para ui/ ou lib/, e o App junta tudo
+  main.tsx         Monta o App dentro dos Providers
+  rotas.mjs        Rotas públicas e títulos das páginas, JS puro compartilhado com o servidor (tipos em rotas.d.mts;
+                   fica em src/ porque o server/seo.mjs importa de lá)
+  app/
+    App.tsx            Composição da tela: lê rota, config e fase, faz as consultas e distribui aos componentes
+    providers.tsx      QueryClient (sem retry automático, sem polling em aba oculta, gcTime 30 min)
+  api/
+    cliente.ts         getJson (timeout 30 s, conta requisições ativas para a barra do topo), URLs, cópia no
+                       sessionStorage (respostas até 150 KB, 30 min) para o F5
+    consultas.ts       Todos os recursos da API num lugar: URL, chave do cache (recurso + URL) e `staleTime`
+                       (`VALE_APURANDO_MS` 20 s, `VALE_PARADO_MS` 5 min, 24 h para config/municípios/malhas)
+    useConsulta.ts     useConsulta(consulta | null, { intervalo, incompleto, sse }) → { data, erro, carregando,
+                       proxima, aoVivo }; o SSE grava no cache (setQueryData); mesma chave = 1 requisição para todos
+  rota/
+    rota.ts            Tela/Rota, leitura da URL (inclui links antigos #/…) e useRota() (popstate)
+    useNavegacao.ts    caminhoDe, ir, irHome, abrir/fechar a ficha (pushState/replaceState)
+    resolver.ts        resolverTela(): cargo, UF e local de uma tela (App e prefetch usam o mesmo)
     Link.tsx           <a href> com navegação SPA no clique simples (ctrl/cmd/meio abrem nova aba); toda navegação
-                       usa links de verdade para o Google rastrear
-    Carregando.tsx     Barra fina no topo (conta requisições ativas em getJson) + esqueletos de página/painel/mapa
+                       usa links de verdade para o Google rastrear. Ponteiro parado 120 ms ou foco: adianta o
+                       resultado do destino (`PrefetchContext`, fornecido pelo App; o mapa fica para o clique)
+  apuracao/
+    useFaseApuracao.ts Aberta/encerrada/tempo real, intervalos (`ATUALIZA_*_MS`) e `vale` (staleTime) do momento
     AvisoVotacao.tsx   Faixa âmbar acima da faixa de status: "votação ainda não começou / em andamento (contagem
-                       HH:MM:SS) / urnas fechadas"
-    ProximaAtualizacao.tsx "a cada 30 s · próxima em 12 s" (usa `proxima` exposto pelo useApi); na faixa de status
+                       HH:MM:SS) / urnas fechadas"; `useAgora` (relógio de 15 s)
+    ProximaAtualizacao.tsx "a cada 30 s · próxima em 12 s" (usa `proxima` do useConsulta); na faixa de status
+    ProximoPlantao.tsx Caixa "Próximo plantão" (2º turno na config, votação ainda não começou)
+  features/
+    mapa/
+      Mapa.tsx           Choropleth SVG (projeção plana própria), tooltip, legenda, zoom no município;
+                         zoom/arraste do leitor (roda, arrastar, pinça, botões +/−/Ajustar) via viewBox;
+                         prop `zonas`: desenha as zonas sobre o município em foco, com a mesma projeção
+      TickerUFs.tsx      Faixa rolável com o líder de cada UF (nível Brasil, majoritários), do mesmo /api/mapa
+      DiferencaUF.tsx    Ao lado do mapa do Brasil (Presidente): diferença entre os dois primeiros em cada UF
+      DestaquesUF.tsx    Ao lado do mapa da UF (majoritários): maiores eleitorados e disputas mais apertadas
+                         (acima de 75 mil eleitores), com `segundo`/`eleitorado` do /api/mapa
+      AvisoMapa.tsx, CartaoExterior.tsx, IndiceRegioes.tsx  Falha/regiões faltando, cartão do exterior, lista de links
+    resultado/
+      Placar.tsx         Os dois primeiros (no 2º turno, os finalistas) acima do mapa: nome, % dos válidos em letras
+                         grandes, votos, regiões vencidas, exterior; barra 1º | outros | 2º com a marca dos 50%;
+                         `compacto` nas telas de UF/município/zona; antes dos votos do 2º turno, "––,––%" e o 1º turno
+      PainelResultado.tsx Tabela de todos os candidatos (filtro local) e o comparecimento
+      Duelo.tsx          2º turno: finalistas e cores (`finalistas`, `coresFinalistas`) e `ListaDuelos` (cargos estaduais
+                         no nível Brasil, uma linha por UF)
+    candidato/
+      FichaCandidato.tsx Ficha aberta (sq da rota) sobre a tela; ModalCandidato em chunk próprio (React.lazy)
+      ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
+      useFichaPelaUrl.ts Ficha aberta direto pela URL: acha a tela por baixo (perfil, senão a busca pelo nome)
+    busca/
+      BarraBusca.tsx     Busca global (debounce 300 ms) com filtros de cargo/UF/partido; só o partido lista
+                         todos os candidatos dele, agrupados por cargo, em páginas ("Mostrar mais")
+    composicao/
+      Hemiciclo.tsx      Composição da casa legislativa (uma bolinha por cadeira, cor do partido) abaixo do mapa,
+                         via /api/composicao: Senado (sempre o Brasil, 54 cadeiras em disputa), Câmara (UF ou
+                         Brasil), Assembleia/Câmara Legislativa (UF). Sem `st` oficial, usa os eleitos projetados.
+                         Cadeiras na ordem dos `eleitos` da API (partido por bancada, depois votos); a lista abaixo
+                         mostra cada cadeira e seu dono, agrupada por partido: cabeçalho do partido destaca a
+                         bancada, linha/bolinha destaca a cadeira e abre a ficha do eleito sobre o plenário;
+                         clique fixa a cadeira em foco até um clique fora do componente ou ESC. Chunk próprio
+      casa.ts            casaLegislativa(): qual casa o cargo elege na abrangência atual
+  ui/
+    Carregando.tsx     Barra fina no topo (conta requisições ativas em getJson) + esqueletos de página/painel/mapa
+    ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
     Num.tsx            Número ao vivo: conta do valor antigo ao novo e realça ao mudar; pulsa sob `.atualizando`
-  util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos e o ajuste delas ao tema (OKLCH)
-  tema.ts          useTema()/definirTema() (data-tema + prefers-color-scheme) e useCores() (cores de partido no tema)
+    SeloSituacao.tsx, Logo.tsx, BotaoTema.tsx, SeletorMunicipio.tsx
+  lib/
+    util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos e o ajuste delas ao tema (OKLCH)
+    tema.ts          useTema()/definirTema() (data-tema + prefers-color-scheme) e useCores() (cores de partido no tema)
+    types.ts         Tipos das respostas da API
   styles.css       Tema único ("Plantão") — tokens em variáveis CSS no :root
 ```
 
@@ -128,14 +161,14 @@ números grandes, IBM Plex Mono nos rótulos, abas, tabelas e horários, Archivo
 Cor forte fica reservada aos partidos; `--ao-vivo` (âmbar) só em status (ao vivo, encerrada, contagem), nunca em
 dado. Evite verde-amarelo ou vermelho como cor de interface (são lidos como sinal político).
 
-Cores de partido: as do `util.ts` são a fonte; `useCores()` (`tema.ts`) devolve `preench(cor)` (no escuro, L OKLCH ≥
+Cores de partido: as do `lib/util.ts` são a fonte; `useCores()` (`lib/tema.ts`) devolve `preench(cor)` (no escuro, L OKLCH ≥
 0,62; o preto da UP vira a cor do texto) e `texto(cor)` (L ≥ 0,74 no escuro, ≤ 0,5 no claro). O SVG do mapa usa
 cores prontas (hex), por isso a mistura com `--superficie` (intensidade pela vantagem: 40% abaixo de 10 pts, 70% até
 20, cheia acima) é feita em TS com os tokens fixos `TOKENS` do `util.ts` — mudou um token no CSS, mude lá também.
 As faixas (topo, aviso, status) ocupam a largura toda: cada filho direto de `.app` recebe o recuo da coluna central
 (`--largura`, `--gutter`) como padding.
 
-Marca: ícone da urna (fenda + três barras) em `components/Logo.tsx`, ao lado de "Apuração.org" no topo, e o mesmo
+Marca: ícone da urna (fenda + três barras) em `ui/Logo.tsx`, ao lado de "Apuração.org" no topo, e o mesmo
 desenho em `public/favicon.svg` (inverte em `prefers-color-scheme: dark`). PWA: `public/manifest.webmanifest`
 (sem service worker) com PNGs 192/512, um maskable (desenho a 80%, dentro da zona segura) e `apple-touch-icon.png`;
 mudou o desenho, mude os dois SVGs e rode `npm run icones`.
@@ -229,7 +262,7 @@ aproximado para os ~190 municípios com mais de uma zona (725 zonas; nos demais 
   mais eleitores; local a mais de 1 km fora do município é descartado (o script avisa).
 - Dependências só do script (devDependencies): `d3-delaunay` e `polygon-clipping`. O servidor só lê o `.json.gz`
   (`{ gerado, municipios: { <cd TSE>: { <zona4>: MultiPolygon } } }`), em memória no 1º pedido.
-- Front: com o município aberto, `App.tsx` pede `/api/zonas?uf=<uf>&mun=<mun>` (404 = sem contorno;
+- Front: com o município aberto, `app/App.tsx` pede `/api/zonas?uf=<uf>&mun=<mun>` (404 = sem contorno;
   ETag + `no-cache` como as demais rotas, para uma regeração chegar no deploy) e o `Mapa` pinta as
   zonas sobre o município (mesmas cores/modos, tooltip, clique abre a zona; a zona aberta é enquadrada e as outras
   atenuadas, como o município); a lista de zonas continua abaixo. Uma
@@ -344,7 +377,7 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
   `getConfig()` envia `abertura`/`encerramento` por cargo e o front mostra o `AvisoVotacao`
   (desligado no modo demo, a menos que `ENCERRAMENTO` seja definido).
 - Cadência: com "ao vivo" ligado (padrão), resultados chegam pelo SSE (`AO_VIVO_MS`, 5 s, no servidor) e o
-  mapa é consultado a cada 30 s; desligado, resultados a cada 30 s e mapa a cada 60 s (`ATUALIZA_*_MS` em `App.tsx`);
+  mapa é consultado a cada 30 s; desligado, resultados a cada 30 s e mapa a cada 60 s (`ATUALIZA_*_MS` em `apuracao/useFaseApuracao.ts`);
   o servidor guarda cache de 20 s (UF/BR), 45 s (zonas) e 60 s (municípios). O TSE não tem intervalo
   fixo — publica conforme as urnas são totalizadas. Se mudar os intervalos, os avisos se ajustam sozinhos.
 - O Akamai do TSE guarda cada arquivo por ~60 s (`cache-control: max-age` com o tempo que falta, fase
@@ -356,15 +389,21 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
   repetido volta para o fim; o que ninguém pede mais afunda e é descartado quando a fila enche.
 - Antes do fechamento das urnas (17h de Brasília) o TSE não divulga nada (nem o exterior): o servidor busca
   cada arquivo de resultado no máximo uma vez e guarda até o fechamento (`fimDaVotacao` + `validoAte` no
-  `fetchJson`), e o front não abre "ao vivo" nem polling (`apuracaoAberta` no `App.tsx`); às 17h liga sozinho.
+  `fetchJson`), e o front não abre "ao vivo" nem polling (`apuracaoAberta` em `useFaseApuracao`); às 17h liga sozinho
+  e o que venceu é consultado na hora.
 - Apuração encerrada: `/api/config` marca `encerrada` por cargo quando o `br-e<ele6>-ab.json` (1 arquivo por
   eleição, % de seções por UF) mostra 100% em todas as UFs (`apuracaoEncerrada()` em `tse.mjs`, cache de 5 min).
-  O front então não abre "ao vivo" nem polling: busca ao abrir a página e ao navegar, e só repete
-  (`RETENTAR_MS`, 15 s, parâmetro `incompleto` do `useApi`) enquanto o mapa vier com regiões faltando ou a
-  consulta falhar. A config é lida uma vez: aba aberta durante a apuração segue "ao vivo" até recarregar.
-- Cache do cliente (`useApi` em `src/api.ts`): ao trocar de tela, o último dado daquela URL aparece na hora
-  (atenuado, "atualizando") e é substituído quando chega o novo; espelhado no sessionStorage (respostas até
-  150 KB) para o F5, descartado após 30 min. As respostas 200 da API levam ETag + `no-cache` (304 se não mudou).
+  O front então não abre "ao vivo" nem polling: busca ao abrir a página e ao navegar (o que já veio vale 5 min),
+  e só repete (`RETENTAR_MS`, 15 s, parâmetro `incompleto` do `useConsulta`) enquanto o mapa vier com regiões
+  faltando ou a consulta falhar. A config é lida uma vez: aba aberta durante a apuração segue "ao vivo" até recarregar.
+- Cache do cliente (TanStack Query, via `useConsulta` em `src/api/`): toda consulta nova entra em
+  `api/consultas.ts` (URL + `staleTime`) e é lida com `useConsulta`, nunca com `fetch` solto, para ganhar a dedup
+  e o cache. Ao trocar de tela, o último dado daquela URL aparece na hora (atenuado, "atualizando") e só é
+  consultado de novo se venceu (20 s na apuração, 5 min antes das 17h ou com ela encerrada); URL nunca vista volta
+  ao esqueleto. Espelhado no sessionStorage (respostas até 150 KB) para o F5, descartado após 30 min; o dado de
+  lá conta como vencido e é confirmado ao abrir. Aba oculta não faz polling; ao voltar, o vencido é consultado.
+  Não use `staleTime: Infinity` (o TanStack não consultaria nem o dado vindo do storage). As respostas 200 da API
+  levam ETag + `no-cache` (304 se não mudou).
 - Seja educado com o TSE: mantenha cache/TTL e limites de concorrência ao adicionar chamadas.
   Os TTLs ficam em `getResultado(params, ttlMs)` e `fetchJson`.
 - A projeção do mapa é plana de propósito (ver comentário em `Mapa.tsx`): as malhas do IBGE não seguem
