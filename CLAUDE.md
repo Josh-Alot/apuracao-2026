@@ -18,6 +18,7 @@ npm run arquivar   # guarda os resultados finais em arquivo/ (ver "Arquivo próp
 npm run simular-2turno  # regera a simulação do 2º turno em simulacao/ (ver "Simulação do 2º turno")
 npm run dev:2turno # dev com a simulação do 2º turno ligada (SIMULACAO_2TURNO=1 FLAG_SEGUNDO_TURNO=on)
 npm run zonas      # regera dados/zonas-2026.json.gz (contorno estimado das zonas; ver "Zonas no mapa" abaixo)
+npm run malhas     # regera dados/malhas/<uf|br>.json.gz (malhas do IBGE do mapa; ver "Malhas do IBGE" abaixo)
 npm run icones     # regera os PNGs do PWA a partir de public/favicon.svg e public/icone-maskable.svg (precisa do rsvg-convert)
 npm run og         # regera public/og.png (1200×630) de server/scripts/og.html (precisa do chromium e de internet p/ as fontes)
 npm run build && npm start   # produção: o servidor Node serve dist/ e /api na porta 3001
@@ -26,7 +27,8 @@ npm run build && npm start   # produção: o servidor Node serve dist/ e /api na
 Variáveis de ambiente do servidor: `PORT` (3001), `DEMO=1`, `DEMO_MINUTOS` (15; tempo até a demo
 chegar a 100%), `AO_VIVO_MS` (5000; verificação do TSE no modo ao vivo), `CICLO` (`ele2026`; trocar para testar com outro ciclo), `ENCERRAMENTO` (ISO 8601;
 sobrescreve o fechamento das urnas para testar o aviso, ex. `ENCERRAMENTO=2026-10-04T13:00:00-03:00`),
-`ARQUIVO=1` (usa só o arquivo próprio para tudo o que ele cobre, sem consultar o TSE; eleições já todas finais no
+`CACHE_MB` (28; teto do cache de respostas do TSE, em MB de texto — ~6x isso no heap; o `/api/saude` mostra
+`memoria` e o log avisa "memória alta" acima de 400 MB de RSS), `ARQUIVO=1` (usa só o arquivo próprio para tudo o que ele cobre, sem consultar o TSE; eleições já todas finais no
 arquivo saem dele mesmo sem a variável), `ARQUIVO_MB` (16; unidades
 do arquivo abertas em memória), `SIMULACAO_2TURNO=1` (serve o 2º turno simulado de `simulacao/`; nunca em produção
 aberta ao público), `SITE_URL` (ex. `https://dominio.com.br`, sem barra final: base do canonical, og:url, robots e
@@ -58,12 +60,13 @@ Com `ADMIN_TOKEN` definido:
 
 ```
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
-  index.mjs        Rotas HTTP, busca, malhas do IBGE (cache em disco em .cache/geo), contorno das zonas
+  index.mjs        Rotas HTTP, busca, malhas do IBGE (/api/geo/<uf|br>, em memória após o 1º pedido), contorno das zonas
                    (/api/zonas?uf=&mun=, de dados/zonas-2026.json.gz), arquivos estáticos
   aovivo.mjs       Stream SSE /api/ao-vivo: 1 vigia por resultado consulta o TSE a cada 5 s e empurra só quando muda
   tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
   demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais); arquivo com votos (arquivo
                    próprio, simulação) segue a proporção real e só mostra a situação ao chegar a 100%
+  malhas.mjs       Malhas do IBGE: dados/malhas, senão .cache/geo, senão o IBGE (com a CA de server/certs/)
   arquivo.mjs      Arquivo próprio: formato compacto (compacta/remonta) e leitura pelas URLs do TSE
   flags.mjs        Feature toggles (FLAG_*), prévia por cookie e /api/flags (ADMIN_TOKEN)
   simulacao.mjs    Simulação do 2º turno (SIMULACAO_2TURNO=1): pleito acrescentado ao ele-c.json e fotos do 1º turno
@@ -74,7 +77,8 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   scripts/arquivar.mjs    `npm run arquivar`: baixa os resultados finais e grava em arquivo/
   scripts/simular-2turno.mjs  `npm run simular-2turno`: gera simulacao/ a partir do 2º turno de 2022
   scripts/zonas.mjs       `npm run zonas`: contorno estimado das zonas a partir dos locais de votação
-dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz, zonas-2026.json.gz)
+  scripts/malhas.mjs      `npm run malhas`: grava as malhas do IBGE em dados/malhas
+dados/             Arquivos gerados e versionados (candidatos-2026.tsv.gz, zonas-2026.json.gz, malhas/)
 arquivo/           Resultados finais arquivados e versionados (<ciclo>-<turno>turno/)
 simulacao/         2º turno simulado (mesmo formato do arquivo/), versionado
 src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só para gerar os paths SVG
@@ -321,6 +325,24 @@ Base: `https://resultados.tse.jus.br/oficial`
   proporcionais (arquivos de centenas de KB) usam só o `-ab.json` no mapa estadual.
 - Zonas eleitorais **não têm malha geográfica pública**: o contorno no mapa é estimado (ver "Zonas no mapa").
 
+## Malhas do IBGE (`dados/malhas/`)
+
+O mapa desenha as malhas do IBGE (Brasil por UF, qualidade mínima; cada UF por município, intermediária), versionadas
+em `dados/malhas/<br|uf>.json.gz` (~3 MB, propriedades já trocadas por `uf`/`ibge`). O disco do Render é apagado a
+cada reinício e deploy: em 15/10/2026 o serviço reiniciou, o IBGE estava inacessível e o mapa ficou fora do ar —
+por isso o servidor não depende mais dele.
+- Ordem de leitura (`lerMalha()` em `server/malhas.mjs`): `dados/malhas`, senão `.cache/geo/<alvo>.json`, senão o
+  IBGE (gravado em `.cache/geo`). No servidor, cada malha fica em memória após o 1º pedido; uma falha do IBGE só
+  é tentada de novo após 30 s. O front mostra "Mapa indisponível · tentando de novo" e repete a cada 15 s.
+- Certificado: desde outubro de 2026 o `servicodados.ibge.gov.br` não envia a CA intermediária (Sectigo Public Server
+  Authentication CA DV R36). O navegador completa a cadeia; o Node falha com `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. A
+  intermediária fica em `server/certs/sectigo-dv-r36.pem` (válida até 2036) e vai junto das raízes do Node só nas
+  consultas ao IBGE. Se o IBGE trocar de emissor, baixe a nova pelo `CA Issuers` do certificado
+  (`openssl x509 -noout -ext authorityInfoAccess`).
+- `npm run malhas` (opções `--uf sp,rj`, `--br`, `--forcar` para baixar do IBGE em vez de usar `.cache/geo`):
+  rode antes de outra eleição e faça commit. Mudou uma malha, rode também `npm run zonas` (o contorno das zonas é
+  recortado por ela).
+
 ## Zonas no mapa (contorno estimado)
 
 O TSE não publica limites das zonas. `npm run zonas` (opção `--uf sp,rj`; ~15 s para o Brasil) monta um contorno
@@ -329,7 +351,7 @@ aproximado para os ~190 municípios com mais de uma zona (725 zonas; nos demais 
   em `.cache/dados-abertos`; apague o zip para baixar a versão nova). Eleitores por local = soma das seções.
 - Divisão simples (Voronoi): cada ponto do município fica com a zona do local mais próximo (distância em coordenadas
   planas, lon·cos(lat)); as células da mesma zona são juntadas e recortadas pelo contorno do município — a mesma
-  malha do IBGE do mapa (`.cache/geo/<uf>.json`), para os limites baterem. Locais no mesmo ponto ficam com a zona de
+  malha do IBGE do mapa (`dados/malhas/<uf>.json.gz`), para os limites baterem. Locais no mesmo ponto ficam com a zona de
   mais eleitores; local a mais de 1 km fora do município é descartado (o script avisa).
 - Dependências só do script (devDependencies): `d3-delaunay` e `polygon-clipping`. O servidor só lê o `.json.gz`
   (`{ gerado, municipios: { <cd TSE>: { <zona4>: MultiPolygon } } }`), em memória no 1º pedido.

@@ -7,7 +7,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
-  getConfig, getMunicipios, getResultado, getResultadosRapidos, getAbrangencia, resumo, fetchJson, UFS,
+  getConfig, getMunicipios, getResultado, getResultadosRapidos, getAbrangencia, resumo, UFS,
   PRIORIDADE, estadoFila, apuracaoEncerrada,
 } from './tse.mjs';
 import { assinar } from './aovivo.mjs';
@@ -15,18 +15,12 @@ import { getCandidato } from './candidatos.mjs';
 import { estadoArquivo } from './arquivo.mjs';
 import { SIMULACAO } from './simulacao.mjs';
 import { flagsDe, cargoVisivel, rotaPreview, rotaFlags } from './flags.mjs';
+import { lerMalha } from './malhas.mjs';
 import { redirecionarHost, responderPagina, responderRobots, responderSitemap, candidaturaDe } from './seo.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
-const GEO_CACHE = path.join(ROOT, '.cache', 'geo');
 const PORT = Number(process.env.PORT || 3001);
-
-const IBGE_UF = {
-  11: 'ro', 12: 'ac', 13: 'am', 14: 'rr', 15: 'pa', 16: 'ap', 17: 'to', 21: 'ma', 22: 'pi',
-  23: 'ce', 24: 'rn', 25: 'pb', 26: 'pe', 27: 'al', 28: 'se', 29: 'ba', 31: 'mg', 32: 'es',
-  33: 'rj', 35: 'sp', 41: 'pr', 42: 'sc', 43: 'rs', 50: 'ms', 51: 'mt', 52: 'go', 53: 'df',
-};
 
 class HttpError extends Error {
   constructor(status, msg) { super(msg); this.status = status; }
@@ -278,26 +272,29 @@ async function busca(q, flags) {
   };
 }
 
-// ---------- malhas do IBGE (cache em disco: mudam raramente) ----------
+// ---------- malhas do IBGE (dados/malhas versionado; IBGE só de reserva — ver malhas.mjs) ----------
 
-async function geo(alvo) {
-  const arquivo = path.join(GEO_CACHE, `${alvo}.json`);
-  try {
-    return JSON.parse(await fs.readFile(arquivo, 'utf8'));
-  } catch { /* não está em cache */ }
+// Malha já pronta para enviar (texto do JSON, ~11 MB com todas as UFs): ler e descompactar a cada pedido custava
+// CPU e memória (MG tem 1,6 MB). A promessa entra no mapa logo no 1º pedido, para os pedidos simultâneos esperarem
+// a mesma leitura; se falhar, fica até `IBGE_PAUSA_MS` antes de o IBGE ser tentado de novo (o front repete a cada
+// 15 s: sem a pausa, cada aba aberta viraria uma consulta ao IBGE fora do ar).
+const IBGE_PAUSA_MS = 30_000;
+const malhas = new Map(); // alvo -> Promise<string>
 
-  const url = alvo === 'br'
-    ? 'https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?formato=application/vnd.geo%2Bjson&qualidade=minima&intrarregiao=UF'
-    : `https://servicodados.ibge.gov.br/api/v3/malhas/estados/${alvo.toUpperCase()}?formato=application/vnd.geo%2Bjson&qualidade=intermediaria&intrarregiao=municipio`;
-  const data = await fetchJson(url, Infinity);
-  if (!data) throw new HttpError(404, 'malha não encontrada');
-  for (const f of data.features) {
-    const cod = f.properties.codarea;
-    f.properties = alvo === 'br' ? { uf: IBGE_UF[cod] } : { ibge: cod };
+function geo(alvo) {
+  let p = malhas.get(alvo);
+  if (!p) {
+    p = lerMalha(alvo).then((texto) => {
+      if (texto === null) throw new HttpError(404, 'malha não encontrada');
+      return texto;
+    }, (err) => {
+      console.warn(`Falha ao consultar a malha ${alvo} do IBGE: ${err.message}`);
+      throw Object.assign(new HttpError(502, `Falha ao consultar a malha do IBGE: ${err.message}`), { silencioso: true });
+    });
+    malhas.set(alvo, p);
+    p.catch(() => setTimeout(() => malhas.delete(alvo), IBGE_PAUSA_MS).unref());
   }
-  await fs.mkdir(GEO_CACHE, { recursive: true });
-  await fs.writeFile(arquivo, JSON.stringify(data));
-  return data;
+  return p;
 }
 
 // Contorno estimado das zonas nos municípios com mais de uma zona (gerado por `npm run zonas`, ~0,3 MB):
@@ -355,13 +352,24 @@ const rotas = {
   '/api/composicao': composicao,
   '/api/zonas': geoZonas,
   // Diagnóstico: fila de consultas ao TSE, cache e memória.
-  '/api/saude': () => ({ fila: estadoFila(), arquivo: estadoArquivo(), simulacao: SIMULACAO, memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20) }),
+  '/api/saude': () => ({ fila: estadoFila(), arquivo: estadoArquivo(), simulacao: SIMULACAO, memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20), memoria: memoria() }),
 };
 
-// No log do Render: estado da fila a cada minuto, quando há algo esperando.
+/** Memória do processo em MB: rss (o que o Render conta, limite de 512), heap do V8 e buffers fora dele. */
+function memoria() {
+  const m = process.memoryUsage();
+  const mb = (n) => Math.round(n / 2 ** 20);
+  return { rss: mb(m.rss), heap: mb(m.heapUsed), heapTotal: mb(m.heapTotal), externo: mb(m.external), buffers: mb(m.arrayBuffers) };
+}
+
+// No log do Render, a cada minuto: estado da fila quando há algo esperando e a memória quando passa de
+// 400 MB (o Render reinicia o serviço em 512 MB sem deixar nada no log; assim fica o rastro do que cresceu).
+const ALERTA_RSS_MB = 400;
 setInterval(() => {
   const f = estadoFila();
   if (f.alta + f.media + f.baixa) console.log('fila TSE', JSON.stringify(f));
+  const m = memoria();
+  if (m.rss > ALERTA_RSS_MB) console.warn('memória alta', JSON.stringify({ ...m, cacheMB: f.cacheMB, malhas: malhas.size }));
 }, 60_000).unref();
 
 const MIME = {
@@ -424,9 +432,9 @@ const server = http.createServer(async (req, res) => {
     const geoMatch = url.pathname.match(/^\/api\/geo\/([a-z]{2})$/);
     if (geoMatch) {
       const alvo = geoMatch[1] === 'br' ? 'br' : uf(geoMatch[1]);
-      const data = await geo(alvo);
+      const texto = await geo(alvo);
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=86400' });
-      return res.end(JSON.stringify(data));
+      return res.end(texto);
     }
     const candMatch = url.pathname.match(/^\/api\/candidato\/(\d{1,15})$/);
     if (candMatch) {

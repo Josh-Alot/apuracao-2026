@@ -68,9 +68,16 @@ export function EsqueletoPainel({ linhas = 6 }: { linhas?: number }) {
   );
 }
 
-/** Esqueleto do mapa: mantém a proporção do SVG para a página não "pular". */
-export function EsqueletoMapa() {
-  return (
+/**
+ * Esqueleto do mapa: mantém a proporção do SVG para a página não "pular". Com `falhou`, avisa que a malha não
+ * veio (quem a pede tenta de novo sozinho) em vez de parecer que ainda está carregando.
+ */
+export function EsqueletoMapa({ falhou = false }: { falhou?: boolean }) {
+  return falhou ? (
+    <div className="esq-mapa falhou" role="status">
+      <span className="esq-mapa-rotulo">Mapa indisponível · tentando de novo</span>
+    </div>
+  ) : (
     <div className="esq-mapa" aria-busy="true" aria-label="Carregando mapa">
       <span className="esq-mapa-rotulo">Carregando mapa</span>
     </div>

@@ -2,7 +2,7 @@
 // Rodar com `npm run zonas` (opção `--uf sp,rj`). O TSE não publica a malha das zonas; aqui cada ponto do
 // município fica com a zona do local de votação mais próximo (diagrama de Voronoi dos locais, Dados Abertos
 // `eleitorado_local_votacao`), as células da mesma zona são juntadas e recortadas pelo contorno do município
-// (a mesma malha do IBGE que o mapa usa, em .cache/geo). Usa o `unzip` do sistema e as dependências de
+// (a mesma malha do IBGE que o mapa usa, em dados/malhas). Usa o `unzip` do sistema e as dependências de
 // desenvolvimento d3-delaunay e polygon-clipping: só roda na máquina de quem publica; o servidor só lê o resultado.
 
 import fs from 'node:fs/promises';
@@ -12,11 +12,11 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Delaunay } from 'd3-delaunay';
 import polygonClipping from 'polygon-clipping';
+import { lerMalha } from '../malhas.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ANO = 2026;
 const CACHE = path.join(ROOT, '.cache', 'dados-abertos');
-const GEO_CACHE = path.join(ROOT, '.cache', 'geo');
 const SAIDA = path.join(ROOT, 'dados', `zonas-${ANO}.json.gz`);
 const MUN_CM = path.join(ROOT, 'arquivo', `ele${ANO}-1turno`, '6259', 'mun-cm.json.gz');
 const CONJUNTO = 'eleitorado_local_votacao';
@@ -66,20 +66,11 @@ function lerCsv(buf) {
   return { col: Object.fromEntries(cab.map((k, i) => [k, i])), linhas: resto };
 }
 
-/** Malha dos municípios da UF, a mesma do mapa (`geo()` em server/index.mjs grava o mesmo cache). */
+/** Malha dos municípios da UF, a mesma do mapa (dados/malhas, senão .cache/geo, senão o IBGE; ver malhas.mjs). */
 async function malhaUf(uf) {
-  const arquivo = path.join(GEO_CACHE, `${uf}.json`);
-  try {
-    return JSON.parse(await fs.readFile(arquivo, 'utf8'));
-  } catch { /* não está em cache */ }
-  const url = `https://servicodados.ibge.gov.br/api/v3/malhas/estados/${uf.toUpperCase()}?formato=application/vnd.geo%2Bjson&qualidade=intermediaria&intrarregiao=municipio`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`malha ${uf}: HTTP ${res.status}`);
-  const data = await res.json();
-  for (const f of data.features) f.properties = { ibge: f.properties.codarea };
-  await fs.mkdir(GEO_CACHE, { recursive: true });
-  await fs.writeFile(arquivo, JSON.stringify(data));
-  return data;
+  const texto = await lerMalha(uf);
+  if (!texto) throw new Error(`malha ${uf}: o IBGE não tem esta malha`);
+  return JSON.parse(texto);
 }
 
 const poligonos = (g) => (g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates]);
