@@ -39,8 +39,9 @@ export const UFS = [
 
 // O cache é limitado (LRU pelo tamanho do JSON): sem limite, navegar pelos mapas estaduais guarda
 // milhares de arquivos de município e estoura os 512 MB do Render gratuito (o processo trava e o
-// health check falha). Em memória o JSON ocupa ~6x o tamanho do texto: 40 MB de texto ≈ 250 MB.
-const CACHE_MAX_BYTES = Number(process.env.CACHE_MB || 40) * 1024 * 1024;
+// health check falha). Em memória o JSON ocupa ~6x o tamanho do texto: 28 MB de texto ≈ 170 MB. Com 40 MB o
+// processo chegou a 489 MB de RSS (somado ao índice do SEO e ao arquivo próprio) e foi reiniciado pelo Render.
+const CACHE_MAX_BYTES = Number(process.env.CACHE_MB || 28) * 1024 * 1024;
 // url -> { ts, data, bytes, expira, etag, modificado, norm, normBytes }
 // (ordem de inserção = do menos ao mais recente; `norm` = resultado já normalizado, ver deRaw)
 const cache = new Map();
@@ -300,7 +301,8 @@ async function fetchSemArquivo(url, hit, prioridade, comArquivo) {
     } catch (err) {
       if (!(err instanceof ErroTse) || err.status === 502) {
         falhaAte.set(url, Date.now() + FALHA_MS);
-        if (!(err instanceof ErroTse)) console.warn(`Falha ao consultar ${url}: ${err.message}`);
+        // `fetch failed` sozinho não diz nada: a causa (certificado, DNS, conexão) vem em `err.cause`.
+        if (!(err instanceof ErroTse)) console.warn(`Falha ao consultar ${url}: ${err.message}${err.cause?.code ? ` (${err.cause.code})` : ''}`);
       }
       if (hit) return hit.data; // devolve dado antigo se o TSE oscilar
       if (comArquivo) {

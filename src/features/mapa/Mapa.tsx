@@ -18,6 +18,8 @@ interface Vista { x: number; y: number; w: number; h: number }
 
 interface Props {
   geo: FeatureCollection | null;
+  /** A malha não veio (a consulta repete sozinha): aviso no lugar do "Carregando mapa". */
+  geoFalhou?: boolean;
   /** Converte uma feature da malha na chave usada em `dados` (UF ou código TSE do município). */
   chave: (f: Feature) => string | undefined;
   nome: (chave: string) => string;
@@ -168,7 +170,7 @@ function projetar(fc: FeatureCollection) {
 }
 
 export function Mapa({
-  geo, chave, nome, dados, modo, selecionado, focar, rotuloRegiao, legendaPorPartido, segundoTurno, corLider, rotulos, onSelect,
+  geo, geoFalhou = false, chave, nome, dados, modo, selecionado, focar, rotuloRegiao, legendaPorPartido, segundoTurno, corLider, rotulos, onSelect,
   dica, rodape, zonas,
 }: Props) {
   const tema = useCores();
@@ -364,7 +366,7 @@ export function Mapa({
 
   return (
     <div className="mapa" ref={ref} onMouseLeave={() => setHover(null)}>
-      {!geo && <EsqueletoMapa />}
+      {!geo && <EsqueletoMapa falhou={geoFalhou} />}
       <svg
         ref={svgRef}
         viewBox={`${vista.x} ${vista.y} ${vista.w} ${vista.h}`}

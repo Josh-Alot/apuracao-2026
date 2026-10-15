@@ -42,6 +42,9 @@ import { useFichaPelaUrl } from '../features/candidato/useFichaPelaUrl';
 const Hemiciclo = lazy(() => import('../features/composicao/Hemiciclo').then((m) => ({ default: m.Hemiciclo })));
 
 /** Nome do cargo como no <title> (e no <title> que o servidor injeta): "Governador", "Presidente 2º turno". */
+/** A malha que chegou está completa; com o `incompleto`, o useConsulta só repete a consulta quando ela falha. */
+const malhaNuncaIncompleta = () => false;
+
 const nomeCargo = (c: Cargo) => {
   const base = c.nome.replace(/ \(\d+º turno\)$/, '');
   return c.turno === 2 ? `${base} 2º turno` : base;
@@ -85,7 +88,9 @@ export default function App() {
   }, [config, vale, qc]);
 
   const temMalha = !!uf && uf !== 'zz';
-  const { data: geo } = useConsulta(cargo ? consultas.geo(temMalha ? uf : 'br') : null);
+  // A malha vale o dia todo, mas se falhar (servidor reiniciando, IBGE fora) repete a cada RETENTAR_MS em vez de
+  // deixar o mapa no esqueleto até o F5.
+  const { data: geo, erro: erroGeo } = useConsulta(cargo ? consultas.geo(temMalha ? uf : 'br') : null, { incompleto: malhaNuncaIncompleta });
 
   const atualizaMapa = { intervalo: intervaloMapa, incompleto: completarMapa };
   const mapaBr = useConsulta(cargo && !uf ? consultas.mapa(cargo.id, 'br', undefined, vale) : null, atualizaMapa);
@@ -533,6 +538,7 @@ export default function App() {
               ) : (
                 <Mapa
                   geo={geo}
+                  geoFalhou={!!erroGeo}
                   chave={chave}
                   nome={nomeRegiao}
                   dados={uf ? mapaUf.data : mapaBr.data}

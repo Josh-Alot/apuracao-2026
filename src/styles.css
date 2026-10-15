@@ -737,6 +737,7 @@ tr.clicavel:hover .cand-abrir { text-decoration: underline; text-underline-offse
   background: repeating-linear-gradient(-45deg, var(--borda) 0 1px, transparent 1px 9px);
   animation: esq-pulsar 1.4s ease-in-out infinite;
 }
+.esq-mapa.falhou { animation: none; }
 .esq-mapa-rotulo {
   background: var(--superficie); padding: 4px 12px; color: var(--muted);
   font: 600 11px var(--fonte-dado); letter-spacing: 0.08em; text-transform: uppercase;
