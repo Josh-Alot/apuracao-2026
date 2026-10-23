@@ -1,8 +1,17 @@
 const nf = new Intl.NumberFormat('pt-BR');
 const pf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const pf1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const pf1Sinal = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'always' });
+
 export const fmt = (n: number) => nf.format(n);
 export const fmtPct = (n: number) => `${pf.format(n)}%`;
+/** "12,34" (percentual ou pontos, sem o "%"). */
+export const fmtDecimal = (n: number) => pf.format(n);
+/** "12,3" */
+export const fmtDecimal1 = (n: number) => pf1.format(n);
+/** "+35,8" / "−4,1" (sinal de menos tipográfico). */
+export const fmtDiferenca1 = (n: number) => pf1Sinal.format(n).replace('-', '−');
 const rf = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 export const fmtReais = (n: number) => rf.format(n);
 
@@ -14,6 +23,9 @@ export const UF_NOMES: Record<string, string> = {
   rs: 'Rio Grande do Sul', ro: 'Rondônia', rr: 'Roraima', sc: 'Santa Catarina', sp: 'São Paulo',
   se: 'Sergipe', to: 'Tocantins', zz: 'Exterior',
 };
+
+/** Sigla curta da UF nas listas e faixas: "SP"; o exterior, "EXT". */
+export const siglaUf = (uf: string) => (uf === 'zz' ? 'EXT' : uf.toUpperCase());
 
 /** "SÃO JOSÉ DOS CAMPOS" → "São José dos Campos" (o mesmo do servidor, em compartilhado/nomes.mjs). */
 export { titulo } from '../../compartilhado/nomes.mjs';
@@ -153,9 +165,9 @@ export function corApuracao(pct: number, escuro: boolean): string {
 
 /** Matiz (0–360) de "#rrggbb"; null para outras notações (cores por hash, em hsl). */
 function matiz(cor: string): number | null {
-  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(cor);
-  if (!m) return null;
-  const [r, g, b] = [m[1], m[2], m[3]].map((x) => parseInt(x, 16) / 255);
+  const rgb = hexRgb(cor);
+  if (!rgb) return null;
+  const [r, g, b] = rgb;
   const max = Math.max(r, g, b);
   const d = max - Math.min(r, g, b);
   if (!d) return 0;

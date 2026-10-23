@@ -4,12 +4,9 @@ import { Num } from '../../ui/Num';
 import { cliqueSimples } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
 import { textoSituacao } from '../../dominio/situacao';
-import { fmt, fmtPct, titulo } from '../../lib/util';
+import { fmt, fmtDecimal, fmtPct, titulo } from '../../lib/util';
 import { caminhoCandidato } from '../../../compartilhado/rotas.mjs';
 import { regioesVencidas } from '../../dominio/placar';
-
-const pf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtNumPct = (n: number) => pf.format(n);
 
 interface Props {
   resultado: Resultado;
@@ -86,7 +83,7 @@ export function Placar({
               </p>
               <div className="placar-numeros">
                 <span className={`placar-pct ${vazio ? 'vazio' : ''}`}>
-                  {vazio ? '––,––' : <Num valor={c.pct} formatar={fmtNumPct} />}
+                  {vazio ? '––,––' : <Num valor={c.pct} formatar={fmtDecimal} />}
                   <span className="placar-sinal">%</span>
                 </span>
                 {!compacto && (
@@ -131,7 +128,7 @@ export function Placar({
       <div className="placar-legenda">
         {!vazio && (
           <span>
-            Diferença: {pf.format(lider.pct - vice.pct)} pt · {fmt(lider.votos - vice.votos)} votos
+            Diferença: {fmtDecimal(lider.pct - vice.pct)} pt · {fmt(lider.votos - vice.votos)} votos
           </span>
         )}
         {maioria && <span>Maioria absoluta 50%</span>}

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { cargoBase, destinoTurno, localCargo, nomeCargo, semSegundoTurno, turnosDe } from '../../src/dominio/cargo.ts';
 import { faseVotacao, rotuloEstado, situacaoApuracao } from '../../src/dominio/fase.ts';
 import { coresFinalistas, corDoLider, finalistas } from '../../src/dominio/duelo.ts';
-import { placarDe, regioesVencidas, rotuloRegioesVencidas } from '../../src/dominio/placar.ts';
+import { pctNaRegiao, placarDe, primeiroNome, regioesVencidas, rotuloRegioesVencidas } from '../../src/dominio/placar.ts';
 import { nomeDaRegiao, tituloDaAba } from '../../src/dominio/titulo.ts';
 import { textoSituacao } from '../../src/dominio/situacao.ts';
 import { corPartido } from '../../src/lib/util.ts';
@@ -136,4 +136,13 @@ test('texto da situação do candidato', () => {
   assert.equal(textoSituacao(c({ status: 'segundo-turno', matematicamente: 'eleito' })), 'Vai ao 2º turno');
   assert.equal(textoSituacao(c({ matematicamente: 'eleito' })), 'Matematicamente eleito');
   assert.equal(textoSituacao(c({ matematicamente: 'segundo-turno' })), '2º turno garantido');
+});
+
+test('pctNaRegiao e primeiroNome', () => {
+  const r = { lider: { numero: '13', pct: 52.1 }, segundo: { numero: '22', pct: 40 } };
+  assert.equal(pctNaRegiao(r, '13'), 52.1);
+  assert.equal(pctNaRegiao(r, '22'), 40);
+  assert.equal(pctNaRegiao(r, '30'), null);
+  assert.equal(pctNaRegiao(null, '13'), null);
+  assert.equal(primeiroNome('  FLÁVIO BOLSONARO '), 'Flávio');
 });

@@ -2,9 +2,7 @@ import { type CSSProperties } from 'react';
 import type { MapaDados } from '../../lib/types';
 import { LinkTela } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
-import { UF_NOMES, corPartido } from '../../lib/util';
-
-const pf1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+import { UF_NOMES, corPartido, fmtDecimal1, siglaUf } from '../../lib/util';
 
 /**
  * Faixa rolável com o líder de cada UF (e do exterior), do mesmo /api/mapa do nível Brasil. Cada célula
@@ -29,9 +27,9 @@ export function TickerUFs({ ufs, dados }: {
                 style={{ '--cor': cor ? tema.preench(cor) : 'var(--borda)' } as CSSProperties}
                 title={l ? `${UF_NOMES[uf]}: ${l.nome} (${l.partido}) lidera` : UF_NOMES[uf]}
               >
-                <span className="ticker-uf">{uf === 'zz' ? 'EXT' : uf.toUpperCase()}</span>
+                <span className="ticker-uf">{siglaUf(uf)}</span>
                 <span className="ticker-lider" style={cor ? { color: tema.texto(cor) } : undefined}>
-                  {l ? `${l.nome.slice(0, 3).toUpperCase()} ${pf1.format(l.pct)}` : '—'}
+                  {l ? `${l.nome.slice(0, 3).toUpperCase()} ${fmtDecimal1(l.pct)}` : '—'}
                 </span>
               </LinkTela>
             </li>

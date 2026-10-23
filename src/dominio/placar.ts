@@ -1,4 +1,4 @@
-import type { Candidato, Cargo, Local, MapaDados, Resultado } from '../lib/types';
+import type { Candidato, Cargo, Local, MapaDados, Resultado, Resumo } from '../lib/types';
 import { corPartido } from '../lib/util';
 
 export interface Placar {
@@ -33,3 +33,16 @@ export function rotuloRegioesVencidas(local: Local) {
 /** Quantas regiões o candidato (pelo número) lidera. */
 export const regioesVencidas = (dados: MapaDados | null | undefined, numero: string) =>
   Object.values(dados ?? {}).filter((x) => x?.lider?.numero === numero).length;
+
+/** % de um candidato numa região, se ele estiver entre os dois primeiros dela. */
+export function pctNaRegiao(r: Resumo | null | undefined, numero: string) {
+  if (r?.lider?.numero === numero) return r.lider.pct;
+  if (r?.segundo?.numero === numero) return r.segundo.pct;
+  return null;
+}
+
+/** Primeiro nome de urna: "Flávio Bolsonaro" → "Flávio". */
+export const primeiroNome = (nome: string) => {
+  const p = nome.trim().split(/\s+/)[0] ?? '';
+  return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+};

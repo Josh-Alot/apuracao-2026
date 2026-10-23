@@ -1,11 +1,9 @@
 import { type CSSProperties } from 'react';
 import type { Candidato, MapaDados } from '../../lib/types';
 import { LinkTela } from '../../rota/Link';
-import { pctNaRegiao, primeiroNome } from './DiferencaUF';
+import { pctNaRegiao, primeiroNome } from '../../dominio/placar';
 import { useCores } from '../../lib/tema';
-import { corPartido, fmt, fmtPct, titulo } from '../../lib/util';
-
-const pf2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+import { corPartido, fmt, fmtDecimal, fmtPct, titulo } from '../../lib/util';
 
 /** Eleitorado mínimo para entrar nas disputas apertadas (municípios pequenos empatam por poucos votos). */
 const MIN_ELEITORES_APERTADA = 75_000;
@@ -85,7 +83,7 @@ export function DestaquesUF({ dados, par, nome, uf, total, onVerTodos }: Props) 
                 <LinkTela para={{ uf, mun: cd }}>
                   <strong>{nome(cd)}</strong>
                   <span style={{ color: tema.texto(corPartido(r!.lider!.partido)) }}>
-                    {primeiroNome(r!.lider!.nome)} +{pf2.format(r!.lider!.pct - r!.segundo!.pct)} pt
+                    {primeiroNome(r!.lider!.nome)} +{fmtDecimal(r!.lider!.pct - r!.segundo!.pct)} pt
                   </span>
                 </LinkTela>
               </li>

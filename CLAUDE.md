@@ -183,7 +183,7 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
     cargo.ts         cargoBase, nomeCargo, turnosDe, localCargo, destinoTurno (troca de cargo/turno mantendo a UF)
     fase.ts          faseVotacao (antes/votando/aguardando/…), situacaoApuracao (% apurado, TSE indisponível), rotuloEstado
     duelo.ts         2º turno: finalistas, coresFinalistas, corDoLider
-    placar.ts        placarDe (os dois da frente ou os finalistas, com cores), regioesVencidas
+    placar.ts        placarDe (os dois da frente ou os finalistas, com cores), regioesVencidas, pctNaRegiao, primeiroNome
     situacao.ts      textoSituacao: "Eleito", "Vai ao 2º turno", "Matematicamente eleito"… (placar e ficha)
     titulo.ts        tituloDaAba (document.title), nomeDaRegiao
   lib/
