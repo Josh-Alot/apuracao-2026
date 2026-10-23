@@ -65,10 +65,12 @@ compartilhado/     O que front e servidor usam igual, sem build
                    O front importa (`import type`, via src/lib/types.ts) e o servidor anota em JSDoc (`@import`,
                    `@returns`); `npm run typecheck` confere os dois lados. Só tipos: não existe api.mjs
   rotas.mjs        Rotas públicas e títulos das páginas (tipos em rotas.d.mts); front e server/seo.mjs
+  nomes.mjs        titulo ("SÃO JOSÉ" → "São José"), cargoBase e nomeCargo (tipos em nomes.d.mts): o <title> do
+                   servidor bate com o do front; o front reexporta por lib/util.ts e dominio/cargo.ts
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
   index.mjs        Servidor HTTP: despacho das rotas (as JSON vêm da tabela de rotas/index.mjs; malhas, candidato,
                    SSE e prévia/flags têm resposta própria), ETag/304 das respostas JSON, arquivos estáticos
-  http.mjs         HttpError e validação comum (cargoDe, validarUf)
+  http.mjs         HttpError, etagDe (API e sitemaps) e validação comum (cargoDe, validarUf)
   rotas/           Uma rota (ou par de rotas) por arquivo; cada handler (query, flags) declara o tipo da resposta
     index.mjs        Tabela caminho → handler (ROTAS_JSON)
     config.mjs       /api/config (config + `encerrada` + flags) e /api/municipios
@@ -96,6 +98,8 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   candidatos.mjs   /api/candidato/:sq — perfil e bens; lê dados/candidatos-2026.tsv.gz no 1º pedido (buffer + índice)
   seo.mjs          HTML por rota (title, description, canonical, Open Graph, JSON-LD, resumo em texto no #root), 404 de
                    verdade, robots.txt, sitemaps, SITE_URL/301 e `candidatura` do /api/candidato (ver "SEO" abaixo)
+  scripts/comum.mjs       O que os scripts usam igual: opcao(), zips dos Dados Abertos (.cache/dados-abertos),
+                          lerCsv (latin1, ";") e gravarJson (gzip determinístico, via .tmp)
   scripts/candidatos.mjs  `npm run candidatos`: baixa os CSVs dos Dados Abertos e gera o .tsv.gz
   scripts/arquivar.mjs    `npm run arquivar`: baixa os resultados finais e grava em arquivo/
   scripts/simular-2turno.mjs  `npm run simular-2turno`: gera simulacao/ a partir do 2º turno de 2022
@@ -136,7 +140,8 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
   apuracao/
     useFaseApuracao.ts Aberta/encerrada/tempo real, intervalos (`ATUALIZA_*_MS`) e `vale` (staleTime) do momento
     AvisoVotacao.tsx   Faixa âmbar acima da faixa de status: "votação ainda não começou / em andamento (contagem
-                       HH:MM:SS) / urnas fechadas"; `useAgora` (relógio de 15 s)
+                       HH:MM:SS) / urnas fechadas"
+    useRelogio.ts      Relógio que só anda enquanto ativo (15 s na fase da apuração, 1 s nas contagens regressivas)
     ProximaAtualizacao.tsx "a cada 30 s · próxima em 12 s" (usa `proxima` do useConsulta); na faixa de status
     ProximoPlantao.tsx Caixa "Próximo plantão" (2º turno na config, votação ainda não começou)
   features/
@@ -180,7 +185,8 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
     cargo.ts         cargoBase, nomeCargo, turnosDe, localCargo, destinoTurno (troca de cargo/turno mantendo a UF)
     fase.ts          faseVotacao (antes/votando/aguardando/…), situacaoApuracao (% apurado, TSE indisponível), rotuloEstado
     duelo.ts         2º turno: finalistas, coresFinalistas, corDoLider
-    placar.ts        placarDe (os dois da frente ou os finalistas, com cores), regioesVencidas
+    placar.ts        placarDe (os dois da frente ou os finalistas, com cores), regioesVencidas, pctNaRegiao, primeiroNome
+    situacao.ts      textoSituacao: "Eleito", "Vai ao 2º turno", "Matematicamente eleito"… (placar e ficha)
     titulo.ts        tituloDaAba (document.title), nomeDaRegiao
   lib/
     util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos e o ajuste delas ao tema (OKLCH)

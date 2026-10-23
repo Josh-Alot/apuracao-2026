@@ -1,26 +1,9 @@
 import { type CSSProperties } from 'react';
-import type { Candidato, MapaDados, Resumo } from '../../lib/types';
+import type { Candidato, MapaDados } from '../../lib/types';
 import { LinkTela } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
-import { UF_NOMES } from '../../lib/util';
-
-const pf1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'always' });
-
-/** "+35,8" / "−4,1" (sinal de menos tipográfico). */
-const comSinal = (n: number) => pf1.format(n).replace('-', '−');
-
-/** % de um candidato numa região, se ele estiver entre os dois primeiros dela. */
-export function pctNaRegiao(r: Resumo | null | undefined, numero: string) {
-  if (r?.lider?.numero === numero) return r.lider.pct;
-  if (r?.segundo?.numero === numero) return r.segundo.pct;
-  return null;
-}
-
-/** Primeiro nome de urna: "Flávio Bolsonaro" → "Flávio". */
-export const primeiroNome = (nome: string) => {
-  const p = nome.trim().split(/\s+/)[0] ?? '';
-  return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
-};
+import { UF_NOMES, fmtDiferenca1, siglaUf } from '../../lib/util';
+import { pctNaRegiao, primeiroNome } from '../../dominio/placar';
 
 /**
  * Diferença entre os dois primeiros colocados nacionais em cada UF: barra para a esquerda onde o 1º colocado
@@ -51,11 +34,11 @@ export function DiferencaUF({ a, b, cores, ufs, dados }: {
           return (
             <li key={uf}>
               <LinkTela para={{ uf }} title={UF_NOMES[uf]}>
-                <span className="muted">{uf === 'zz' ? 'EXT' : uf.toUpperCase()}</span>
+                <span className="muted">{siglaUf(uf)}</span>
                 <span className="dif-metade dif-esquerda">{dif != null && dif >= 0 && <i style={barra} />}</span>
                 <span className="dif-metade dif-direita">{dif != null && dif < 0 && <i style={barra} />}</span>
                 <span className="dif-valor" style={cor ? { color: tema.texto(cor) } : undefined}>
-                  {dif == null ? '—' : comSinal(dif)}
+                  {dif == null ? '—' : fmtDiferenca1(dif)}
                 </span>
               </LinkTela>
             </li>

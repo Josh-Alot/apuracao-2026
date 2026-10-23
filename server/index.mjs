@@ -2,14 +2,13 @@
 // Aqui só o despacho; as rotas JSON ficam em server/rotas/ (tabela em rotas/index.mjs).
 
 import http from 'node:http';
-import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assinar } from './aovivo.mjs';
 import { getCandidato } from './candidatos.mjs';
 import { flagsDe, rotaPreview, rotaFlags } from './flags.mjs';
-import { validarUf } from './http.mjs';
+import { etagDe, validarUf } from './http.mjs';
 import { redirecionarHost, responderPagina, responderRobots, responderSitemap, candidaturaDe } from './seo.mjs';
 import { ROTAS_JSON } from './rotas/index.mjs';
 import { paramsResultado } from './rotas/resultado.mjs';
@@ -65,7 +64,7 @@ const server = http.createServer(async (req, res) => {
     // Respostas de sucesso levam ETag e "no-cache": o navegador guarda, mas sempre revalida — e se
     // nada mudou recebe 304 sem corpo (o polling de 30 s deixa de baixar o JSON inteiro de novo).
     if (status === 200 && url.pathname !== '/api/saude') {
-      const etag = `"${createHash('sha1').update(texto).digest('base64url').slice(0, 22)}"`;
+      const etag = etagDe(texto);
       const cabecalhos = { etag, 'cache-control': 'no-cache' };
       if (req.headers['if-none-match'] === etag) {
         res.writeHead(304, cabecalhos);

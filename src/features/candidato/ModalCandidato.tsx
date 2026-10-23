@@ -3,6 +3,7 @@ import type { Candidato } from '../../lib/types';
 import { consultas } from '../../api/consultas';
 import { useConsulta } from '../../api/useConsulta';
 import { useCores } from '../../lib/tema';
+import { textoSituacao } from '../../dominio/situacao';
 import { caminhoCandidato } from '../../../compartilhado/rotas.mjs';
 import { Num } from '../../ui/Num';
 import { SeloSituacao } from '../../ui/SeloSituacao';
@@ -30,15 +31,6 @@ function idade(nascimento: string) {
   return anos;
 }
 
-/** Texto da situação na linha do número/partido ("vai ao 2º turno"), ou null. */
-function situacao(c: Candidato) {
-  if (c.status === 'eleito') return `Eleito${c.detalhe ? ` ${c.detalhe}` : ''}`;
-  if (c.status === 'segundo-turno') return 'Vai ao 2º turno';
-  if (c.matematicamente === 'eleito') return 'Matematicamente eleito';
-  if (c.matematicamente === 'segundo-turno') return '2º turno garantido';
-  return null;
-}
-
 /** Ficha do candidato: o que já veio no resultado + perfil e bens dos Dados Abertos do TSE. */
 export function ModalCandidato({ c, pos, cargo, local, vencidas, onFechar }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -64,7 +56,7 @@ export function ModalCandidato({ c, pos, cargo, local, vencidas, onFechar }: Pro
     ? `${d.nascimento}${d.munNasc ? ` · ${titulo(d.munNasc)}` : ''}${d.ufNasc ? `/${d.ufNasc}` : ''}`
     : null;
   const bens = d ? (todosBens ? d.bens : d.bens.slice(0, BENS_INICIAIS)) : [];
-  const sit = situacao(c);
+  const sit = textoSituacao(c, { detalhe: true });
   // Os demais selos (suplência, puxador, votos anulados) seguem embaixo, como na tabela.
   const outrosSelos = c.status === 'suplente' || c.status === 'nao-eleito' || c.status === 'outro' || !!c.chapa
     || (!!c.destinoVotos && c.destinoVotos !== 'Válido');

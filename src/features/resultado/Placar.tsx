@@ -3,12 +3,10 @@ import type { Candidato, MapaDados, Resultado, Resumo } from '../../lib/types';
 import { Num } from '../../ui/Num';
 import { cliqueSimples } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
-import { fmt, fmtPct, titulo } from '../../lib/util';
+import { textoSituacao } from '../../dominio/situacao';
+import { fmt, fmtDecimal, fmtPct, titulo } from '../../lib/util';
 import { caminhoCandidato } from '../../../compartilhado/rotas.mjs';
 import { regioesVencidas } from '../../dominio/placar';
-
-const pf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtNumPct = (n: number) => pf.format(n);
 
 interface Props {
   resultado: Resultado;
@@ -30,15 +28,6 @@ interface Props {
   rotulo?: ReactNode;
   carregando?: boolean;
   onAbrir: (c: Candidato) => void;
-}
-
-/** Texto do selo de situação no placar (bloco invertido), ou null. */
-function situacao(c: Candidato) {
-  if (c.status === 'eleito') return 'Eleito';
-  if (c.status === 'segundo-turno') return 'Vai ao 2º turno';
-  if (c.matematicamente === 'eleito') return 'Matematicamente eleito';
-  if (c.matematicamente === 'segundo-turno') return '2º turno garantido';
-  return null;
 }
 
 /**
@@ -69,7 +58,7 @@ export function Placar({
       {rotulo}
       <div className="placar-colunas">
         {par.map((c, i) => {
-          const sit = situacao(c);
+          const sit = textoSituacao(c);
           const n = vencidas(c.numero);
           const vc = c.vices?.find((v) => v.tipo === 'v');
           const c1 = primeiroTurno?.candidatos.find((x) => x.numero === c.numero);
@@ -94,7 +83,7 @@ export function Placar({
               </p>
               <div className="placar-numeros">
                 <span className={`placar-pct ${vazio ? 'vazio' : ''}`}>
-                  {vazio ? '––,––' : <Num valor={c.pct} formatar={fmtNumPct} />}
+                  {vazio ? '––,––' : <Num valor={c.pct} formatar={fmtDecimal} />}
                   <span className="placar-sinal">%</span>
                 </span>
                 {!compacto && (
@@ -139,7 +128,7 @@ export function Placar({
       <div className="placar-legenda">
         {!vazio && (
           <span>
-            Diferença: {pf.format(lider.pct - vice.pct)} pt · {fmt(lider.votos - vice.votos)} votos
+            Diferença: {fmtDecimal(lider.pct - vice.pct)} pt · {fmt(lider.votos - vice.votos)} votos
           </span>
         )}
         {maioria && <span>Maioria absoluta 50%</span>}

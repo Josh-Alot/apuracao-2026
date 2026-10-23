@@ -7,45 +7,16 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import zlib from 'node:zlib';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { ROOT, baixarDadosAbertos, extrairCsv, lerCsvObjetos } from './comum.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ANO = 2026;
-const CACHE = path.join(ROOT, '.cache', 'dados-abertos');
 const SAIDA = path.join(ROOT, 'dados', `candidatos-${ANO}.tsv.gz`);
-const CDN = 'https://cdn.tse.jus.br/estatistica/sead/odsele';
 const CONJUNTOS = ['consulta_cand', 'consulta_cand_complementar', 'bem_candidato'];
 
+// Baixa sempre de novo: o TSE atualiza os CSVs (situação do registro, bens).
 async function baixar(nome) {
-  const zip = path.join(CACHE, `${nome}_${ANO}.zip`);
-  const res = await fetch(`${CDN}/${nome}/${nome}_${ANO}.zip`);
-  if (!res.ok) throw new Error(`${nome}: HTTP ${res.status}`);
-  await fs.writeFile(zip, Buffer.from(await res.arrayBuffer()));
-  const csv = `${nome}_${ANO}_BRASIL.csv`; // reúne todas as UFs
-  execFileSync('unzip', ['-oq', zip, csv, '-d', CACHE]);
-  return lerCsv(await fs.readFile(path.join(CACHE, csv)));
-}
-
-/** CSV do TSE: latin1, separador ";", todos os campos entre aspas. */
-function lerCsv(buf) {
-  const texto = new TextDecoder('latin1').decode(buf);
-  const linhas = [];
-  let campo = '', linha = [], aspas = false;
-  for (let i = 0; i < texto.length; i++) {
-    const ch = texto[i];
-    if (aspas) {
-      if (ch === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
-      else if (ch === '"') aspas = false;
-      else campo += ch;
-    } else if (ch === '"') aspas = true;
-    else if (ch === ';') { linha.push(campo); campo = ''; }
-    else if (ch === '\n') { linha.push(campo); linhas.push(linha); linha = []; campo = ''; }
-    else if (ch !== '\r') campo += ch;
-  }
-  if (campo || linha.length) { linha.push(campo); linhas.push(linha); }
-  const [cab, ...resto] = linhas;
-  return resto.map((l) => Object.fromEntries(cab.map((k, i) => [k, l[i]])));
+  const zip = await baixarDadosAbertos(nome, ANO, { forcar: true });
+  return lerCsvObjetos(await fs.readFile(extrairCsv(zip, `${nome}_${ANO}_BRASIL.csv`))); // reúne todas as UFs
 }
 
 /** Campo vazio no TSE: "#NULO", "#NE", "NÃO DIVULGÁVEL" etc. */
@@ -61,7 +32,6 @@ const num = (s) => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-await fs.mkdir(CACHE, { recursive: true });
 const [cand, compl, bens] = await Promise.all(CONJUNTOS.map(baixar));
 
 const candidatos = {};

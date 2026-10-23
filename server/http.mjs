@@ -1,11 +1,15 @@
 // Erros HTTP e validação dos parâmetros comuns às rotas da API.
 
+import { createHash } from 'node:crypto';
 import { getConfig, UFS } from './tse.mjs';
 import { cargoVisivel } from './flags.mjs';
 
 export class HttpError extends Error {
   constructor(status, msg) { super(msg); this.status = status; }
 }
+
+/** ETag forte do corpo (respostas JSON da API e sitemaps): 22 caracteres do SHA-1, entre aspas. */
+export const etagDe = (corpo) => `"${createHash('sha1').update(corpo).digest('base64url').slice(0, 22)}"`;
 
 /** Cargo pelo id; um cargo escondido por flag (ex.: 2º turno antes da hora) responde como desconhecido. */
 export async function cargoDe(id, flags) {

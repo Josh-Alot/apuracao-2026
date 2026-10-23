@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import type { AoVivo } from '../api/cliente';
+import { useRelogio } from './useRelogio';
 
 interface Props {
   /** Horário (ms) da próxima consulta automática; null = atualização pausada. */
@@ -26,14 +26,7 @@ const fmtIntervalo = (ms: number) => (ms >= 60_000 ? `${ms / 60_000} min` : `${m
 
 /** "Atualiza a cada 30 s · próxima em 12 s", com contagem regressiva por segundo. */
 export function ProximaAtualizacao({ proxima, intervalo, carregando, rotulo = 'Atualização automática', aoVivo, inicio, encerrada, compacto }: Props) {
-  const [agora, setAgora] = useState(Date.now);
-  const relogio = !!proxima || !!aoVivo;
-  useEffect(() => {
-    if (!relogio) return;
-    setAgora(Date.now());
-    const id = setInterval(() => setAgora(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [relogio]);
+  const agora = useRelogio(!!proxima || !!aoVivo, 1000);
 
   if (aoVivo) {
     const s = aoVivo.intervalo / 1000;

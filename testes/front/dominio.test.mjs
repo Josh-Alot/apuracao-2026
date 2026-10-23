@@ -5,8 +5,9 @@ import assert from 'node:assert/strict';
 import { cargoBase, destinoTurno, localCargo, nomeCargo, semSegundoTurno, turnosDe } from '../../src/dominio/cargo.ts';
 import { faseVotacao, rotuloEstado, situacaoApuracao } from '../../src/dominio/fase.ts';
 import { coresFinalistas, corDoLider, finalistas } from '../../src/dominio/duelo.ts';
-import { placarDe, regioesVencidas, rotuloRegioesVencidas } from '../../src/dominio/placar.ts';
+import { pctNaRegiao, placarDe, primeiroNome, regioesVencidas, rotuloRegioesVencidas } from '../../src/dominio/placar.ts';
 import { nomeDaRegiao, tituloDaAba } from '../../src/dominio/titulo.ts';
+import { textoSituacao } from '../../src/dominio/situacao.ts';
 import { corPartido } from '../../src/lib/util.ts';
 
 const cargo = (eleicao, cd, turno, ufs, extra = {}) => ({
@@ -122,4 +123,26 @@ test('títulos', () => {
   assert.equal(tituloDaAba({ ...base, telaTemCargo: false }), 'Apuração.org: resultados das Eleições 2026 ao vivo');
   assert.equal(tituloDaAba({ ...base, ficha: 'sq13' }), null);
   assert.equal(tituloDaAba({ ...base, ficha: 'sq13', candidato: cand('13', 'PT', 1) }), 'Cand 13 (PT): votos, perfil e bens em 2026');
+});
+
+test('texto da situação do candidato', () => {
+  const c = (extra) => ({ ...cand('13', 'PT', 100), status: null, detalhe: null, matematicamente: null, ...extra });
+  assert.equal(textoSituacao(c({})), null);
+  assert.equal(textoSituacao(c({ status: 'eleito', detalhe: 'por QP' })), 'Eleito');
+  assert.equal(textoSituacao(c({ status: 'eleito', detalhe: 'por QP' }), { detalhe: true }), 'Eleito por QP');
+  assert.equal(textoSituacao(c({ status: 'eleito' }), { detalhe: true }), 'Eleito');
+  assert.equal(textoSituacao(c({ status: 'segundo-turno' })), 'Vai ao 2º turno');
+  // A situação oficial vem antes do "matematicamente".
+  assert.equal(textoSituacao(c({ status: 'segundo-turno', matematicamente: 'eleito' })), 'Vai ao 2º turno');
+  assert.equal(textoSituacao(c({ matematicamente: 'eleito' })), 'Matematicamente eleito');
+  assert.equal(textoSituacao(c({ matematicamente: 'segundo-turno' })), '2º turno garantido');
+});
+
+test('pctNaRegiao e primeiroNome', () => {
+  const r = { lider: { numero: '13', pct: 52.1 }, segundo: { numero: '22', pct: 40 } };
+  assert.equal(pctNaRegiao(r, '13'), 52.1);
+  assert.equal(pctNaRegiao(r, '22'), 40);
+  assert.equal(pctNaRegiao(r, '30'), null);
+  assert.equal(pctNaRegiao(null, '13'), null);
+  assert.equal(primeiroNome('  FLÁVIO BOLSONARO '), 'Flávio');
 });
