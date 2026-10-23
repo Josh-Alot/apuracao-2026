@@ -44,3 +44,74 @@
   src: url('../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2') format('woff2');
   unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
 }
+
+/*
+ * Fontes de reserva com as métricas da Archivo e da Plex: até a fonte chegar, o texto aparece numa fonte do sistema
+ * (Arial/Helvetica/Roboto, mono do sistema) ajustada para ocupar a mesma largura e altura, e a troca não desloca a
+ * página. size-adjust = largura média da Archivo / da Arial num texto em português (medido com fontTools sobre os
+ * arquivos acima e a Liberation Sans, com as métricas da Arial); os títulos condensados (62/70/75%) têm face própria
+ * pelo font-stretch, porque a fonte do sistema não tem largura variável. Mudou a fonte ou o font-stretch dos títulos,
+ * meça de novo.
+ */
+/* corpo (largura normal) */
+@font-face {
+  font-family: 'Archivo Reserva'; font-weight: 100 549; font-stretch: 100% 125%;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('Helvetica'), local('Helvetica Neue'), local('Roboto'), local('Roboto-Regular');
+  size-adjust: 99.0%; ascent-override: 88.7%; descent-override: 21.2%; line-gap-override: 0%;
+}
+/* títulos h1–h4 e negrito (largura normal) */
+@font-face {
+  font-family: 'Archivo Reserva'; font-weight: 550 900; font-stretch: 100% 125%;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Helvetica Bold'), local('Helvetica Neue Bold'), local('Roboto Bold'), local('Roboto-Bold');
+  size-adjust: 103.6%; ascent-override: 84.7%; descent-override: 20.3%; line-gap-override: 0%;
+}
+/* títulos condensados a 62% (placar, nomes) */
+@font-face {
+  font-family: 'Archivo Reserva'; font-weight: 100 900; font-stretch: 62% 66%;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Helvetica Bold'), local('Helvetica Neue Bold'), local('Roboto Bold'), local('Roboto-Bold');
+  size-adjust: 68.5%; ascent-override: 128.2%; descent-override: 30.7%; line-gap-override: 0%;
+}
+/* condensados a 70% */
+@font-face {
+  font-family: 'Archivo Reserva'; font-weight: 100 900; font-stretch: 67% 72%;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Helvetica Bold'), local('Helvetica Neue Bold'), local('Roboto Bold'), local('Roboto-Bold');
+  size-adjust: 75.8%; ascent-override: 115.8%; descent-override: 27.7%; line-gap-override: 0%;
+}
+/* condensados a 75% */
+@font-face {
+  font-family: 'Archivo Reserva'; font-weight: 100 900; font-stretch: 73% 99%;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Helvetica Bold'), local('Helvetica Neue Bold'), local('Roboto Bold'), local('Roboto-Bold');
+  size-adjust: 80.4%; ascent-override: 109.2%; descent-override: 26.1%; line-gap-override: 0%;
+}
+/* Algarismos dos condensados (o % grande do placar): mais largos que as letras na Archivo, têm size-adjust próprio.
+   Declarados depois das faces acima: para o mesmo caractere, vale a última face cujo unicode-range o cobre. */
+@font-face {
+  font-family: 'Archivo Reserva'; font-weight: 100 900; font-stretch: 62% 66%;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Helvetica Bold'), local('Helvetica Neue Bold'), local('Roboto Bold'), local('Roboto-Bold');
+  unicode-range: U+0025, U+002C, U+002E, U+0030-0039;
+  size-adjust: 73.0%; ascent-override: 120.3%; descent-override: 28.8%; line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Archivo Reserva'; font-weight: 100 900; font-stretch: 67% 72%;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Helvetica Bold'), local('Helvetica Neue Bold'), local('Roboto Bold'), local('Roboto-Bold');
+  unicode-range: U+0025, U+002C, U+002E, U+0030-0039;
+  size-adjust: 82.5%; ascent-override: 106.4%; descent-override: 25.5%; line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Archivo Reserva'; font-weight: 100 900; font-stretch: 73% 99%;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Helvetica Bold'), local('Helvetica Neue Bold'), local('Roboto Bold'), local('Roboto-Bold');
+  unicode-range: U+0025, U+002C, U+002E, U+0030-0039;
+  size-adjust: 87.5%; ascent-override: 100.3%; descent-override: 24.0%; line-gap-override: 0%;
+}
+/* IBM Plex Mono 400/500 (avanço 0,6 em, como as monos do sistema) */
+@font-face {
+  font-family: 'Plex Reserva'; font-weight: 100 549; font-stretch: normal;
+  src: local('Menlo'), local('Menlo-Regular'), local('DejaVu Sans Mono'), local('Liberation Mono'), local('Courier New'), local('CourierNewPSMT'), local('Droid Sans Mono');
+  size-adjust: 100.0%; ascent-override: 102.5%; descent-override: 27.5%; line-gap-override: 0%;
+}
+/* IBM Plex Mono 600 */
+@font-face {
+  font-family: 'Plex Reserva'; font-weight: 550 900; font-stretch: normal;
+  src: local('Menlo Bold'), local('Menlo-Bold'), local('DejaVu Sans Mono Bold'), local('Liberation Mono Bold'), local('Courier New Bold'), local('CourierNewPS-BoldMT');
+  size-adjust: 100.0%; ascent-override: 102.5%; descent-override: 27.5%; line-gap-override: 0%;
+}
