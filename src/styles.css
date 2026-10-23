@@ -267,19 +267,21 @@ p { margin: 0; }
 
 /* ======================= faixa de status ======================= */
 
+/* Os turnos ficam sempre à direita, no mesmo lugar nos dois turnos: quem quebra linha são os itens de status. */
 .faixa-status {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 24px;
   padding-block: 10px; background: var(--faixa); border-bottom: 1px solid var(--borda);
   font: 12px/1.4 var(--fonte-dado); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
 }
-.faixa-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; }
+/* Altura mínima = a dos botões de turno: numa linha, o texto fica centrado neles; em duas, eles não descem. */
+.faixa-info { flex: 1 1 auto; min-width: 0; min-height: 32px; display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 4px 20px; }
 .faixa-estado { display: inline-flex; align-items: center; gap: 8px; color: var(--ao-vivo); font-weight: 600; }
 .faixa-estado i { width: 8px; height: 8px; background: var(--ao-vivo); }
 .faixa-pct { color: var(--texto); font-weight: 600; }
 .auto { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .auto input { accent-color: var(--texto); margin: 0; }
 
-.turnos { display: flex; gap: 6px; }
+.turnos { flex: none; display: flex; gap: 6px; }
 .turnos a {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px;
   border: 1px solid var(--borda); color: var(--muted); white-space: nowrap;
@@ -804,7 +806,8 @@ tr.clicavel:hover .cand-abrir { text-decoration: underline; text-underline-offse
   .aviso-contagem { align-items: flex-start; }
 
   .faixa-status { flex-direction: column; align-items: stretch; gap: 10px; }
-  .turnos { display: grid; grid-template-columns: 1fr 1fr; }
+  /* Acima do status: o texto muda de altura entre os turnos, e os botões não podem mudar de lugar. */
+  .turnos { order: -1; display: grid; grid-template-columns: 1fr 1fr; }
   .turnos a { height: 40px; }
 
   .titulo-tela { font-size: 44px; }
