@@ -193,7 +193,10 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
 
 **Arquitetura por funcionalidade** (*feature-based*/*package by feature*, no estilo do Bulletproof React), com o
 TanStack Query como camada de estado do servidor. Reforma feita em outubro de 2026 (branch `feature/architecture`),
-antes do 2º turno, em fases que podem ser revertidas uma a uma.
+antes do 2º turno, em fases que podem ser revertidas uma a uma. Segunda reforma (branch `refactor/arquitetura`,
+um commit por fase): testes e CI, `App.tsx` dividido (`useDadosTela`, blocos em `app/`, `dominio/`, `NavegacaoContext`),
+contrato da API em `compartilhado/` com `checkJs` no servidor, `tse.mjs`/`index.mjs` separados em `server/tse/` e
+`server/rotas/`, e `memo` nos componentes pesados (re-render a cada evento do "ao vivo").
 
 **Camadas e regra de importação** (só para baixo; nunca entre features):
 
@@ -237,7 +240,8 @@ ui/  dominio/  lib/         peças sem regra de negócio (Num, esqueletos, Logo�
 | Roteamento | Roteador próprio (`rotas.mjs` + `useRota`/`useNavegacao`) | O mesmo arquivo valida rotas e gera títulos no servidor (SEO, 404 de verdade) | TanStack Router e React Router 7 (duplicariam as rotas e arriscariam o SEO) |
 | Estado da interface | `useState` no App + props; um contexto só (`NavegacaoContext`: caminhoDe, ir, prefetch) | O estado global de verdade é rota + config; a navegação vale para a tela inteira e tirou os pares `href`/`onSelect` de todos os links | Zustand, Jotai, Redux |
 | Dado no F5 | sessionStorage próprio (`guardarCacheCliente`), lido como `initialData` vencido | Mantém o limite de 150 KB por resposta e não serializa o cache inteiro a cada mudança | `@tanstack/query-sync-storage-persister` |
-| Prefetch | Só o resultado, com o ponteiro parado 120 ms ou com foco | Barato e com cache no servidor | Prefetch do mapa da UF (centenas de consultas ao TSE por UF) |
+| Prefetch | Só o resultado, com o ponteiro parado 120 ms ou com foco, nos links e nas regiões/zonas do mapa SVG (`onIntencao`) | Barato e com cache no servidor | Prefetch do mapa da UF (centenas de consultas ao TSE por UF) |
+| Re-render no "ao vivo" | `memo` nos componentes pesados que não dependem do resultado (`Mapa`, `IndiceRegioes`, `SeletorMunicipio`, `Hemiciclo`) e props estáveis (`useCallback`/`useMemo` no `PainelMapa`) | Medido em /presidente/sp (645 municípios, demo, dev): cada evento do SSE custava ~110 ms de render (mapa ~40 ms, índice de links ~67 ms, seletor ~22 ms); caiu para ~30 ms, o que de fato mostra o resultado | Consultas dentro das features com `select`: o mapa e o resultado são lidos por vários blocos da tela (placar, lateral, ticker, faixa), então o App re-renderizaria igual; o custo estava nos filhos, não no App |
 | Code splitting | `React.lazy` só na ficha e no hemiciclo | Aparecem sob interação ou abaixo do mapa | `BarraBusca` (fica no topo: carregar depois faria o layout pular) |
 
 **Regras do TanStack Query neste projeto**
@@ -262,8 +266,13 @@ ui/  dominio/  lib/         peças sem regra de negócio (Num, esqueletos, Logo�
 3. Consulta em `app/useDadosTela.ts`, componente ligado no `App.tsx` (ou num bloco de `app/`); regra pura em `dominio/`
    com teste. Se a feature precisar de algo de outra, suba esse algo para `ui/`/`lib/`.
 
-**Próximos passos possíveis** (fora da reforma, por risco perto da eleição): mover as consultas do App para dentro
-das features e usar `select` (menos re-render a cada SSE), prefetch ao passar o ponteiro no mapa SVG, e avaliar o
+**Componentes pesados e o "ao vivo"**: a cada evento do SSE o App renderiza de novo (o resultado mudou). Componente
+com centenas de elementos que não depende do resultado leva `memo`, e quem o usa passa props estáveis (`useCallback`,
+`useMemo`, objetos que vêm do cache do TanStack). Para conferir, envolva o bloco num `<Profiler>` do React e rode a
+demo numa UF grande (/presidente/sp): o mapa não deve aparecer a cada evento.
+
+**Próximos passos possíveis**: `memo` na coluna lateral (~12 ms por evento em dev; depende do placar, que muda a cada
+evento — precisaria de um par estável só com número/nome/cor), o `strict` no servidor (trabalho à parte) e avaliar o
 TanStack Router se as rotas crescerem.
 
 ### Estilo visual

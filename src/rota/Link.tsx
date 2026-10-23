@@ -28,7 +28,7 @@ export function useNavegacaoTela() {
 }
 
 /** Tempo com o ponteiro parado sobre o link antes de adiantar a consulta (passar o mouse por uma lista não dispara). */
-const INTENCAO_MS = 120;
+export const INTENCAO_MS = 120;
 
 type PropsA = AnchorHTMLAttributes<HTMLAnchorElement>;
 

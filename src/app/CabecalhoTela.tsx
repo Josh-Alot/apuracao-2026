@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { UF_NOMES, fmt, titulo } from '../lib/util';
 import { LinkTela } from '../rota/Link';
 import { SeletorMunicipio } from '../ui/SeletorMunicipio';
@@ -13,6 +14,7 @@ export function CabecalhoTela({ d, nomeRegiao, onEscolherMunicipio }: {
 }) {
   const { cargo, uf, local, munAtual, munsUf } = d;
   const r = d.resultado.data;
+  const opcoes = useMemo(() => munsUf.map((m) => ({ cd: m.cd, nome: titulo(m.nome) })), [munsUf]);
   return (
     <div className="cabecalho-tela">
       <div className="trilha-linha">
@@ -35,7 +37,7 @@ export function CabecalhoTela({ d, nomeRegiao, onEscolherMunicipio }: {
         {munsUf.length > 0 && (
           <SeletorMunicipio
             rotulo={uf === 'zz' ? 'Cidade' : 'Município'}
-            municipios={munsUf.map((m) => ({ cd: m.cd, nome: titulo(m.nome) }))}
+            municipios={opcoes}
             onEscolher={onEscolherMunicipio}
           />
         )}

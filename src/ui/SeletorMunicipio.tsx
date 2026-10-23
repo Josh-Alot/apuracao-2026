@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
-export function SeletorMunicipio({ rotulo, municipios, onEscolher }: {
+/** Campo "ir para…" com a lista de municípios da UF (centenas de opções): memoizado, não muda com o resultado. */
+export const SeletorMunicipio = memo(function SeletorMunicipio({ rotulo, municipios, onEscolher }: {
   rotulo: string; municipios: { cd: string; nome: string }[]; onEscolher: (cd: string) => void;
 }) {
   const [valor, setValor] = useState('');
@@ -22,4 +23,4 @@ export function SeletorMunicipio({ rotulo, municipios, onEscolher }: {
       </datalist>
     </label>
   );
-}
+});

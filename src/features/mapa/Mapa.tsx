@@ -1,10 +1,11 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { geoPath, geoTransform, type GeoPath } from 'd3-geo';
 import type { Feature, FeatureCollection } from 'geojson';
 import type { MapaDados, ModoMapa, Resumo, ResumoCandidato } from '../../lib/types';
 import { EsqueletoMapa } from '../../ui/Carregando';
 import { useCores } from '../../lib/tema';
 import { corApuracao, corPartido, fmt, fmtPct, misturar, titulo } from '../../lib/util';
+import { INTENCAO_MS } from '../../rota/Link';
 
 const W = 1000;
 const H = 820;
@@ -41,6 +42,11 @@ interface Props {
   /** Sigla de cada região escrita no mapa (UFs no mapa do Brasil). */
   rotulos?: boolean;
   onSelect: (chave: string) => void;
+  /**
+   * Ponteiro parado sobre uma região (ou zona) por INTENCAO_MS, como nos links: quem usa o mapa adianta os dados do
+   * destino do clique.
+   */
+  onIntencao?: (chave: string, zona: boolean) => void;
   /** Dica no fim do tooltip de cada região (ex.: "Clique para abrir as zonas →"). */
   dica?: (chave: string) => string | null;
   /** Ao lado da legenda (ex.: o cartão do exterior). */
@@ -169,13 +175,25 @@ function projetar(fc: FeatureCollection) {
   return { desenhos, quadros };
 }
 
-export function Mapa({
+/**
+ * Mapa SVG com centenas de regiões: memoizado, para o "ao vivo" do resultado (a cada evento do SSE a tela renderiza
+ * de novo) não redesenhar o mapa quando os dados dele não mudaram. Props estáveis entre renders (ver PainelMapa).
+ */
+export const Mapa = memo(function Mapa({
   geo, geoFalhou = false, chave, nome, dados, modo, selecionado, focar, rotuloRegiao, legendaPorPartido, segundoTurno, corLider, rotulos, onSelect,
-  dica, rodape, zonas,
+  onIntencao, dica, rodape, zonas,
 }: Props) {
   const tema = useCores();
   const ref = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ k: string; zona?: boolean; x: number; y: number } | null>(null);
+
+  // Ponteiro parado na mesma região por INTENCAO_MS: avisa quem usa o mapa (prefetch do destino do clique).
+  const sobre = hover ? `${hover.zona ? 'z' : 'r'}${hover.k}` : null;
+  useEffect(() => {
+    if (!sobre || !onIntencao) return;
+    const t = setTimeout(() => onIntencao(sobre.slice(1), sobre[0] === 'z'), INTENCAO_MS);
+    return () => clearTimeout(t);
+  }, [sobre, onIntencao]);
 
   const { regioes, quadros, caminhos } = useMemo(() => {
     if (!geo) return { regioes: [], quadros: [], caminhos: new Map<string, GeoPath>() };
@@ -560,7 +578,7 @@ export function Mapa({
       </div>
     </div>
   );
-}
+});
 
 /** Amostras "liderando / venceu / virou" de uma cor (legenda do 2º turno). */
 function AmostrasEstado({ cor }: { cor: string }) {

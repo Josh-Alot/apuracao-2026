@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { RETENTAR_MS } from '../api/cliente';
 import { ProximaAtualizacao } from '../apuracao/ProximaAtualizacao';
-import type { ModoMapa } from '../lib/types';
+import type { ModoMapa, ResumoCandidato } from '../lib/types';
 import { UF_NOMES, corPartido, titulo } from '../lib/util';
 import { LinkTela, useNavegacaoTela } from '../rota/Link';
 import { ListaRegioes } from '../ui/ListaRegioes';
@@ -11,7 +11,12 @@ import { CartaoExterior } from '../features/mapa/CartaoExterior';
 import { IndiceRegioes } from '../features/mapa/IndiceRegioes';
 import type { DadosTela } from './useDadosTela';
 
-/** Mapa da tela (ou a lista de cidades no exterior), com avisos e notas, e o índice de links das regiões abaixo. */
+const corDoPartido = (l: ResumoCandidato) => corPartido(l.partido);
+
+/**
+ * Mapa da tela (ou a lista de cidades no exterior), com avisos e notas, e o índice de links das regiões abaixo.
+ * As props do <Mapa> (memoizado) são estáveis entre renders: um evento do "ao vivo" do resultado não redesenha o SVG.
+ */
 export function PainelMapa({ d, modo, onModo, indiceAberto, onIndice }: {
   d: DadosTela;
   modo: ModoMapa;
@@ -19,7 +24,7 @@ export function PainelMapa({ d, modo, onModo, indiceAberto, onIndice }: {
   indiceAberto: boolean;
   onIndice: (aberto: boolean) => void;
 }) {
-  const { ir } = useNavegacaoTela();
+  const { ir, caminhoDe, prefetch } = useNavegacaoTela();
   const { cargo, uf, local, apuracao, situacao, mapaBr, mapaUf, mapaZonas, mapaAtual, munAtual, munsUf, porCd, zonasNoMapa, precisaUf, segundoTurno } = d;
   const { encerrada, intervaloMapa, apuracaoAberta } = apuracao;
 
@@ -34,16 +39,33 @@ export function PainelMapa({ d, modo, onModo, indiceAberto, onIndice }: {
     return munsUf.map((m) => ({ chave: m.cd, nome: titulo(m.nome) }));
   }, [cargo, uf, precisaUf, munsUf]);
 
-  const exterior = !uf && cargo.ufs.includes('zz') && (
-    mapaBr.data?.zz?.lider ? (
-      <CartaoExterior
-        dados={mapaBr.data.zz}
-        corLider={segundoTurno && cargo.escopo === 'br' ? d.corLider : (l) => corPartido(l.partido)}
-      />
+  const exteriorDados = mapaBr.data?.zz;
+  const exterior = useMemo(() => !uf && cargo.ufs.includes('zz') && (
+    exteriorDados?.lider ? (
+      <CartaoExterior dados={exteriorDados} corLider={segundoTurno && cargo.escopo === 'br' ? d.corLider : corDoPartido} />
     ) : (
       <LinkTela className="cartao-exterior" para={{ uf: 'zz' }}>Ver votos no exterior →</LinkTela>
     )
-  );
+  ), [uf, cargo, exteriorDados, segundoTurno, d.corLider]);
+
+  // Destino do clique numa região: a UF (no Brasil), o município (na UF) ou a zona (no município aberto).
+  const munCd = munAtual?.cd;
+  const destino = useCallback((k: string, zona: boolean) => (
+    zona ? { uf, mun: munCd, zona: k } : uf ? { uf, mun: k } : { uf: k }
+  ), [uf, munCd]);
+  const destinoIndice = useCallback((k: string) => destino(k, false), [destino]);
+  const aoSelecionar = useCallback((k: string) => ir(destino(k, false)), [ir, destino]);
+  // Ponteiro parado numa região: o resultado do destino começa a vir antes do clique (como nos links).
+  const aoPairar = useCallback((k: string, zona: boolean) => prefetch(caminhoDe(destino(k, zona))), [prefetch, caminhoDe, destino]);
+  const dica = useCallback((k: string) => (!uf
+    ? 'Clique para abrir o estado →'
+    : (porCd.get(k)?.zonas.length ?? 0) > 1 ? 'Clique para abrir as zonas →' : 'Clique para abrir o município →'), [uf, porCd]);
+  const zonas = useMemo(() => (zonasNoMapa && munCd ? {
+    geo: zonasNoMapa,
+    dados: mapaZonas.data,
+    selecionada: local.zona,
+    onSelect: (z: string) => ir(destino(z, true)),
+  } : undefined), [zonasNoMapa, munCd, mapaZonas.data, local.zona, ir, destino]);
 
   return (
     <div className="coluna-mapa">
@@ -93,17 +115,11 @@ export function PainelMapa({ d, modo, onModo, indiceAberto, onIndice }: {
             segundoTurno={segundoTurno}
             corLider={segundoTurno && !(!uf && cargo.escopo === 'uf') ? d.corLider : undefined}
             rotulos={segundoTurno && !uf}
-            onSelect={(k) => ir(uf ? { uf, mun: k } : { uf: k })}
-            dica={(k) => (!uf
-              ? 'Clique para abrir o estado →'
-              : (porCd.get(k)?.zonas.length ?? 0) > 1 ? 'Clique para abrir as zonas →' : 'Clique para abrir o município →')}
+            onSelect={aoSelecionar}
+            onIntencao={aoPairar}
+            dica={dica}
             rodape={exterior}
-            zonas={zonasNoMapa && munAtual ? {
-              geo: zonasNoMapa,
-              dados: mapaZonas.data,
-              selecionada: local.zona,
-              onSelect: (z) => ir({ uf, mun: munAtual.cd, zona: z }),
-            } : undefined}
+            zonas={zonas}
           />
         )}
 
@@ -137,7 +153,7 @@ export function PainelMapa({ d, modo, onModo, indiceAberto, onIndice }: {
           itens={indice}
           aberto={indiceAberto}
           onAlternar={onIndice}
-          destino={(k) => (uf ? { uf, mun: k } : { uf: k })}
+          destino={destinoIndice}
         />
       )}
     </div>

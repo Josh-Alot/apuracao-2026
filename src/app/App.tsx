@@ -44,6 +44,8 @@ export default function App() {
     config: d.config, cargo: d.cargo, municipios: d.municipios, local: d.local, rota, rotaRef, setRota, aoSair: limparFiltro,
   });
   useFichaPelaUrl(d.config, rota, setRota);
+  const ufTela = d.local.uf;
+  const irMunicipio = useCallback((cd: string) => ir({ uf: ufTela, mun: cd }), [ir, ufTela]);
   const prefetch = usePrefetch(d.config, d.apuracao.vale);
   const navegacao = useMemo<Navegacao>(() => ({ caminhoDe, ir, prefetch }), [caminhoDe, ir, prefetch]);
 
@@ -114,7 +116,7 @@ export default function App() {
 
         {!uf && cargo.tipo === 'majoritario' && <TickerUFs ufs={cargo.ufs} dados={mapaBr.data} />}
 
-        {uf && <CabecalhoTela d={{ ...d, uf }} nomeRegiao={nomeRegiao} onEscolherMunicipio={(cd) => ir({ uf, mun: cd })} />}
+        {uf && <CabecalhoTela d={{ ...d, uf }} nomeRegiao={nomeRegiao} onEscolherMunicipio={irMunicipio} />}
 
         {placar && r ? (
           <Placar
