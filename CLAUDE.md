@@ -70,7 +70,7 @@ compartilhado/     O que front e servidor usam igual, sem build
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
   index.mjs        Servidor HTTP: despacho das rotas (as JSON vêm da tabela de rotas/index.mjs; malhas, candidato,
                    SSE e prévia/flags têm resposta própria), ETag/304 das respostas JSON, arquivos estáticos
-  http.mjs         HttpError e validação comum (cargoDe, validarUf)
+  http.mjs         HttpError, etagDe (API e sitemaps) e validação comum (cargoDe, validarUf)
   rotas/           Uma rota (ou par de rotas) por arquivo; cada handler (query, flags) declara o tipo da resposta
     index.mjs        Tabela caminho → handler (ROTAS_JSON)
     config.mjs       /api/config (config + `encerrada` + flags) e /api/municipios

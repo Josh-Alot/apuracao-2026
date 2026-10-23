@@ -14,6 +14,7 @@ import { getConfig, getMunicipios, getResultadoSemTse, resultadoUrl, CICLO, TSE_
 import { getCandidato, geradoEm } from './candidatos.mjs';
 import { dataFinal, eleicaoFinal } from './arquivo.mjs';
 import { cargoVisivel, flagsDe } from './flags.mjs';
+import { etagDe } from './http.mjs';
 import { slugCargo, cargoPorSlug, caminho, caminhoCandidato, lerCaminho, tituloPagina } from '../compartilhado/rotas.mjs';
 import { cargoBase, nomeCargo, titulo } from '../compartilhado/nomes.mjs';
 
@@ -533,7 +534,7 @@ export async function responderSitemap(req, res, pathname) {
   if (!hit || Date.now() - hit.ts > SITEMAP_TTL) {
     // Guardado também em gzip (o de candidatos passa de 2 MB).
     const p = gerarSitemap(m[1], base).then((corpo) => corpo && {
-      corpo, gz: zlib.gzipSync(corpo), etag: `"${createHash('sha1').update(corpo).digest('base64url').slice(0, 22)}"`,
+      corpo, gz: zlib.gzipSync(corpo), etag: etagDe(corpo),
     });
     p.catch(() => sitemaps.delete(chave));
     hit = { ts: Date.now(), p };
