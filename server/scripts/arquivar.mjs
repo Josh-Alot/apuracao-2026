@@ -10,9 +10,10 @@
 
 import fs from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import zlib from 'node:zlib';
 import { TSE_BASE, CICLO, getConfig } from '../tse.mjs';
 import { RAIZ_ARQUIVO, novaUnidade, adicionarRegiao, unidadeFinal } from '../arquivo.mjs';
+import { pad } from '../tse/urls.mjs';
+import { gravarJson } from './comum.mjs';
 
 const { values: op } = parseArgs({
   options: {
@@ -32,7 +33,6 @@ const CONC = Number(op.conc);
 
 const PASTA = new URL(`${CICLO}-${op.turno}turno/`, RAIZ_ARQUIVO);
 const MANIFESTO = new URL('manifesto.json', PASTA);
-const pad = (s, n) => String(s).padStart(n, '0');
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- consultas ao TSE: taxa máxima, recua no 429 e tenta de novo em falhas ----------
@@ -94,17 +94,7 @@ async function emParalelo(itens, fn) {
 
 // ---------- gravação ----------
 
-// gzip do Node não grava data no cabeçalho: o mesmo conteúdo gera os mesmos bytes (git não vê mudança).
-async function gravar(nome, dado, { gz = true } = {}) {
-  const destino = new URL(nome, PASTA);
-  await fs.mkdir(new URL('.', destino), { recursive: true });
-  const texto = JSON.stringify(dado);
-  const buf = gz ? zlib.gzipSync(texto, { level: 9 }) : Buffer.from(`${JSON.stringify(dado, null, 1)}\n`);
-  const tmp = new URL(`${nome}.tmp`, PASTA);
-  await fs.writeFile(tmp, buf);
-  await fs.rename(tmp, destino);
-  return buf.length;
-}
+const gravar = (nome, dado, opcoes) => gravarJson(new URL(nome, PASTA), dado, opcoes);
 
 async function lerManifesto() {
   try { return JSON.parse(await fs.readFile(MANIFESTO, 'utf8')); } catch {

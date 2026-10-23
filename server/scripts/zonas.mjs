@@ -8,63 +8,21 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import zlib from 'node:zlib';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { Delaunay } from 'd3-delaunay';
 import polygonClipping from 'polygon-clipping';
 import { lerMalha } from '../malhas.mjs';
+import { ROOT, baixarDadosAbertos, extrairCsv, lerCsv, opcao } from './comum.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ANO = 2026;
-const CACHE = path.join(ROOT, '.cache', 'dados-abertos');
 const SAIDA = path.join(ROOT, 'dados', `zonas-${ANO}.json.gz`);
 const MUN_CM = path.join(ROOT, 'arquivo', `ele${ANO}-1turno`, '6259', 'mun-cm.json.gz');
 const CONJUNTO = 'eleitorado_local_votacao';
-const ZIP = path.join(CACHE, `${CONJUNTO}_${ANO}.zip`);
 /** Local de votação fora do contorno do município: até esta distância (km) é tolerado (malha simplificada). */
 const TOLERANCIA_KM = 1;
 /** Casas decimais das coordenadas gravadas (5 ≈ 1 m). */
 const CASAS = 5;
 
-const args = process.argv.slice(2);
-const opcao = (nome) => {
-  const i = args.indexOf(`--${nome}`);
-  return i >= 0 ? args[i + 1] : undefined;
-};
 const soUfs = opcao('uf')?.toLowerCase().split(',');
-
-async function baixarZip() {
-  try {
-    await fs.access(ZIP);
-    return;
-  } catch { /* baixa */ }
-  console.log(`baixando ${CONJUNTO}_${ANO}.zip…`);
-  const res = await fetch(`https://cdn.tse.jus.br/estatistica/sead/odsele/${CONJUNTO}/${CONJUNTO}_${ANO}.zip`);
-  if (!res.ok) throw new Error(`${CONJUNTO}: HTTP ${res.status}`);
-  await fs.mkdir(CACHE, { recursive: true });
-  await fs.writeFile(ZIP, Buffer.from(await res.arrayBuffer()));
-}
-
-/** CSV do TSE: latin1, separador ";", campos entre aspas (números sem). Devolve cabeçalho + linhas. */
-function lerCsv(buf) {
-  const texto = new TextDecoder('latin1').decode(buf);
-  const linhas = [];
-  let campo = '', linha = [], aspas = false;
-  for (let i = 0; i < texto.length; i++) {
-    const ch = texto[i];
-    if (aspas) {
-      if (ch === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
-      else if (ch === '"') aspas = false;
-      else campo += ch;
-    } else if (ch === '"') aspas = true;
-    else if (ch === ';') { linha.push(campo); campo = ''; }
-    else if (ch === '\n') { linha.push(campo); linhas.push(linha); linha = []; campo = ''; }
-    else if (ch !== '\r') campo += ch;
-  }
-  if (campo || linha.length) { linha.push(campo); linhas.push(linha); }
-  const [cab, ...resto] = linhas;
-  return { col: Object.fromEntries(cab.map((k, i) => [k, i])), linhas: resto };
-}
 
 /** Malha dos municípios da UF, a mesma do mapa (dados/malhas, senão .cache/geo, senão o IBGE; ver malhas.mjs). */
 async function malhaUf(uf) {
@@ -181,7 +139,7 @@ function zonasDoMunicipio(geometria, locais) {
 // ---------- principal ----------
 
 const munCm = JSON.parse(zlib.gunzipSync(await fs.readFile(MUN_CM)).toString());
-await baixarZip();
+const ZIP = await baixarDadosAbertos(CONJUNTO, ANO);
 
 const saida = { gerado: null, fonte: `${CONJUNTO}_${ANO}`, municipios: {} };
 let totalZonas = 0, semContorno = 0;
@@ -192,9 +150,9 @@ for (const abr of munCm.abr) {
   if (!alvos.length) continue;
 
   const csv = `${CONJUNTO}_${ANO}_${uf.toUpperCase()}.csv`;
-  execFileSync('unzip', ['-oq', ZIP, csv, '-d', CACHE]);
-  const { col, linhas } = lerCsv(await fs.readFile(path.join(CACHE, csv)));
-  await fs.rm(path.join(CACHE, csv));
+  const arquivoCsv = extrairCsv(ZIP, csv);
+  const { col, linhas } = lerCsv(await fs.readFile(arquivoCsv));
+  await fs.rm(arquivoCsv);
   saida.gerado ??= `${linhas[0][col.DT_GERACAO]} ${linhas[0][col.HH_GERACAO]}`;
 
   // Locais por município (uma linha por seção: soma os eleitores de cada local).

@@ -8,12 +8,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { ALVOS, DIR_MALHAS, baixarMalha, guardarEmCache, malhaEmCache } from '../malhas.mjs';
+import { opcao } from './comum.mjs';
 
 const args = process.argv.slice(2);
-const opcao = (nome) => {
-  const i = args.indexOf(`--${nome}`);
-  return i >= 0 ? args[i + 1] : undefined;
-};
 const forcar = args.includes('--forcar');
 const escolhidos = [...(opcao('uf')?.toLowerCase().split(',') ?? []), ...(args.includes('--br') ? ['br'] : [])];
 const alvos = escolhidos.length ? escolhidos : ALVOS;

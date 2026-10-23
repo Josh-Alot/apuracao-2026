@@ -15,14 +15,11 @@ import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import zlib from 'node:zlib';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { novaUnidade, adicionarRegiao, expandir, RAIZ_ARQUIVO } from '../arquivo.mjs';
 import { RAIZ_SIMULACAO } from '../simulacao.mjs';
+import { pad } from '../tse/urls.mjs';
+import { CACHE_DADOS_ABERTOS, baixarDadosAbertos, extrairCsv, gravarJson } from './comum.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const CACHE = path.join(ROOT, '.cache', 'dados-abertos');
-const CDN = 'https://cdn.tse.jus.br/estatistica/sead/odsele';
 const PRIMEIRO = new URL('ele2026-1turno/', RAIZ_ARQUIVO);
 const PASTA = new URL('ele2026-2turno/', RAIZ_SIMULACAO);
 
@@ -48,26 +45,18 @@ const GOVERNADOR = {
   to: { base: '1', partidos: { PL: '44', PT: '45' } }, // Dorinha (União, com o PL) × Vicentinho Júnior (PSDB)
 };
 
-const pad = (s, n) => String(s).padStart(n, '0');
 const ler = async (u) => JSON.parse(zlib.gunzipSync(await fs.readFile(u)).toString());
 
 // ---------- base: 2º turno de 2022 por zona ----------
 
 async function csv2022(conjunto) {
   const nome = `${conjunto}_2022_BRASIL.csv`;
-  const destino = path.join(CACHE, nome);
   try {
-    await fs.access(destino);
+    await fs.access(path.join(CACHE_DADOS_ABERTOS, nome));
+    return path.join(CACHE_DADOS_ABERTOS, nome);
   } catch {
-    await fs.mkdir(CACHE, { recursive: true });
-    const zip = path.join(CACHE, `${conjunto}_2022.zip`);
-    console.log(`Baixando ${conjunto}_2022.zip…`);
-    const res = await fetch(`${CDN}/${conjunto}/${conjunto}_2022.zip`);
-    if (!res.ok) throw new Error(`${conjunto}: HTTP ${res.status}`);
-    await fs.writeFile(zip, Buffer.from(await res.arrayBuffer()));
-    execFileSync('unzip', ['-oq', zip, nome, '-d', CACHE]);
+    return extrairCsv(await baixarDadosAbertos(conjunto, 2022), nome);
   }
-  return destino;
 }
 
 /** Linhas do CSV do TSE (latin1, ";", aspas opcionais) do 2º turno, como objetos. */
@@ -196,14 +185,7 @@ function montar(raw1, eleicao, n, vencedor) {
 
 // ---------- principal ----------
 
-async function gravar(nome, dado, { gz = true } = {}) {
-  const destino = new URL(nome, PASTA);
-  await fs.mkdir(new URL('.', destino), { recursive: true });
-  const texto = JSON.stringify(dado);
-  const buf = gz ? zlib.gzipSync(texto, { level: 9 }) : Buffer.from(`${JSON.stringify(dado, null, 1)}\n`);
-  await fs.writeFile(destino, buf);
-  return buf.length;
-}
+const gravar = (nome, dado, opcoes) => gravarJson(new URL(nome, PASTA), dado, opcoes);
 
 /** Finalistas (número → partido) de uma UF, pelo `st` do 1º turno. */
 function finalistas(modelo) {

@@ -98,6 +98,8 @@ server/            Node puro (ESM, sem dependências) — o TSE não envia CORS,
   candidatos.mjs   /api/candidato/:sq — perfil e bens; lê dados/candidatos-2026.tsv.gz no 1º pedido (buffer + índice)
   seo.mjs          HTML por rota (title, description, canonical, Open Graph, JSON-LD, resumo em texto no #root), 404 de
                    verdade, robots.txt, sitemaps, SITE_URL/301 e `candidatura` do /api/candidato (ver "SEO" abaixo)
+  scripts/comum.mjs       O que os scripts usam igual: opcao(), zips dos Dados Abertos (.cache/dados-abertos),
+                          lerCsv (latin1, ";") e gravarJson (gzip determinístico, via .tmp)
   scripts/candidatos.mjs  `npm run candidatos`: baixa os CSVs dos Dados Abertos e gera o .tsv.gz
   scripts/arquivar.mjs    `npm run arquivar`: baixa os resultados finais e grava em arquivo/
   scripts/simular-2turno.mjs  `npm run simular-2turno`: gera simulacao/ a partir do 2º turno de 2022
