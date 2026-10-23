@@ -252,7 +252,20 @@ async function montarPagina(pathname, flags) {
     texto: descricao(votos, complemento),
     migalhas: migalhas.length > 1 ? migalhas : null,
     listas,
+    preload: params && urlResultadoDoFront(c, uf, rota.mun, rota.zona),
   };
+}
+
+/**
+ * A mesma URL que o front pede para o resultado da tela (urlResultado em src/api/cliente.ts, parâmetros na mesma
+ * ordem): o HTML já começa a buscá-la (preload) junto com o JavaScript, em vez de esperar o JS e a config. URL
+ * diferente da do front vira uma consulta a mais; mudou uma, mude a outra.
+ */
+function urlResultadoDoFront(c, uf, mun, zona) {
+  const p = new URLSearchParams({ cargo: c.id, uf: uf ?? 'br' });
+  if (mun) p.set('mun', mun);
+  if (mun && zona) p.set('zona', zona);
+  return `/api/resultado?${p}`;
 }
 
 function paginaInicio(cargos) {
@@ -266,6 +279,8 @@ function paginaInicio(cargos) {
     texto: descricao_,
     listas: [{ titulo: 'Cargos', itens: cargos.map((c) => ({ nome: cargoNome(c), caminho: `/${slugCargo(c)}` })) }],
     site: true,
+    // O início abre o primeiro cargo da config (resolverTela no front).
+    preload: cargos[0]?.escopo === 'br' ? urlResultadoDoFront(cargos[0]) : null,
   };
 }
 
@@ -367,6 +382,7 @@ function renderizar(html, p, base) {
   const url = `${base}${p.caminho ?? ''}`;
   const imagem = `${base}/og.png${versaoOg}`;
   const cab = [`<meta name="description" content="${esc(p.descricao)}" />`];
+  if (p.preload) cab.push(`<link rel="preload" href="${esc(p.preload)}" as="fetch" crossorigin />`);
   if (p.status === 404) {
     cab.push('<meta name="robots" content="noindex" />');
   } else {

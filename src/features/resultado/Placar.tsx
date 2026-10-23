@@ -89,7 +89,7 @@ export function Placar({
               <p className="placar-sub">
                 {c.partido} · {c.numero}
                 {compacto
-                  ? <> · <Num valor={c.votos} formatar={fmt} /> votos{n != null && regioes ? ` · ${fmt(n)} ${regioes.rotulo}` : ''}</>
+                  ? <> · <Num valor={c.votos} formatar={fmt} /> votos{regioes ? ` · ${n != null ? fmt(n) : '—'} ${regioes.rotulo}` : ''}</>
                   : vc && ` · vice ${titulo(vc.nome)}`}
               </p>
               <div className="placar-numeros">
@@ -107,7 +107,8 @@ export function Placar({
                     ) : (
                       <>
                         <div><dt>Votos</dt><dd><Num valor={c.votos} formatar={fmt} /></dd></div>
-                        {n != null && regioes && <div><dt>{regioes.rotulo}</dt><dd>{fmt(n)}</dd></div>}
+                        {/* A linha fica desde o início ("—" até o mapa chegar), para o placar não crescer depois. */}
+                        {regioes && <div><dt>{regioes.rotulo}</dt><dd>{n != null ? fmt(n) : '—'}</dd></div>}
                         {exterior !== undefined && <div><dt>Exterior</dt><dd>{noExterior(c.numero)}</dd></div>}
                       </>
                     )}

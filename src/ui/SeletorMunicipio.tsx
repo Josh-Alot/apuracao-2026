@@ -11,6 +11,7 @@ export const SeletorMunicipio = memo(function SeletorMunicipio({ rotulo, municip
       <input
         list="lista-municipios"
         placeholder="ir para…"
+        disabled={municipios.length === 0}
         value={valor}
         onChange={(e) => {
           setValor(e.target.value);

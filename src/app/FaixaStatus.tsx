@@ -3,6 +3,7 @@ import { ProximaAtualizacao } from '../apuracao/ProximaAtualizacao';
 import { fmt, fmtPct } from '../lib/util';
 import { LinkTela } from '../rota/Link';
 import { Num } from '../ui/Num';
+import { Esq } from '../ui/Carregando';
 import { destinoTurno, turnosDe } from '../dominio/cargo';
 import { rotuloEstado } from '../dominio/fase';
 import type { DadosTela } from './useDadosTela';
@@ -24,6 +25,15 @@ export function FaixaStatus({ d, auto, onAuto }: { d: DadosTela; auto: boolean; 
           <span title={`${fmt(r.secoes.totalizadas)} de ${fmt(r.secoes.total)} seções totalizadas`}>
             Seções {fmt(r.secoes.totalizadas)} / {fmt(r.secoes.total)} · <b className="faixa-pct"><Num valor={r.secoes.pct} formatar={fmtPct} /></b>
           </span>
+        )}
+        {/* Enquanto o resultado não chega, o lugar das seções e da totalização fica guardado: sem ele, os itens
+            seguintes saltam para a direita quando o dado chega (deslocamento de layout); encerrada, também a "Totalização final". */}
+        {!r && !precisaUf && !resultado.erro && (
+          <>
+            <span aria-hidden="true"><Esq w="260px" h="0.8em" /></span>
+            <span aria-hidden="true"><Esq w="250px" h="0.8em" /></span>
+            {encerrada && <span aria-hidden="true"><Esq w="130px" h="0.8em" /></span>}
+          </>
         )}
         {r?.atualizado && (
           <span title="Horário de Brasília da última publicação do TSE">

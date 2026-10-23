@@ -280,8 +280,9 @@ TanStack Router se as rotas crescerem.
 Um único tema, "Plantão" (mesa de redação na noite da apuração), todo em `src/styles.css`: tokens em variáveis
 CSS no `:root` com duas edições, diurna (clara) e noturna (escura, `prefers-color-scheme: dark` ou o botão do topo,
 que grava `data-tema` no `<html>`). Archivo condensado (`font-stretch` 62–75%, 800, maiúsculas) nos títulos e
-números grandes, IBM Plex Mono nos rótulos, abas, tabelas e horários, Archivo no corpo (Google Fonts no
-`index.html`). Filetes finos, blocos invertidos para o que está ativo e **nenhum canto arredondado** (`--raio: 0`).
+números grandes, IBM Plex Mono nos rótulos, abas, tabelas e horários, Archivo no corpo (servidas pelo próprio
+site: `src/fontes.css`, arquivos dos pacotes Fontsource, só latin/latin-ext; sem preload, que no Lighthouse atrasava a
+primeira pintura). Filetes finos, blocos invertidos para o que está ativo e **nenhum canto arredondado** (`--raio: 0`).
 Cor forte fica reservada aos partidos; `--ao-vivo` (âmbar) só em status (ao vivo, encerrada, contagem), nunca em
 dado. Evite verde-amarelo ou vermelho como cor de interface (são lidos como sinal político).
 
@@ -306,6 +307,9 @@ mudou o desenho, mude os dois SVGs e rode `npm run icones`.
 - O servidor (`server/seo.mjs`) valida a rota (cargo visível pelas flags, UF do cargo, município, zona, candidato) e
   responde 200 com o `dist/index.html` preenchido nos marcadores `<!--seo-->…<!--/seo-->` e `<!--seo:conteudo-->`
   do `index.html` (não os remova), ou 404 + `noindex`. O `createRoot` substitui o resumo ao montar — esperado.
+- Preload dos dados: o `index.html` já pede `/api/config` e o servidor acrescenta no `<head>` o `/api/resultado` da
+  tela (`urlResultadoDoFront()` em `seo.mjs`), que começam junto com o JS. A URL tem de ser idêntica à do front
+  (`urlResultado` em `src/api/cliente.ts`, mesmos parâmetros na mesma ordem); diferente, vira uma consulta a mais.
 - **Nunca consultar o TSE para montar página**: o Googlebot pede dezenas de milhares de URLs. Usa só config,
   municípios, perfil e resultados do cache em memória ou do arquivo final (`getResultadoSemTse`), com prazo de
   300 ms (passou, descrição genérica). O índice de candidatos (cargo/UF/votos por `sq`) é montado uma vez por
@@ -517,6 +521,13 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
   Fotos dos candidatos e malhas do IBGE não fazem parte do arquivo.
 
 ## Convenções e cuidados
+
+- Deslocamento de layout (CLS): o que chega depois não pode empurrar a tela. Enquanto o dado não vem, guarde o
+  lugar com a mesma altura/largura: `EsqueletoPlacar` (mesmas classes do `Placar`, barras com altura `1lh`), os
+  itens da faixa de status, o seletor de município desativado, "—" nas contagens do subtítulo e do placar. Meça com
+  o Lighthouse sobre o build (`npm run build`, `ARQUIVO=1 PORT=3099 node server/index.mjs`) e, no celular,
+  `--throttling-method=devtools` (a simulação padrão exagera o LCP em localhost). Em out/2026: início 75→96
+  (desktop) e 76→98 (celular), CLS de 0,44–0,64 para menos de 0,02.
 
 - Antes da apuração (até 17h de Brasília no dia da eleição) os arquivos existem com votos zerados —
   use `npm run demo` para desenvolver a interface. Horário de votação é unificado (8h–17h de Brasília);

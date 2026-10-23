@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ItemBusca, ModoMapa } from '../lib/types';
 import { fmt } from '../lib/util';
-import { BarraTopo, EsqueletoPagina } from '../ui/Carregando';
+import { BarraTopo, EsqueletoPagina, EsqueletoPlacar } from '../ui/Carregando';
 import { AvisoVotacao } from '../apuracao/AvisoVotacao';
 import { ProximoPlantao } from '../apuracao/ProximoPlantao';
 import { PainelResultado } from '../features/resultado/PainelResultado';
@@ -132,6 +132,8 @@ export default function App() {
             carregando={resultado.carregando}
             onAbrir={abrirCandidato}
           />
+        ) : cargo.tipo === 'majoritario' && !precisaUf && !r && !resultado.erro ? (
+          <EsqueletoPlacar compacto={!!uf} rotulo={uf ? undefined : rotuloBrasil} />
         ) : !uf && rotuloBrasil}
 
         <main className={`grade ${lateral ? '' : 'sem-lateral'}`}>

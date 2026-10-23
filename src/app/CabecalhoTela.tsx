@@ -34,19 +34,19 @@ export function CabecalhoTela({ d, nomeRegiao, onEscolherMunicipio }: {
           )}
           {local.zona && <><span aria-hidden="true">/</span><span aria-current="page">Zona {Number(local.zona)}</span></>}
         </nav>
-        {munsUf.length > 0 && (
-          <SeletorMunicipio
-            rotulo={uf === 'zz' ? 'Cidade' : 'Município'}
-            municipios={opcoes}
-            onEscolher={onEscolherMunicipio}
-          />
-        )}
+        {/* Já aparece (desativado) antes da lista de municípios chegar: entrar depois empurraria a tela para baixo. */}
+        <SeletorMunicipio
+          rotulo={uf === 'zz' ? 'Cidade' : 'Município'}
+          municipios={opcoes}
+          onEscolher={onEscolherMunicipio}
+        />
       </div>
       <h1 className="titulo-tela">{nomeRegiao}<span className="visualmente-oculto">: {nomeCargo(cargo)}</span></h1>
       <p className="subtitulo-tela">
         {cargoBase(cargo)} · {cargo.turno}º turno
-        {!local.mun && munsUf.length > 0 && ` · ${fmt(munsUf.length)} ${uf === 'zz' ? 'cidades' : 'municípios'}`}
-        {local.mun && !local.zona && munAtual && munAtual.zonas.length > 1 && ` · ${munAtual.zonas.length} zonas`}
+        {/* "—" até a lista chegar: o trecho entrar depois pode quebrar a linha e empurrar a tela. */}
+        {!local.mun && ` · ${munsUf.length > 0 ? fmt(munsUf.length) : '—'} ${uf === 'zz' ? 'cidades' : 'municípios'}`}
+        {local.mun && !local.zona && (!munAtual ? ' · — zonas' : munAtual.zonas.length > 1 && ` · ${munAtual.zonas.length} zonas`)}
         {r && ` · ${fmt(r.eleitorado.total)} eleitores`}
       </p>
     </div>
