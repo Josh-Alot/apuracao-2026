@@ -429,6 +429,14 @@ export function Mapa({
             onMouseMove={pairar(z.k, true)}
           />
         ))}
+        {/* Contorno da região sob o ponteiro redesenhado por cima: no próprio path, as vizinhas (desenhadas
+            depois) cobrem parte dele. Fica abaixo do contorno da seleção e dos rótulos. */}
+        {hover && !hover.zona && regioes.filter((r) => r.k === hover.k).map((r) => (
+          <path key="hov" d={r.d} className="contorno-hover" vectorEffect="non-scaling-stroke" />
+        ))}
+        {hover && hover.zona && desenhoZonas.filter((z) => z.k === hover.k).map((z) => (
+          <path key="hov-zona" d={z.d} className="contorno-hover" vectorEffect="non-scaling-stroke" />
+        ))}
         {/* Redesenha a selecionada por cima para o contorno não ficar escondido */}
         {selecionado && regioes.filter((r) => r.k === selecionado).map((r) => (
           <path key="sel" d={r.d} className="contorno-selecao" vectorEffect="non-scaling-stroke" />
