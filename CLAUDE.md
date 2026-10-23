@@ -13,6 +13,7 @@ npm install
 npm run dev        # API (porta 3001) + Vite (porta 5173, proxy /api → 3001)
 npm run demo       # igual ao dev, mas com votos sintéticos (DEMO=1) — útil antes das 17h de Brasília
 npm run typecheck
+npm test           # testes (node:test, sem dependências); npm run test:atualizar regera os snapshots
 npm run candidatos # regera dados/candidatos-2026.tsv.gz (perfil e bens, Dados Abertos do TSE)
 npm run arquivar   # guarda os resultados finais em arquivo/ (ver "Arquivo próprio" abaixo)
 npm run simular-2turno  # regera a simulação do 2º turno em simulacao/ (ver "Simulação do 2º turno")
@@ -274,7 +275,8 @@ mudou o desenho, mude os dois SVGs e rode `npm run icones`.
 `starter` (512 MB, não dorme), health check em `/api/saude` (não passa pelo 301 do `SITE_URL`).
 Publicado em **https://apuracao.org** (`www` redireciona para a raiz). O endereço do Render,
 `https://apuracao-2026-kipe.onrender.com`, responde 301 para o domínio (`SITE_URL`), menos `/api/*`. Cada push na
-branch principal do GitHub publica de novo; um deploy ou mudança de variável reinicia o processo e esvazia o cache
+branch principal do GitHub publica de novo depois que o CI passa (`.github/workflows/ci.yml`, `autoDeployTrigger:
+checksPass`); um deploy ou mudança de variável reinicia o processo e esvazia o cache
 em memória — normal, mas evite durante a apuração.
 
 DNS na Cloudflare (registrador do domínio): CNAME `@` e `www` → `apuracao-2026-kipe.onrender.com` com o proxy
@@ -501,4 +503,13 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
   Os TTLs ficam em `getResultado(params, ttlMs)` e `fetchJson`.
 - A projeção do mapa é plana de propósito (ver comentário em `Mapa.tsx`): as malhas do IBGE não seguem
   a orientação de anéis que as projeções esféricas do d3 exigem.
-- Não há testes automatizados ainda; valide com `npm run typecheck` e abrindo o app em modo demo.
+- Testes em `testes/` (`npm test`, `node:test` sem dependências; o CI do GitHub roda typecheck, testes e build):
+  - `testes/servidor/normalizar.test.mjs`: resultados reais do `arquivo/` passados pelo `normalizar()`, congelados em
+    `.snapshot` (inclusive uma apuração "em andamento" simulada sobre eles, para a projeção das chapas e o
+    "matematicamente"). Mudou o normalizar de propósito: `npm run test:atualizar` e revise o diff do snapshot.
+  - `testes/servidor/apuracao.test.mjs`: regras de maioria, 2º turno garantido, Senado, QE e `classificar`, com
+    resultados montados à mão.
+  - `testes/front/`: módulos `.ts` puros do front (rotas, `resolverTela`, `util`), importados sem build pelo
+    `testes/ts.mjs` (o Node remove os tipos; o hook só completa a extensão). `.tsx` não roda no Node: lógica
+    testável fica em `.ts`.
+  - Interface: valide com `npm run typecheck` e abrindo o app em modo demo.

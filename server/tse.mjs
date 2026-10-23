@@ -455,7 +455,7 @@ export async function getMunicipios(eleicao) {
  * proporcional — "Eleito por QP" (quociente partidário), "Eleito por média", "Suplente", "Não eleito".
  * Vazio = ainda indefinido (apuração em andamento). Textos desconhecidos seguem como "outro".
  */
-function classificar(st, e) {
+export function classificar(st, e) {
   const t = (st || '').trim();
   if (!t) return { status: e === 's' ? 'eleito' : null, detalhe: null };
   if (/2.?\s*turno/i.test(t)) return { status: 'segundo-turno', detalhe: null };
@@ -566,7 +566,7 @@ export async function getResultadosRapidos(lista, ttlMs, prioridade, { esperaMs 
  * (as sobras ficam de fora). No executivo também marca quem já tem o 2º turno garantido.
  * Devolve Map sqcand → 'eleito' | 'segundo-turno'.
  */
-function situacaoMatematica(raw, candidatos, grupos) {
+export function situacaoMatematica(raw, candidatos, grupos) {
   const carg = raw.carg[0];
   const faltam = int(raw.e?.esnt);
   const validos = int(raw.v?.vv);
@@ -642,7 +642,7 @@ function situacaoMatematica(raw, candidatos, grupos) {
  * igual ou inferior a meio e arredondada para 1 a superior. Em inteiros, porque `Math.round` sobe o
  * meio exato. Só é usado se o arquivo do TSE não trouxer `carg.qe`.
  */
-function quocienteEleitoral(validos, vagas) {
+export function quocienteEleitoral(validos, vagas) {
   const q = Math.floor(validos / vagas);
   return 2 * (validos - q * vagas) > vagas ? q + 1 : q;
 }
@@ -655,7 +655,7 @@ function quocienteEleitoral(validos, vagas) {
  * da chapa com ao menos 10% do QE. Suplência = demais candidatos com votos válidos, por votos.
  * Devolve Map sqcand → { suplente, puxadoPor, puxou, qe, projecao }.
  */
-function chapas(raw, candidatos, grupos) {
+export function chapas(raw, candidatos, grupos) {
   const carg = raw.carg[0];
   const out = new Map();
   const qe = int(carg.qe) || quocienteEleitoral(int(raw.v?.vv), int(carg.nv) || 1);
@@ -694,7 +694,7 @@ const PROPORCIONAIS = new Set(['6', '7', '8']);
 /** Abrangência em que a disputa é decidida: Brasil para Presidente, UF para os demais cargos. */
 const escopoDaDisputa = (cargo) => (String(cargo) === '1' ? 'br' : 'uf');
 
-function normalizar(raw, { eleicao, uf }) {
+export function normalizar(raw, { eleicao, uf }) {
   const carg = raw.carg[0];
   const fotoUf = carg.cd === '1' ? 'br' : uf;
   const candidatos = [];

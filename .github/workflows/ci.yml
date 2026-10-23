@@ -1,0 +1,21 @@
+# Typecheck, testes e build em todo push e pull request. O Render só publica a master depois que isto passa
+# (`autoDeployTrigger: checksPass` no render.yaml).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # o mesmo do Render (NODE_VERSION no render.yaml)
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx vite build

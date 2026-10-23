@@ -9,7 +9,7 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/saude # leve: não lê o TSE nem o HTML; e não sofre o 301 do SITE_URL
-    autoDeployTrigger: commit # cada push na branch principal publica de novo
+    autoDeployTrigger: checksPass # publica cada push na branch principal, só depois que o CI (GitHub Actions) passa
     envVars:
       - key: NODE_VERSION
         value: "24"
