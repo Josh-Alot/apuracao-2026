@@ -1,6 +1,6 @@
 import { type CSSProperties } from 'react';
 import type { Candidato, MapaDados } from '../../lib/types';
-import { Link } from '../../rota/Link';
+import { LinkTela } from '../../rota/Link';
 import { pctNaRegiao, primeiroNome } from './DiferencaUF';
 import { useCores } from '../../lib/tema';
 import { corPartido, fmt, fmtPct, titulo } from '../../lib/util';
@@ -15,15 +15,15 @@ interface Props {
   /** Os dois primeiros da UF (colunas de % dos maiores eleitorados); null sem placar. */
   par: [Candidato, Candidato] | null;
   nome: (cd: string) => string;
-  href: (cd: string) => string;
-  onSelect: (cd: string) => void;
+  /** UF do mapa (os links abrem os municípios dela). */
+  uf: string;
   /** Total de municípios e como abrir o índice completo. */
   total: number;
   onVerTodos: () => void;
 }
 
 /** Coluna ao lado do mapa da UF: maiores eleitorados e disputas mais apertadas, do mesmo /api/mapa. */
-export function DestaquesUF({ dados, par, nome, href, onSelect, total, onVerTodos }: Props) {
+export function DestaquesUF({ dados, par, nome, uf, total, onVerTodos }: Props) {
   const tema = useCores();
   const regioes = Object.entries(dados ?? {}).filter(([, r]) => r?.eleitorado != null);
   if (!regioes.length) return null;
@@ -52,7 +52,7 @@ export function DestaquesUF({ dados, par, nome, href, onSelect, total, onVerTodo
             const pb = par ? pctNaRegiao(r, par[1].numero) : null;
             return (
               <li key={cd}>
-                <Link href={href(cd)} onNavegar={() => onSelect(cd)} style={{ '--cor': cor } as CSSProperties}>
+                <LinkTela para={{ uf, mun: cd }} style={{ '--cor': cor } as CSSProperties}>
                   <span className="maiores-nome">
                     <strong>{nome(cd)}</strong>
                     <span className="muted">{fmt(r!.eleitorado!)} eleitores</span>
@@ -65,7 +65,7 @@ export function DestaquesUF({ dados, par, nome, href, onSelect, total, onVerTodo
                   ) : r!.lider && (
                     <span className="vence">{titulo(r!.lider.nome)} {fmtPct(r!.lider.pct)}</span>
                   )}
-                </Link>
+                </LinkTela>
               </li>
             );
           })}
@@ -82,12 +82,12 @@ export function DestaquesUF({ dados, par, nome, href, onSelect, total, onVerTodo
           <ul>
             {apertadas.map(([cd, r]) => (
               <li key={cd}>
-                <Link href={href(cd)} onNavegar={() => onSelect(cd)}>
+                <LinkTela para={{ uf, mun: cd }}>
                   <strong>{nome(cd)}</strong>
                   <span style={{ color: tema.texto(corPartido(r!.lider!.partido)) }}>
                     {primeiroNome(r!.lider!.nome)} +{pf2.format(r!.lider!.pct - r!.segundo!.pct)} pt
                   </span>
-                </Link>
+                </LinkTela>
               </li>
             ))}
           </ul>

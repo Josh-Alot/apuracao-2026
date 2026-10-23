@@ -1,6 +1,6 @@
 import { type CSSProperties } from 'react';
 import type { Candidato, MapaDados, Resumo } from '../../lib/types';
-import { Link } from '../../rota/Link';
+import { LinkTela } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
 import { UF_NOMES } from '../../lib/util';
 
@@ -26,9 +26,8 @@ export const primeiroNome = (nome: string) => {
  * Diferença entre os dois primeiros colocados nacionais em cada UF: barra para a esquerda onde o 1º colocado
  * nacional vence, para a direita onde o 2º vence. Ordenada pela diferença com sinal.
  */
-export function DiferencaUF({ a, b, cores, ufs, dados, href, onSelect }: {
+export function DiferencaUF({ a, b, cores, ufs, dados }: {
   a: Candidato; b: Candidato; cores: [string, string]; ufs: string[]; dados: MapaDados | null;
-  href: (uf: string) => string; onSelect: (uf: string) => void;
 }) {
   const tema = useCores();
   const linhas = ufs.map((uf) => {
@@ -51,14 +50,14 @@ export function DiferencaUF({ a, b, cores, ufs, dados, href, onSelect }: {
           const barra: CSSProperties | undefined = cor ? { width: `${largura}%`, background: tema.preench(cor) } : undefined;
           return (
             <li key={uf}>
-              <Link href={href(uf)} onNavegar={() => onSelect(uf)} title={UF_NOMES[uf]}>
+              <LinkTela para={{ uf }} title={UF_NOMES[uf]}>
                 <span className="muted">{uf === 'zz' ? 'EXT' : uf.toUpperCase()}</span>
                 <span className="dif-metade dif-esquerda">{dif != null && dif >= 0 && <i style={barra} />}</span>
                 <span className="dif-metade dif-direita">{dif != null && dif < 0 && <i style={barra} />}</span>
                 <span className="dif-valor" style={cor ? { color: tema.texto(cor) } : undefined}>
                   {dif == null ? '—' : comSinal(dif)}
                 </span>
-              </Link>
+              </LinkTela>
             </li>
           );
         })}

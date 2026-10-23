@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import type { MapaDados } from '../lib/types';
+import type { Local, MapaDados } from '../lib/types';
 import { Esq } from './Carregando';
-import { Link } from '../rota/Link';
+import { LinkTela } from '../rota/Link';
 import { corPartido, fmtPct, semAcento, titulo as capitalizar } from '../lib/util';
 
 interface Props {
@@ -11,13 +11,12 @@ interface Props {
   /** Dados sendo (re)consultados no TSE. */
   carregando?: boolean;
   selecionado?: string;
-  /** Caminho de cada região (link rastreável; o clique simples chama `onSelect`). */
-  href: (chave: string) => string;
-  onSelect: (chave: string) => void;
+  /** Tela de cada região (link rastreável; o clique simples navega sem recarregar). */
+  destino: (chave: string) => Local;
 }
 
 /** Lista clicável de regiões sem malha geográfica (zonas eleitorais, cidades no exterior). */
-export function ListaRegioes({ titulo, itens, dados, carregando, selecionado, href, onSelect }: Props) {
+export function ListaRegioes({ titulo, itens, dados, carregando, selecionado, destino }: Props) {
   const [filtro, setFiltro] = useState('');
   const visiveis = useMemo(() => {
     const f = semAcento(filtro.trim());
@@ -37,11 +36,10 @@ export function ListaRegioes({ titulo, itens, dados, carregando, selecionado, hr
           const r = dados?.[i.chave];
           return (
             <li key={i.chave}>
-              <Link
-                href={href(i.chave)}
+              <LinkTela
+                para={destino(i.chave)}
                 className={i.chave === selecionado ? 'ativo' : undefined}
                 aria-current={i.chave === selecionado ? 'page' : undefined}
-                onNavegar={() => onSelect(i.chave)}
               >
                 <span className="bolinha" style={{ background: r?.lider ? corPartido(r.lider.partido) : 'var(--sem-dado)' }} />
                 <span className="regiao-nome">{i.nome}</span>
@@ -49,7 +47,7 @@ export function ListaRegioes({ titulo, itens, dados, carregando, selecionado, hr
                   {!dados ? <Esq w="75%" h="0.8rem" /> : r?.lider ? `${capitalizar(r.lider.nome)} (${r.lider.partido}) ${fmtPct(r.lider.pct)}` : '—'}
                   {r && ` · ${fmtPct(r.pctApurado)} apur.`}
                 </span>
-              </Link>
+              </LinkTela>
             </li>
           );
         })}

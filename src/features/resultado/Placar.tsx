@@ -5,6 +5,7 @@ import { cliqueSimples } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
 import { fmt, fmtPct, titulo } from '../../lib/util';
 import { caminhoCandidato } from '../../rotas.mjs';
+import { regioesVencidas } from '../../dominio/placar';
 
 const pf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtNumPct = (n: number) => pf.format(n);
@@ -53,9 +54,7 @@ export function Placar({
   const vazio = r.votos.validos === 0;
   const outros = r.candidatos.filter((c) => c.sq !== a.sq && c.sq !== b.sq);
   const pctOutros = Math.max(0, 100 - a.pct - b.pct);
-  const vencidas = (numero: string) => (regioes?.dados
-    ? Object.values(regioes.dados).filter((x) => x?.lider?.numero === numero).length
-    : null);
+  const vencidas = (numero: string) => (regioes?.dados ? regioesVencidas(regioes.dados, numero) : null);
   const noExterior = (numero: string) => {
     const c = [exterior?.lider, exterior?.segundo].find((x) => x?.numero === numero);
     return c ? fmtPct(c.pct) : '—';

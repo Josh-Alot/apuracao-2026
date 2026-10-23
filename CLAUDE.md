@@ -89,7 +89,13 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
   rotas.mjs        Rotas públicas e títulos das páginas, JS puro compartilhado com o servidor (tipos em rotas.d.mts;
                    fica em src/ porque o server/seo.mjs importa de lá)
   app/
-    App.tsx            Composição da tela: lê rota, config e fase, faz as consultas e distribui aos componentes
+    App.tsx            Composição da tela (~180 linhas): rota, useDadosTela, navegação (NavegacaoContext) e o estado
+                       da interface (modo do mapa, "ao vivo", filtro da busca, índice aberto); distribui aos componentes
+    useDadosTela.ts    Todas as consultas da tela e o que se deriva delas (cargo/UF/local, fase, município aberto,
+                       placar, cores do 2º turno, situação da apuração); `pronta: false` até a config chegar
+    usePrefetch.ts     Prefetch do resultado da tela de destino de um link (ponteiro parado ou foco)
+    Topo.tsx, FaixaStatus.tsx, CabecalhoTela.tsx, PainelMapa.tsx  Blocos da tela; recebem `d` (DadosTela)
+    Lateral.tsx        lateralDe(): a coluna ao lado do mapa conforme a tela (ou null, sem coluna)
     providers.tsx      QueryClient (sem retry automático, sem polling em aba oculta, gcTime 30 min)
   api/
     cliente.ts         getJson (timeout 30 s, conta requisições ativas para a barra do topo), URLs, cópia no
@@ -104,7 +110,9 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
     resolver.ts        resolverTela(): cargo, UF e local de uma tela (App e prefetch usam o mesmo)
     Link.tsx           <a href> com navegação SPA no clique simples (ctrl/cmd/meio abrem nova aba); toda navegação
                        usa links de verdade para o Google rastrear. Ponteiro parado 120 ms ou foco: adianta o
-                       resultado do destino (`PrefetchContext`, fornecido pelo App; o mapa fica para o clique)
+                       resultado do destino (o mapa fica para o clique). `LinkTela para={local} cargo?`: href e
+                       navegação do `NavegacaoContext` (caminhoDe, ir, prefetch; fornecido pelo App);
+                       `useNavegacaoTela()` para o que não é link (regiões do mapa SVG)
   apuracao/
     useFaseApuracao.ts Aberta/encerrada/tempo real, intervalos (`ATUALIZA_*_MS`) e `vale` (staleTime) do momento
     AvisoVotacao.tsx   Faixa âmbar acima da faixa de status: "votação ainda não começou / em andamento (contagem
@@ -126,8 +134,7 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
                          grandes, votos, regiões vencidas, exterior; barra 1º | outros | 2º com a marca dos 50%;
                          `compacto` nas telas de UF/município/zona; antes dos votos do 2º turno, "––,––%" e o 1º turno
       PainelResultado.tsx Tabela de todos os candidatos (filtro local) e o comparecimento
-      Duelo.tsx          2º turno: finalistas e cores (`finalistas`, `coresFinalistas`) e `ListaDuelos` (cargos estaduais
-                         no nível Brasil, uma linha por UF)
+      Duelo.tsx          2º turno: `ListaDuelos` (cargos estaduais no nível Brasil, uma linha por UF)
     candidato/
       FichaCandidato.tsx Ficha aberta (sq da rota) sobre a tela; ModalCandidato em chunk próprio (React.lazy)
       ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
@@ -149,6 +156,12 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
     ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
     Num.tsx            Número ao vivo: conta do valor antigo ao novo e realça ao mudar; pulsa sob `.atualizando`
     SeloSituacao.tsx, Logo.tsx, BotaoTema.tsx, SeletorMunicipio.tsx
+  dominio/           Regras da tela em funções puras (.ts, sem React; testadas em testes/front/dominio.test.mjs)
+    cargo.ts         cargoBase, nomeCargo, turnosDe, localCargo, destinoTurno (troca de cargo/turno mantendo a UF)
+    fase.ts          faseVotacao (antes/votando/aguardando/…), situacaoApuracao (% apurado, TSE indisponível), rotuloEstado
+    duelo.ts         2º turno: finalistas, coresFinalistas, corDoLider
+    placar.ts        placarDe (os dois da frente ou os finalistas, com cores), regioesVencidas
+    titulo.ts        tituloDaAba (document.title), nomeDaRegiao
   lib/
     util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos e o ajuste delas ao tema (OKLCH)
     tema.ts          useTema()/definirTema() (data-tema + prefers-color-scheme) e useCores() (cores de partido no tema)
@@ -171,8 +184,12 @@ features/*      uma pasta por funcionalidade (mapa, resultado, candidato, busca,
   ↓
 api/  rota/  apuracao/      infraestrutura do app: consultas, URL/navegação, fase da apuração
   ↓
-ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilitários/tipos
+ui/  dominio/  lib/         peças sem regra de negócio (Num, esqueletos, Logo…), regras puras da tela e utilitários/tipos
 ```
+- `dominio/` só importa `lib/` (e `rotas.mjs`): sem React, testável no Node. Regra que decide o que a tela mostra
+  (fase, placar, títulos, troca de turno) vai para lá, não para um `.tsx` — `.tsx` não roda nos testes.
+- `ui/` usa `rota/Link` (o `LinkTela`), a única exceção ao "só para baixo"; links nunca recebem `href` + `onSelect`
+  à mão: recebem a tela de destino (`para`/`destino: (chave) => Local`).
 - Uma feature não importa outra. O que duas usam sobe para `ui/` ou `lib/`; o que precisa das duas é montado no
   App (ex.: a ficha saiu de dentro do `PainelResultado` e virou `FichaCandidato`, renderizada pelo App, porque o
   `<dialog>` modal não depende de onde está no DOM).
@@ -185,8 +202,8 @@ ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilit
    prefetch dos links).
 2. `useFaseApuracao(cargo, aoVivo)` decide o ritmo: antes das 17h nada se repete; durante a apuração, SSE (resultado)
    + polling (mapa, composição); encerrada, só repete o que veio incompleto. Também dá o `vale` (`staleTime`).
-3. O App chama `useConsulta(consultas.<recurso>(…, vale), { intervalo, incompleto, sse })` e passa `data`/`erro`/
-   `carregando` aos componentes. Os componentes não buscam dados sozinhos, exceto a ficha (perfil) e a busca.
+3. `app/useDadosTela.ts` chama `useConsulta(consultas.<recurso>(…, vale), { intervalo, incompleto, sse })` e o App
+   passa `data`/`erro`/`carregando` (ou o `d` inteiro, nos blocos de `app/`) aos componentes. Os componentes não buscam dados sozinhos, exceto a ficha (perfil) e a busca.
 4. Com SSE, o stream grava no cache da consulta (`setQueryData`); a consulta fica com `skipToken` (sem buscar).
 
 **Decisões (e o que foi descartado)**
@@ -196,7 +213,7 @@ ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilit
 | Pastas | Por funcionalidade, regra de importação em um sentido | `App.tsx` com 939 linhas e `components/` plano já não escalavam | Feature-Sliced Design (camadas `pages`/`widgets`/`entities` demais para ~30 componentes) |
 | Estado do servidor | TanStack Query 5 (versão fixa, sem `^`) | Dedup por chave, `staleTime`, polling condicional, prefetch, cache entre telas; antes era tudo à mão no `useApi` | SWR (sem prefetch/devtools tão completos), RTK Query (traz Redux), manter o `useApi` |
 | Roteamento | Roteador próprio (`rotas.mjs` + `useRota`/`useNavegacao`) | O mesmo arquivo valida rotas e gera títulos no servidor (SEO, 404 de verdade) | TanStack Router e React Router 7 (duplicariam as rotas e arriscariam o SEO) |
-| Estado da interface | `useState` no App + props; um contexto só (`PrefetchContext`) | O estado global de verdade é rota + config | Zustand, Jotai, Redux |
+| Estado da interface | `useState` no App + props; um contexto só (`NavegacaoContext`: caminhoDe, ir, prefetch) | O estado global de verdade é rota + config; a navegação vale para a tela inteira e tirou os pares `href`/`onSelect` de todos os links | Zustand, Jotai, Redux |
 | Dado no F5 | sessionStorage próprio (`guardarCacheCliente`), lido como `initialData` vencido | Mantém o limite de 150 KB por resposta e não serializa o cache inteiro a cada mudança | `@tanstack/query-sync-storage-persister` |
 | Prefetch | Só o resultado, com o ponteiro parado 120 ms ou com foco | Barato e com cache no servidor | Prefetch do mapa da UF (centenas de consultas ao TSE por UF) |
 | Code splitting | `React.lazy` só na ficha e no hemiciclo | Aparecem sob interação ou abaixo do mapa | `BarraBusca` (fica no topo: carregar depois faria o layout pular) |
@@ -218,7 +235,8 @@ ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilit
 
 1. Pasta em `features/<nome>/` com os componentes e hooks dela.
 2. Recurso novo da API: função em `consultas.ts`; no servidor, decidir se a rota entra no `robots.txt` (ver "SEO").
-3. Ligar no `App.tsx` (consulta + props). Se a feature precisar de algo de outra, suba esse algo para `ui/`/`lib/`.
+3. Consulta em `app/useDadosTela.ts`, componente ligado no `App.tsx` (ou num bloco de `app/`); regra pura em `dominio/`
+   com teste. Se a feature precisar de algo de outra, suba esse algo para `ui/`/`lib/`.
 
 **Próximos passos possíveis** (fora da reforma, por risco perto da eleição): mover as consultas do App para dentro
 das features e usar `select` (menos re-render a cada SSE), prefetch ao passar o ponteiro no mapa SVG, e avaliar o
@@ -357,7 +375,7 @@ aproximado para os ~190 municípios com mais de uma zona (725 zonas; nos demais 
   mais eleitores; local a mais de 1 km fora do município é descartado (o script avisa).
 - Dependências só do script (devDependencies): `d3-delaunay` e `polygon-clipping`. O servidor só lê o `.json.gz`
   (`{ gerado, municipios: { <cd TSE>: { <zona4>: MultiPolygon } } }`), em memória no 1º pedido.
-- Front: com o município aberto, `app/App.tsx` pede `/api/zonas?uf=<uf>&mun=<mun>` (404 = sem contorno;
+- Front: com o município aberto, `app/useDadosTela.ts` pede `/api/zonas?uf=<uf>&mun=<mun>` (404 = sem contorno;
   ETag + `no-cache` como as demais rotas, para uma regeração chegar no deploy) e o `Mapa` pinta as
   zonas sobre o município (mesmas cores/modos, tooltip, clique abre a zona; a zona aberta é enquadrada e as outras
   atenuadas, como o município); a lista de zonas continua abaixo. Uma

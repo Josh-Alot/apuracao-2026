@@ -1,23 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Cargo } from '../lib/types';
-
-export type FaseVotacao = 'antes' | 'votando' | 'carregando' | 'aguardando' | 'indisponivel' | 'apurando';
-
-/**
- * Em que momento da eleição estamos, pelo relógio e pelo % já apurado.
- * `tseIndisponivel`: depois do fechamento, nenhum dado chegou porque a consulta ao TSE falhou.
- * `carregando`: os dados da aba ainda estão a caminho — não dá para saber se há boletins.
- */
-export function faseVotacao(
-  cargo: Cargo, agora: number, pctApurado: number | null, tseIndisponivel = false, carregando = false,
-): FaseVotacao {
-  if (!cargo.abertura || !cargo.encerramento) return 'apurando';
-  if (agora < Date.parse(cargo.abertura)) return 'antes';
-  if (agora < Date.parse(cargo.encerramento)) return 'votando';
-  if (pctApurado) return 'apurando';
-  if (carregando) return 'carregando';
-  return tseIndisponivel ? 'indisponivel' : 'aguardando';
-}
+import type { FaseVotacao } from '../dominio/fase';
 
 /** Relógio que só "anda" enquanto `ativo` (atualiza a cada 15 s — a contagem é em minutos). */
 export function useAgora(ativo: boolean) {
