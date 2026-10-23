@@ -282,7 +282,10 @@ CSS no `:root` com duas edições, diurna (clara) e noturna (escura, `prefers-co
 que grava `data-tema` no `<html>`). Archivo condensado (`font-stretch` 62–75%, 800, maiúsculas) nos títulos e
 números grandes, IBM Plex Mono nos rótulos, abas, tabelas e horários, Archivo no corpo (servidas pelo próprio
 site: `src/fontes.css`, arquivos dos pacotes Fontsource, só latin/latin-ext; sem preload, que no Lighthouse atrasava a
-primeira pintura). Filetes finos, blocos invertidos para o que está ativo e **nenhum canto arredondado** (`--raio: 0`).
+primeira pintura). Até elas chegarem, o texto usa 'Archivo Reserva'/'Plex Reserva' (fontes do sistema com
+`size-adjust` e `ascent/descent-override` medidos), com uma face por `font-stretch` dos títulos (62/70/75%) e outra
+só para algarismos: a troca de fonte não desloca a página. Fonte ou `font-stretch` novo: meça de novo (ver
+`src/fontes.css`). Filetes finos, blocos invertidos para o que está ativo e **nenhum canto arredondado** (`--raio: 0`).
 Cor forte fica reservada aos partidos; `--ao-vivo` (âmbar) só em status (ao vivo, encerrada, contagem), nunca em
 dado. Evite verde-amarelo ou vermelho como cor de interface (são lidos como sinal político).
 
