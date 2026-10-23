@@ -49,6 +49,8 @@ interface Props {
   onIntencao?: (chave: string, zona: boolean) => void;
   /** Dica no fim do tooltip de cada região (ex.: "Clique para abrir as zonas →"). */
   dica?: (chave: string) => string | null;
+  /** Região sem disputa neste cargo (ex.: UF sem 2º turno): o tooltip mostra este texto no lugar dos números. */
+  semDisputa?: (chave: string) => string | null;
   /** Ao lado da legenda (ex.: o cartão do exterior). */
   rodape?: ReactNode;
   /**
@@ -181,7 +183,7 @@ function projetar(fc: FeatureCollection) {
  */
 export const Mapa = memo(function Mapa({
   geo, geoFalhou = false, chave, nome, dados, modo, selecionado, focar, rotuloRegiao, legendaPorPartido, segundoTurno, corLider, rotulos, onSelect,
-  onIntencao, dica, rodape, zonas,
+  onIntencao, dica, semDisputa, rodape, zonas,
 }: Props) {
   const tema = useCores();
   const ref = useRef<HTMLDivElement>(null);
@@ -497,7 +499,9 @@ export const Mapa = memo(function Mapa({
           }}
         >
           <strong className="tooltip-nome">{hover.zona ? `Zona ${Number(hover.k)}` : nome(hover.k)}</strong>
-          {info ? (
+          {!hover.zona && semDisputa?.(hover.k) ? (
+            <div className="muted">{semDisputa(hover.k)}</div>
+          ) : info ? (
             <>
               <div className="muted tooltip-meta">
                 {info.eleitorado != null && `${fmt(info.eleitorado)} eleitores · `}

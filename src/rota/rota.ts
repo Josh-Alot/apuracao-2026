@@ -10,6 +10,9 @@ export interface Tela extends Local { cargo?: string }
 /** Estado guardado no history junto de /candidato/<sq>: a tela por baixo da ficha e se ela foi aberta no app. */
 export interface EstadoFicha { base: Tela; dentro: boolean }
 
+/** Estado guardado no history junto de uma tela do funil (ver `Rota.ufFora`). */
+export interface EstadoTela { ufFora?: string }
+
 export interface Rota {
   tela: Tela;
   /** Ficha aberta (sq do candidato). */
@@ -20,6 +23,11 @@ export interface Rota {
   dentro?: boolean;
   /** Link antigo no hash: o caminho novo é escrito assim que a config chega. */
   legado?: boolean;
+  /**
+   * UF de onde o leitor veio quando o cargo de destino não tem 2º turno nela (o caminho volta ao Brasil): a tela
+   * avisa. Só na navegação dentro do app (fica no history.state; o caminho com a UF seria um 404).
+   */
+  ufFora?: string;
 }
 
 /** Tela de um caminho do funil (`{}` para a home, um caminho inválido ou o de uma ficha). */
@@ -44,7 +52,7 @@ function lerRota(): Rota {
       ? { tela: st.base, candidato: r.candidato, temBase: true, dentro: st.dentro }
       : { tela: {}, candidato: r.candidato };
   }
-  return { tela: r };
+  return { tela: r, ufFora: (history.state as EstadoTela | null)?.ufFora };
 }
 
 /** Rota atual, lida da URL e relida a cada voltar/avançar do navegador. */

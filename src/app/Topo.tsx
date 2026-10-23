@@ -3,7 +3,7 @@ import { Link, LinkTela } from '../rota/Link';
 import { BarraBusca } from '../features/busca/BarraBusca';
 import { BotaoTema } from '../ui/BotaoTema';
 import { Logo } from '../ui/Logo';
-import { cargoBase, localCargo, turnosDe } from '../dominio/cargo';
+import { cargoBase, localCargo, semSegundoTurno, turnosDe } from '../dominio/cargo';
 import type { DadosTela } from './useDadosTela';
 
 /** Topo: marca (e selos de demo/simulação/prévia), cargos do turno, busca e tema. */
@@ -38,6 +38,7 @@ export function Topo({ d, caminhoDe, irHome, onEscolherBusca }: {
             key={c.id}
             para={localCargo(c, uf)}
             cargo={c.id}
+            ufFora={semSegundoTurno(c, uf) ? uf : undefined}
             className={c.id === cargo.id ? 'ativo' : undefined}
             aria-current={c.id === cargo.id ? 'page' : undefined}
           >

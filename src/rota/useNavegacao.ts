@@ -1,7 +1,7 @@
 import { type RefObject, useCallback, useEffect } from 'react';
 import type { Candidato, Cargo, Config, Local, Municipios } from '../lib/types';
 import { caminho, caminhoCandidato, slugCargo } from '../../compartilhado/rotas.mjs';
-import { type EstadoFicha, type Rota, telaDe } from './rota';
+import { type EstadoFicha, type EstadoTela, type Rota, telaDe } from './rota';
 
 interface Params {
   config: Config | null;
@@ -28,19 +28,21 @@ export function useNavegacao({ config, cargo, municipios, local, rota, rotaRef, 
     [config, cargo?.id, municipios],
   );
 
-  /** Navega para uma tela (nova entrada no histórico); `ir` também chama `aoSair`. */
+  /** Navega para uma tela (nova entrada no histórico); `ir` também chama `aoSair`. `ufFora`: ver `Rota.ufFora`. */
   const irPara = useCallback(
-    (l: Local, cargoId = cargo?.id) => {
+    (l: Local, cargoId = cargo?.id, ufFora?: string) => {
       const destino = caminhoDe(l, cargoId);
-      if (destino !== location.pathname || location.hash || rotaRef.current.candidato) history.pushState(null, '', destino);
-      setRota({ tela: telaDe(destino) });
+      const estado: EstadoTela | null = ufFora ? { ufFora } : null;
+      if (destino !== location.pathname || location.hash || rotaRef.current.candidato) history.pushState(estado, '', destino);
+      else history.replaceState(estado, '', destino);
+      setRota({ tela: telaDe(destino), ufFora });
     },
     [caminhoDe, cargo?.id, setRota],
   );
   const ir = useCallback(
-    (l: Local, cargoId = cargo?.id) => {
+    (l: Local, cargoId = cargo?.id, ufFora?: string) => {
       aoSair();
-      irPara(l, cargoId);
+      irPara(l, cargoId, ufFora);
     },
     [irPara, cargo?.id, aoSair],
   );

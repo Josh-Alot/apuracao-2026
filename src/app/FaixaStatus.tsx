@@ -4,7 +4,7 @@ import { fmt, fmtPct } from '../lib/util';
 import { LinkTela } from '../rota/Link';
 import { Num } from '../ui/Num';
 import { Esq } from '../ui/Carregando';
-import { destinoTurno, turnosDe } from '../dominio/cargo';
+import { destinoTurno, semSegundoTurno, turnosDe } from '../dominio/cargo';
 import { rotuloEstado } from '../dominio/fase';
 import type { DadosTela } from './useDadosTela';
 
@@ -68,11 +68,13 @@ export function FaixaStatus({ d, auto, onAuto }: { d: DadosTela; auto: boolean; 
           {turnos.map((t) => {
             const c = config.cargos.find((x) => x.turno === t)!;
             const [l, id] = destinoTurno(config, cargo, uf, t);
+            const destino = config.cargos.find((x) => x.id === id)!;
             return (
               <LinkTela
                 key={t}
                 para={l}
                 cargo={id}
+                ufFora={semSegundoTurno(destino, uf) ? uf : undefined}
                 className={t === cargo.turno ? 'ativo' : undefined}
                 aria-current={t === cargo.turno ? 'page' : undefined}
               >

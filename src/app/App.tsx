@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ItemBusca, ModoMapa } from '../lib/types';
-import { fmt } from '../lib/util';
+import { UF_NOMES, fmt } from '../lib/util';
 import { BarraTopo, EsqueletoPagina, EsqueletoPlacar } from '../ui/Carregando';
 import { AvisoVotacao } from '../apuracao/AvisoVotacao';
 import { ProximoPlantao } from '../apuracao/ProximoPlantao';
@@ -9,10 +9,10 @@ import { LinhaRotulo, Placar } from '../features/resultado/Placar';
 import { TickerUFs } from '../features/mapa/TickerUFs';
 import { FichaCandidato } from '../features/candidato/FichaCandidato';
 import { useFichaPelaUrl } from '../features/candidato/useFichaPelaUrl';
-import { type Navegacao, NavegacaoContext } from '../rota/Link';
+import { LinkTela, type Navegacao, NavegacaoContext } from '../rota/Link';
 import { useRota } from '../rota/rota';
 import { useNavegacao } from '../rota/useNavegacao';
-import { cargoBase } from '../dominio/cargo';
+import { cargoBase, semSegundoTurno } from '../dominio/cargo';
 import { regioesVencidas, rotuloRegioesVencidas } from '../dominio/placar';
 import { nomeDaRegiao, tituloDaAba } from '../dominio/titulo';
 import { useDadosTela } from './useDadosTela';
@@ -110,6 +110,16 @@ export default function App() {
             <p>
               Os candidatos são os que foram ao 2º turno em 2026; os votos repetem, zona por zona, o 2º turno de
               2022 sobre o eleitorado de 2026. Os números serão trocados pelos oficiais quando o TSE publicar.
+            </p>
+          </div>
+        )}
+
+        {!uf && semSegundoTurno(cargo, rota.ufFora) && (
+          <div className="aviso-mapa aviso-coluna" role="note">
+            <strong>{UF_NOMES[rota.ufFora]} não tem 2º turno para {cargoBase(cargo).toLowerCase()}</strong>
+            <p>
+              A eleição foi decidida no 1º turno.{' '}
+              <LinkTela para={{ uf: rota.ufFora }} cargo={cargo.primeiroTurno ?? undefined}>Ver o resultado do 1º turno →</LinkTela>
             </p>
           </div>
         )}
