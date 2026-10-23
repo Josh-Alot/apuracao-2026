@@ -66,10 +66,27 @@ compartilhado/     O que front e servidor usam igual, sem build
                    `@returns`); `npm run typecheck` confere os dois lados. Só tipos: não existe api.mjs
   rotas.mjs        Rotas públicas e títulos das páginas (tipos em rotas.d.mts); front e server/seo.mjs
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
-  index.mjs        Rotas HTTP, busca, malhas do IBGE (/api/geo/<uf|br>, em memória após o 1º pedido), contorno das zonas
-                   (/api/zonas?uf=&mun=, de dados/zonas-2026.json.gz), arquivos estáticos
+  index.mjs        Servidor HTTP: despacho das rotas (as JSON vêm da tabela de rotas/index.mjs; malhas, candidato,
+                   SSE e prévia/flags têm resposta própria), ETag/304 das respostas JSON, arquivos estáticos
+  http.mjs         HttpError e validação comum (cargoDe, validarUf)
+  rotas/           Uma rota (ou par de rotas) por arquivo; cada handler (query, flags) declara o tipo da resposta
+    index.mjs        Tabela caminho → handler (ROTAS_JSON)
+    config.mjs       /api/config (config + `encerrada` + flags) e /api/municipios
+    resultado.mjs    /api/resultado (e paramsResultado, usado também pelo SSE)
+    mapa.mjs         /api/mapa: resumo por UF, município ou zona (`virou` no 2º turno)
+    composicao.mjs   /api/composicao: cadeiras por partido
+    busca.mjs        /api/busca: índice em memória dos candidatos
+    geo.mjs          /api/geo/<uf|br> (malhas do IBGE, em memória após o 1º pedido) e /api/zonas (contorno estimado,
+                     de dados/zonas-2026.json.gz)
+    saude.mjs        /api/saude e o alerta de memória no log
   aovivo.mjs       Stream SSE /api/ao-vivo: 1 vigia por resultado consulta o TSE a cada 5 s e empurra só quando muda
-  tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
+  tse.mjs          Cliente TSE (fachada): config, municípios, resultados (getResultado, getResultadosRapidos,
+                   getResultadoSemTse), abrangência e apuração encerrada; as peças ficam em tse/:
+    tse/urls.mjs     Endereços dos arquivos (resultadoUrl, fotoUrl), TSE_BASE, CICLO, UFS
+    tse/cache.mjs    Cache em memória (LRU por tamanho, validadores HTTP, `vale()`, resultado normalizado junto do JSON)
+    tse/fila.mjs     Fila com taxa e prioridade; pausa geral após 429
+    tse/fonte.mjs    fetchJson: cache + dedup + fila + arquivo próprio (reserva ou fonte única)
+    tse/apuracao.mjs Regras puras: normalizar, classificar, situacaoMatematica, QE, chapas, resumo (testadas)
   demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais); arquivo com votos (arquivo
                    próprio, simulação) segue a proporção real e só mostra a situação ao chegar a 100%
   malhas.mjs       Malhas do IBGE: dados/malhas, senão .cache/geo, senão o IBGE (com a CA de server/certs/)
@@ -239,7 +256,9 @@ ui/  dominio/  lib/         peças sem regra de negócio (Num, esqueletos, Logo�
 **Como acrescentar uma funcionalidade**
 
 1. Pasta em `features/<nome>/` com os componentes e hooks dela.
-2. Recurso novo da API: função em `consultas.ts`; no servidor, decidir se a rota entra no `robots.txt` (ver "SEO").
+2. Recurso novo da API: tipo da resposta em `compartilhado/api.d.mts`; no servidor, um arquivo em `server/rotas/` com
+   o handler (`@returns` com o tipo) e a linha em `rotas/index.mjs`; decidir se a rota entra no `robots.txt` (ver
+   "SEO"); no front, função em `consultas.ts`.
 3. Consulta em `app/useDadosTela.ts`, componente ligado no `App.tsx` (ou num bloco de `app/`); regra pura em `dominio/`
    com teste. Se a feature precisar de algo de outra, suba esse algo para `ui/`/`lib/`.
 
@@ -330,18 +349,18 @@ Base: `https://resultados.tse.jus.br/oficial`
   Números vêm como string; percentuais com vírgula decimal.
 - Situação do candidato: use o texto `st`, NÃO só o `e` — quem vai ao 2º turno também vem com `e = "s"`.
   Valores vistos (2024): majoritário "Eleito" / "2º turno" / "Não eleito"; proporcional "Eleito por QP" /
-  "Eleito por média" / "Suplente" / "Não eleito"; vazio = indefinido. `classificar()` em `tse.mjs` vira
+  "Eleito por média" / "Suplente" / "Não eleito"; vazio = indefinido. `classificar()` em `tse/apuracao.mjs` vira
   `status` + `detalhe`. `dvt` = destino dos votos: "Válido", "Válido (legenda)", "Anulado", "Anulado sub judice".
 - Campos de progresso: `e.esnt` = eleitores em seções ainda não totalizadas (teto de votos que faltam),
   `v.vansj` = votos anulados sub judice; no proporcional, `par[].tvtn`/`tvtl` = votos nominais/legenda e
   `agr[].vag` = vagas projetadas pelo TSE (não garantidas).
-- "Matematicamente eleito" / "2º turno garantido" (`matematicamente`, `situacaoMatematica()` em `tse.mjs`): calculado só
+- "Matematicamente eleito" / "2º turno garantido" (`matematicamente`, `situacaoMatematica()` em `tse/apuracao.mjs`): calculado só
   no arquivo da disputa (BR p/ Presidente, UF p/ os demais); município/zona/UF do Presidente copiam do
   arquivo da disputa em `getResultado`. Pior caso: todo eleitor que falta vota contra; sub judice conta
   como válido para os rivais; no proporcional só a vaga por QP (sobras fora). 2º turno garantido (executivo):
   ninguém mais alcança a maioria e os 2 rivais mais próximos, juntos, precisariam de mais votos do que
   faltam. Os selos somem quando o TSE marca `st` (eleito / 2º turno).
-- Suplência e efeito puxador (`chapa`, `chapas()` em `tse.mjs`, só proporcional, no arquivo da UF e copiado para
+- Suplência e efeito puxador (`chapa`, `chapas()` em `tse/apuracao.mjs`, só proporcional, no arquivo da UF e copiado para
   município/zona): puxado = eleito com menos votos que o QE (`carg.qe`) numa chapa (partido isolado ou federação)
   em que alguém passou do QE. Com `st` oficial usa eleitos/suplentes do TSE; antes, projeta pelas vagas de cada
   chapa (`agr.vag`) e o front marca "(projeção)" e só mostra os 5 primeiros suplentes de cada chapa.
@@ -499,7 +518,7 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
   o servidor guarda cache de 20 s (UF/BR), 45 s (zonas) e 60 s (municípios). O TSE não tem intervalo
   fixo — publica conforme as urnas são totalizadas. Se mudar os intervalos, os avisos se ajustam sozinhos.
 - O Akamai do TSE guarda cada arquivo por ~60 s (`cache-control: max-age` com o tempo que falta, fase
-  própria por arquivo): o cache do servidor vale no mínimo até lá (`vale()` em `tse.mjs`), então o "ao vivo"
+  própria por arquivo): o cache do servidor vale no mínimo até lá (`vale()` em `tse/cache.mjs`), então o "ao vivo"
   de 5 s vai ao TSE ~1x por minuto por arquivo. Vencido, a consulta é condicional (`If-None-Match` → 304 sem
   corpo). O resultado normalizado fica junto do JSON no cache (`deRaw`) e só é refeito quando o JSON muda.
 - Mapas: região com 100% das seções totalizadas renova a cada 30 min (`ttlCompletoMs`), já que o líder não
@@ -532,6 +551,7 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
     "matematicamente"). Mudou o normalizar de propósito: `npm run test:atualizar` e revise o diff do snapshot.
   - `testes/servidor/apuracao.test.mjs`: regras de maioria, 2º turno garantido, Senado, QE e `classificar`, com
     resultados montados à mão.
+  - `testes/servidor/fonte.test.mjs`: `fetchJson` com o `fetch` simulado (dedup, cache, 304, 404, pausa após 429).
   - `testes/front/`: módulos `.ts` puros do front (rotas, `resolverTela`, `util`), importados sem build pelo
     `testes/ts.mjs` (o Node remove os tipos; o hook só completa a extensão). `.tsx` não roda no Node: lógica
     testável fica em `.ts`.

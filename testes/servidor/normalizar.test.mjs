@@ -4,7 +4,8 @@
 
 import { test } from 'node:test';
 import { doArquivo } from '../../server/arquivo.mjs';
-import { TSE_BASE, normalizar, resultadoUrl } from '../../server/tse.mjs';
+import { normalizar } from '../../server/tse/apuracao.mjs';
+import { TSE_BASE, resultadoUrl } from '../../server/tse/urls.mjs';
 
 const CASOS = [
   { eleicao: '6257', cargo: '1', uf: 'br' }, // Presidente, arquivo da disputa (2º turno)

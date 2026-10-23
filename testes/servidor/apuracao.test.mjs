@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classificar, normalizar, quocienteEleitoral } from '../../server/tse.mjs';
+import { classificar, normalizar, quocienteEleitoral } from '../../server/tse/apuracao.mjs';
 
 /** JSON mínimo no formato do TSE: `votos` = { sigla: votos }, todos válidos, um partido isolado por candidato. */
 function raw({ cargo = '1', tpabr = 'br', turno = '1', votos, faltam = 0, subJudice = 0, vagas = 1 }) {
