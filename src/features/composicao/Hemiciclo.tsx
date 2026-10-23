@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { Composicao, Eleito } from '../../lib/types';
 import { corPartido, fmt, fmtPct, titulo as nomeProprio } from '../../lib/util';
 import { Esq } from '../../ui/Carregando';
@@ -67,7 +67,8 @@ type Foco = { partido: string } | { cadeira: number; daLista: boolean } | null;
 const A_DEFINIR = '';
 
 /** Composição de uma casa legislativa em hemiciclo: uma bolinha por cadeira, na cor do partido. */
-export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria }: Props) {
+/** Memoizado: fica abaixo do mapa e não muda a cada evento do "ao vivo" do resultado. */
+export const Hemiciclo = memo(function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria }: Props) {
   // `foco` acompanha o mouse; `fixo` é a cadeira clicada, que fica em foco (por cima do mouse) até um clique
   // fora do componente ou ESC.
   const [foco, setFoco] = useState<Foco>(null);
@@ -240,7 +241,7 @@ export function Hemiciclo({ dados, erro, carregando, titulo, subtitulo, maioria 
       )}
     </section>
   );
-}
+});
 
 /** Quem ocupa a cadeira em foco, sobre o hemiciclo (x/y em fração da área do desenho). */
 function FichaCadeira({ e, numero, projecao, nacional, x, y }: {

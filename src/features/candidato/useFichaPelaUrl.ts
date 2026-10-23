@@ -4,7 +4,7 @@ import { getJson, qs } from '../../api/cliente';
 import { consultas } from '../../api/consultas';
 import type { Config, ItemBusca } from '../../lib/types';
 import type { EstadoFicha, Rota, Tela } from '../../rota/rota';
-import { slugCargo } from '../../rotas.mjs';
+import { slugCargo } from '../../../compartilhado/rotas.mjs';
 
 /** Tentativas da busca que acha a candidatura de uma ficha aberta direto pela URL (o índice pode estar incompleto). */
 const BUSCA_FICHA_TENTATIVAS = 5;

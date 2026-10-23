@@ -1,5 +1,5 @@
 import type { Cargo, Config, Local } from '../lib/types';
-import { cargoPorSlug } from '../rotas.mjs';
+import { cargoPorSlug } from '../../compartilhado/rotas.mjs';
 import type { Tela } from './rota';
 
 /**

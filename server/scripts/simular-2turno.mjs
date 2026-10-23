@@ -49,7 +49,7 @@ const GOVERNADOR = {
 };
 
 const pad = (s, n) => String(s).padStart(n, '0');
-const ler = async (u) => JSON.parse(zlib.gunzipSync(await fs.readFile(u)));
+const ler = async (u) => JSON.parse(zlib.gunzipSync(await fs.readFile(u)).toString());
 
 // ---------- base: 2º turno de 2022 por zona ----------
 

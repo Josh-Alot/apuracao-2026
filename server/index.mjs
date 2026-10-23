@@ -1,376 +1,26 @@
 // Servidor HTTP sem dependências: API (/api/*) que agrega o TSE e o IBGE + arquivos estáticos do build.
+// Aqui só o despacho; as rotas JSON ficam em server/rotas/ (tabela em rotas/index.mjs).
 
 import http from 'node:http';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
-import {
-  getConfig, getMunicipios, getResultado, getResultadosRapidos, getAbrangencia, resumo, UFS,
-  PRIORIDADE, estadoFila, apuracaoEncerrada,
-} from './tse.mjs';
 import { assinar } from './aovivo.mjs';
 import { getCandidato } from './candidatos.mjs';
-import { estadoArquivo } from './arquivo.mjs';
-import { SIMULACAO } from './simulacao.mjs';
-import { flagsDe, cargoVisivel, rotaPreview, rotaFlags } from './flags.mjs';
-import { lerMalha } from './malhas.mjs';
+import { flagsDe, rotaPreview, rotaFlags } from './flags.mjs';
+import { validarUf } from './http.mjs';
 import { redirecionarHost, responderPagina, responderRobots, responderSitemap, candidaturaDe } from './seo.mjs';
+import { ROTAS_JSON } from './rotas/index.mjs';
+import { paramsResultado } from './rotas/resultado.mjs';
+import { geo } from './rotas/geo.mjs';
+import { vigiarMemoria } from './rotas/saude.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
 const PORT = Number(process.env.PORT || 3001);
 
-class HttpError extends Error {
-  constructor(status, msg) { super(msg); this.status = status; }
-}
-
-/** Cargo pelo id; um cargo escondido por flag (ex.: 2º turno antes da hora) responde como desconhecido. */
-async function cargoDe(id, flags) {
-  const cfg = await getConfig();
-  const c = cfg.cargos.find((x) => x.id === id);
-  if (!c || !cargoVisivel(c, flags)) throw new HttpError(400, `cargo desconhecido: ${id}`);
-  return c;
-}
-
-const uf = (s) => {
-  const v = String(s || '').toLowerCase();
-  if (v !== 'br' && v !== 'zz' && !UFS.includes(v)) throw new HttpError(400, `UF inválida: ${s}`);
-  return v;
-};
-
-// ---------- handlers ----------
-
-async function paramsResultado(q, flags) {
-  const c = await cargoDe(q.get('cargo'), flags);
-  const mun = q.get('mun') || undefined;
-  const zona = q.get('zona') || undefined;
-  if ((mun && !/^\d{5}$/.test(mun)) || (zona && !/^\d{1,4}$/.test(zona))) throw new HttpError(400, 'município/zona inválidos');
-  return { eleicao: c.eleicao, cargo: c.cargo, uf: uf(q.get('uf') || 'br'), mun, zona };
-}
-
-async function resultado(q, flags) {
-  const params = await paramsResultado(q, flags);
-  const r = await getResultado(params);
-  if (!r) throw new HttpError(404, 'Sem dados para esta abrangência/cargo.');
-  return r;
-}
-
-async function mapa(q, flags) {
-  const c = await cargoDe(q.get('cargo'), flags);
-  const u = uf(q.get('uf') || 'br');
-  const mun = q.get('mun');
-  const base = { eleicao: c.eleicao, cargo: c.cargo };
-
-  // Para colorir o mapa basta o líder: com todas as seções totalizadas ele não muda mais.
-  const opcoes = { ttlCompletoMs: 30 * 60_000 };
-
-  // 2º turno: o resultado do 1º turno nas mesmas regiões (do arquivo próprio, já final) mostra onde virou.
-  const primeiro = c.primeiroTurno ? (await getConfig()).cargos.find((x) => x.id === c.primeiroTurno) : null;
-  const montar = async (chaves, lista, ttl, prioridade) => {
-    const [rs, r1s] = await Promise.all([
-      getResultadosRapidos(lista, ttl, prioridade, opcoes),
-      primeiro
-        ? getResultadosRapidos(lista.map((p) => ({ ...p, eleicao: primeiro.eleicao })), ttl, PRIORIDADE.baixa, opcoes)
-        : null,
-    ]);
-    return Object.fromEntries(chaves.map((k, i) => [k, resumo(rs[i], r1s ? r1s[i] ?? null : undefined)]));
-  };
-
-  if (u === 'br') {
-    const ufs = c.ufs;
-    return montar(ufs, ufs.map((x) => ({ ...base, uf: x })), 30_000, PRIORIDADE.media);
-  }
-
-  const municipios = (await getMunicipios(c.eleicao))?.[u]?.municipios ?? [];
-  if (mun) {
-    const zonas = municipios.find((m) => m.cd === mun)?.zonas ?? [];
-    return montar(zonas, zonas.map((z) => ({ ...base, uf: u, mun, zona: z })), 60_000, PRIORIDADE.baixa);
-  }
-
-  // Cargos proporcionais têm arquivos grandes (milhares de candidatos) — para o mapa
-  // estadual usamos só o % apurado, que vem de um único arquivo de abrangência.
-  if (c.tipo === 'proporcional') return getAbrangencia(c.eleicao, u);
-
-  // Um arquivo por município (853 em MG): entram na fila com prioridade baixa e o mapa vai se
-  // completando a cada atualização, em vez de disparar centenas de consultas de uma vez.
-  return montar(municipios.map((m) => m.cd), municipios.map((m) => ({ ...base, uf: u, mun: m.cd })), 3 * 60_000, PRIORIDADE.baixa);
-}
-
-// ---------- composição das casas legislativas ----------
-
-/**
- * Eleitos de um resultado de UF (Senado ou proporcional). Com a situação oficial do TSE (`st`)
- * usa os eleitos oficiais; antes dela, projeta: no proporcional pelas vagas de cada chapa
- * (`chapa`, calculado em `tse.mjs`), no Senado pelos `vagas` mais votados.
- */
-function eleitosDe(r) {
-  const oficiais = r.candidatos.filter((c) => c.status === 'eleito');
-  if (oficiais.length || r.candidatos.some((c) => c.status === 'suplente' || c.status === 'nao-eleito')) {
-    return { eleitos: oficiais, projecao: false };
-  }
-  const validos = r.candidatos.filter((c) => c.votos > 0 && c.destinoVotos === 'Válido');
-  const eleitos = r.cargo.cd === '5'
-    ? validos.slice(0, r.cargo.vagas) // candidatos já vêm por votos
-    : validos.filter((c) => c.chapa && c.chapa.suplente == null);
-  return { eleitos, projecao: eleitos.length > 0 };
-}
-
-/**
- * Cadeiras por partido. Senado: sempre o Brasil (as cadeiras em disputa na eleição); Dep. Federal:
- * a bancada da UF ou, no Brasil, a Câmara inteira; Dep. Estadual/Distrital: a assembleia da UF.
- */
-async function composicao(q, flags) {
-  if (!flags.hemiciclo) throw new HttpError(404, 'composição das casas desligada');
-  const c = await cargoDe(q.get('cargo'), flags);
-  if (c.cargo !== '5' && c.tipo !== 'proporcional') throw new HttpError(400, 'cargo sem casa legislativa');
-  const pedida = uf(q.get('uf') || 'br');
-  const nacional = c.cargo === '5' || pedida === 'br';
-  if (nacional && c.cargo !== '5' && c.cargo !== '6') throw new HttpError(400, 'escolha uma UF');
-  const ufs = (nacional ? c.ufs : [pedida]).filter((x) => x !== 'zz');
-  const base = { eleicao: c.eleicao, cargo: c.cargo };
-  // Uma UF: o mesmo arquivo do painel (já em cache). Brasil: os mesmos 27 arquivos do mapa nacional.
-  const rs = nacional
-    ? await getResultadosRapidos(ufs.map((x) => ({ ...base, uf: x })), 30_000, PRIORIDADE.media)
-    : [await getResultado({ ...base, uf: ufs[0] })];
-
-  const cadeiras = new Map();
-  const eleitos = [];
-  let vagas = 0;
-  let atribuidas = 0;
-  let projecao = false;
-  let somaPct = 0;
-  let faltando = 0;
-  for (const r of rs) {
-    if (!r) { faltando++; continue; }
-    vagas += r.cargo.vagas;
-    somaPct += r.secoes.pct;
-    const e = eleitosDe(r);
-    projecao ||= e.projecao;
-    const colocacao = new Map(r.candidatos.map((cand, i) => [cand.sq, i + 1]));
-    for (const cand of e.eleitos) {
-      cadeiras.set(cand.partido, (cadeiras.get(cand.partido) ?? 0) + 1);
-      atribuidas++;
-      eleitos.push({
-        sq: cand.sq, numero: cand.numero, nome: cand.nomeUrna, partido: cand.partido, uf: r.abrangencia.cd,
-        votos: cand.votos, pct: cand.pct, colocacao: colocacao.get(cand.sq), detalhe: cand.detalhe, foto: cand.foto,
-      });
-    }
-  }
-  const partidos = [...cadeiras].map(([sigla, n]) => ({ sigla, cadeiras: n }))
-    .sort((a, b) => b.cadeiras - a.cadeiras || a.sigla.localeCompare(b.sigla, 'pt-BR'));
-  // Cadeiras na ordem do plenário: partidos como acima e, dentro do partido, pela colocação na eleição
-  // (votos; no Brasil, a votação nominal de cada um no seu estado).
-  const ordemPartido = new Map(partidos.map((p, i) => [p.sigla, i]));
-  eleitos.sort((a, b) => ordemPartido.get(a.partido) - ordemPartido.get(b.partido) || b.votos - a.votos
-    || a.colocacao - b.colocacao);
-  const lidos = rs.length - faltando;
-  return {
-    abrangencia: nacional ? 'br' : pedida,
-    vagas,
-    atribuidas,
-    projecao,
-    pctApurado: lidos ? Math.round((100 * somaPct) / lidos) / 100 : 0,
-    // UFs cujo resultado ainda não chegou do TSE (as vagas delas ainda não entram na conta).
-    faltando,
-    partidos,
-    eleitos,
-  };
-}
-
-// ---------- busca de candidatos ----------
-
-const indices = new Map(); // chave -> { ts, ttl, promise }
-const INDICE_TTL = 30_000;
-// Índice montado antes de todas as listas chegarem do TSE (estão na fila): vale pouco, para a
-// próxima busca já incluir o que chegou.
-const INDICE_PARCIAL_TTL = 4_000;
-
-async function indiceBusca(cargoId, ufFiltro, flags) {
-  const chave = `${cargoId || '*'}|${ufFiltro || '*'}|${flags.segundoTurno ? 2 : 1}`;
-  const hit = indices.get(chave);
-  if (hit && Date.now() - hit.ts < hit.ttl) return hit.promise;
-
-  const promise = (async () => {
-    const cfg = await getConfig();
-    const cargos = cfg.cargos.filter((c) => (!cargoId || c.id === cargoId) && cargoVisivel(c, flags));
-    const alvos = [];
-    for (const c of cargos) {
-      if (c.escopo === 'br') alvos.push({ c, uf: ufFiltro || 'br' });
-      else for (const u of c.ufs) if (!ufFiltro || u === ufFiltro) alvos.push({ c, uf: u });
-    }
-    // A busca não precisa de votos ao segundo: usa o que estiver em cache e renova devagar.
-    const rs = await getResultadosRapidos(
-      alvos.map(({ c, uf: u }) => ({ eleicao: c.eleicao, cargo: c.cargo, uf: u })), 2 * 60_000, PRIORIDADE.baixa,
-    );
-    const out = [];
-    const faltando = rs.filter((r) => r === undefined).length;
-    alvos.forEach(({ c, uf: u }, i) => {
-      const r = rs[i];
-      if (!r) return;
-      for (const cand of r.candidatos) {
-        out.push({
-          ...cand,
-          vices: undefined,
-          cargoId: c.id,
-          cargoNome: c.nome,
-          uf: u,
-          pctApurado: r.secoes.pct,
-          chave: normalizarTexto(`${cand.nomeUrna} ${cand.nome} ${cand.partido}`),
-        });
-      }
-    });
-    const indice = { itens: out, listas: alvos.length, faltando };
-    if (faltando) {
-      const e = indices.get(chave);
-      if (e?.promise === promise) e.ttl = INDICE_PARCIAL_TTL;
-    }
-    return indice;
-  })();
-  promise.catch(() => indices.delete(chave));
-  indices.set(chave, { ts: Date.now(), ttl: INDICE_TTL, promise });
-  return promise;
-}
-
-const normalizarTexto = (s) =>
-  s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-async function busca(q, flags) {
-  if (!flags.busca) throw new HttpError(404, 'busca desligada');
-  const termo = (q.get('q') || '').trim();
-  const partido = (q.get('partido') || '').trim().toUpperCase();
-  // Com partido escolhido o termo é opcional: a busca lista todos os candidatos do partido.
-  if (!partido && termo.length < 2 && !/^\d+$/.test(termo)) return { total: 0, itens: [], parcial: null, partidos: [] };
-  const cargoId = q.get('cargo') || '';
-  if (cargoId) await cargoDe(cargoId, flags);
-  const ufFiltro = q.get('uf') ? uf(q.get('uf')) : '';
-  const { itens: indice, listas, faltando } = await indiceBusca(cargoId, ufFiltro === 'br' ? '' : ufFiltro, flags);
-  const partidos = [...new Set(indice.map((c) => c.partido))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-  let hits = partido ? indice.filter((c) => c.partido.toUpperCase() === partido) : indice;
-  if (/^\d+$/.test(termo)) {
-    hits = hits.filter((c) => c.numero.startsWith(termo));
-    hits.sort((a, b) => (b.numero === termo) - (a.numero === termo) || b.votos - a.votos);
-  } else if (termo) {
-    const tokens = normalizarTexto(termo).split(/\s+/).filter(Boolean);
-    hits = hits.filter((c) => tokens.every((t) => c.chave.includes(t)));
-    hits.sort((a, b) => b.votos - a.votos);
-  } else {
-    // Só o partido: agrupa por cargo (na ordem da config) e, dentro do cargo, por votos.
-    const ordem = new Map((await getConfig()).cargos.map((c, i) => [c.id, i]));
-    hits = [...hits].sort((a, b) => ordem.get(a.cargoId) - ordem.get(b.cargoId) || b.votos - a.votos);
-  }
-  // Por partido a lista pode passar de mil candidatos: o front pede em páginas ("Mostrar mais").
-  const limite = Math.min(Number(q.get('limite') || 50), partido ? 5000 : 200);
-  return {
-    total: hits.length,
-    itens: hits.slice(0, limite).map(({ chave, ...resto }) => resto),
-    // Listas de candidatos (cargo × UF) que ainda não chegaram do TSE: a busca está incompleta.
-    parcial: faltando ? { listas, faltando } : null,
-    partidos,
-  };
-}
-
-// ---------- malhas do IBGE (dados/malhas versionado; IBGE só de reserva — ver malhas.mjs) ----------
-
-// Malha já pronta para enviar (texto do JSON, ~11 MB com todas as UFs): ler e descompactar a cada pedido custava
-// CPU e memória (MG tem 1,6 MB). A promessa entra no mapa logo no 1º pedido, para os pedidos simultâneos esperarem
-// a mesma leitura; se falhar, fica até `IBGE_PAUSA_MS` antes de o IBGE ser tentado de novo (o front repete a cada
-// 15 s: sem a pausa, cada aba aberta viraria uma consulta ao IBGE fora do ar).
-const IBGE_PAUSA_MS = 30_000;
-const malhas = new Map(); // alvo -> Promise<string>
-
-function geo(alvo) {
-  let p = malhas.get(alvo);
-  if (!p) {
-    p = lerMalha(alvo).then((texto) => {
-      if (texto === null) throw new HttpError(404, 'malha não encontrada');
-      return texto;
-    }, (err) => {
-      console.warn(`Falha ao consultar a malha ${alvo} do IBGE: ${err.message}`);
-      throw Object.assign(new HttpError(502, `Falha ao consultar a malha do IBGE: ${err.message}`), { silencioso: true });
-    });
-    malhas.set(alvo, p);
-    p.catch(() => setTimeout(() => malhas.delete(alvo), IBGE_PAUSA_MS).unref());
-  }
-  return p;
-}
-
-// Contorno estimado das zonas nos municípios com mais de uma zona (gerado por `npm run zonas`, ~0,3 MB):
-// lido no 1º pedido e mantido em memória.
-// Passa pelo json() das rotas (ETag + no-cache): uma regeração do arquivo chega ao navegador no deploy seguinte.
-let zonasGeo = null;
-async function geoZonas(q) {
-  uf(q.get('uf'));
-  const mun = q.get('mun');
-  if (!/^\d{5}$/.test(mun || '')) throw new HttpError(400, 'município inválido');
-  zonasGeo ??= fs.readFile(path.join(ROOT, 'dados', 'zonas-2026.json.gz'))
-    .then((b) => JSON.parse(zlib.gunzipSync(b)))
-    .catch(() => ({ municipios: {} }));
-  const { municipios, gerado } = await zonasGeo;
-  const zonas = municipios[mun];
-  if (!zonas) throw new HttpError(404, 'município sem contorno de zonas');
-  return {
-    type: 'FeatureCollection',
-    mun,
-    gerado,
-    features: Object.entries(zonas).map(([zona, coordinates]) => ({
-      type: 'Feature', properties: { zona }, geometry: { type: 'MultiPolygon', coordinates },
-    })),
-  };
-}
-
-/**
- * Configuração + `encerrada` por cargo (com a apuração encerrada o front não fica consultando o TSE),
- * só com os cargos que as flags liberam — o turno mais recente primeiro, que é o que o front abre —
- * e as flags, para o front esconder o que estiver desligado.
- */
-async function configComSituacao(_q, flags) {
-  const cfg = await getConfig();
-  const cargos = cfg.cargos.filter((c) => cargoVisivel(c, flags));
-  const eleicoes = [...new Set(cargos.map((c) => c.eleicao))];
-  const encerradas = new Map(await Promise.all(eleicoes.map(async (e) => [e, await apuracaoEncerrada(e)])));
-  return {
-    ...cfg,
-    cargos: cargos.map((c) => ({ ...c, encerrada: encerradas.get(c.eleicao) })).sort((a, b) => b.turno - a.turno),
-    flags,
-  };
-}
-
-// ---------- roteamento ----------
-
-const rotas = {
-  '/api/config': configComSituacao,
-  '/api/municipios': async (q, flags) => {
-    const c = await cargoDe(q.get('cargo'), flags);
-    return getMunicipios(c.eleicao);
-  },
-  '/api/resultado': resultado,
-  '/api/mapa': mapa,
-  '/api/busca': busca,
-  '/api/composicao': composicao,
-  '/api/zonas': geoZonas,
-  // Diagnóstico: fila de consultas ao TSE, cache e memória.
-  '/api/saude': () => ({ fila: estadoFila(), arquivo: estadoArquivo(), simulacao: SIMULACAO, memoriaMB: Math.round(process.memoryUsage().rss / 2 ** 20), memoria: memoria() }),
-};
-
-/** Memória do processo em MB: rss (o que o Render conta, limite de 512), heap do V8 e buffers fora dele. */
-function memoria() {
-  const m = process.memoryUsage();
-  const mb = (n) => Math.round(n / 2 ** 20);
-  return { rss: mb(m.rss), heap: mb(m.heapUsed), heapTotal: mb(m.heapTotal), externo: mb(m.external), buffers: mb(m.arrayBuffers) };
-}
-
-// No log do Render, a cada minuto: estado da fila quando há algo esperando e a memória quando passa de
-// 400 MB (o Render reinicia o serviço em 512 MB sem deixar nada no log; assim fica o rastro do que cresceu).
-const ALERTA_RSS_MB = 400;
-setInterval(() => {
-  const f = estadoFila();
-  if (f.alta + f.media + f.baixa) console.log('fila TSE', JSON.stringify(f));
-  const m = memoria();
-  if (m.rss > ALERTA_RSS_MB) console.warn('memória alta', JSON.stringify({ ...m, cacheMB: f.cacheMB, malhas: malhas.size }));
-}, 60_000).unref();
+vigiarMemoria();
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
@@ -431,7 +81,7 @@ const server = http.createServer(async (req, res) => {
     if (redirecionarHost(req, res, url)) return;
     const geoMatch = url.pathname.match(/^\/api\/geo\/([a-z]{2})$/);
     if (geoMatch) {
-      const alvo = geoMatch[1] === 'br' ? 'br' : uf(geoMatch[1]);
+      const alvo = geoMatch[1] === 'br' ? 'br' : validarUf(geoMatch[1]);
       const texto = await geo(alvo);
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=86400' });
       return res.end(texto);
@@ -452,7 +102,7 @@ const server = http.createServer(async (req, res) => {
       if (!flags.aoVivo) return json(404, { erro: 'ao vivo desligado' });
       return assinar(req, res, await paramsResultado(url.searchParams, flags));
     }
-    const rota = rotas[url.pathname];
+    const rota = ROTAS_JSON[url.pathname];
     if (rota) return json(200, await rota(url.searchParams, flags));
     if (url.pathname.startsWith('/api/')) return json(404, { erro: 'rota inexistente' });
     return await estatico(req, res, url.pathname);

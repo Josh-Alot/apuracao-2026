@@ -1,6 +1,6 @@
 import { type RefObject, useCallback, useEffect } from 'react';
 import type { Candidato, Cargo, Config, Local, Municipios } from '../lib/types';
-import { caminho, caminhoCandidato, slugCargo } from '../rotas.mjs';
+import { caminho, caminhoCandidato, slugCargo } from '../../compartilhado/rotas.mjs';
 import { type EstadoFicha, type Rota, telaDe } from './rota';
 
 interface Params {

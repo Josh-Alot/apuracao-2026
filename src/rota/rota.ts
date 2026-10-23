@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Local } from '../lib/types';
-import { lerCaminho } from '../rotas.mjs';
+import { lerCaminho } from '../../compartilhado/rotas.mjs';
 
 // ---------- rota no caminho da URL (formato em rotas.mjs, o mesmo do servidor) ----------
 

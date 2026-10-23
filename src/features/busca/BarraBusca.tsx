@@ -4,7 +4,7 @@ import { Esq } from '../../ui/Carregando';
 import { Num } from '../../ui/Num';
 import { Link } from '../../rota/Link';
 import { SeloSituacao } from '../../ui/SeloSituacao';
-import type { Cargo, ItemBusca } from '../../lib/types';
+import type { Cargo, ItemBusca, RespostaBusca } from '../../lib/types';
 import { PARTIDOS, UF_NOMES, corPartido, fmt, fmtPct, titulo } from '../../lib/util';
 
 interface Props {
@@ -14,14 +14,6 @@ interface Props {
   onEscolher: (item: ItemBusca) => void;
 }
 
-interface RespostaBusca {
-  total: number;
-  itens: ItemBusca[];
-  /** Listas de candidatos (cargo × UF) que o servidor ainda não recebeu do TSE. */
-  parcial: { listas: number; faltando: number } | null;
-  /** Siglas presentes no índice do servidor (para completar o filtro de partido). */
-  partidos: string[];
-}
 
 const REPETIR_PARCIAL_MS = 4_000;
 const POR_PAGINA = 50;

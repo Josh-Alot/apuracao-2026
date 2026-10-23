@@ -63,11 +63,14 @@ function lerCookie(req, nome) {
 
 export const emPrevia = (req) => tokenValido(lerCookie(req, COOKIE));
 
-/** Flags efetivas para este pedido: { segundoTurno: bool, ..., previa: bool }. */
+/**
+ * Flags efetivas para este pedido: { segundoTurno: bool, ..., previa: bool }.
+ * @returns {import('../compartilhado/api.mjs').Flags}
+ */
 export function flagsDe(req) {
   const previa = emPrevia(req);
   const agora = Date.now();
-  const out = { previa };
+  const out = /** @type {import('../compartilhado/api.mjs').Flags} */ ({ previa });
   for (const nome of NOMES_FLAGS) out[nome] = previa || estado[nome].liga <= agora;
   return out;
 }

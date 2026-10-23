@@ -77,6 +77,8 @@
 
 * { box-sizing: border-box; border-radius: var(--raio); }
 html, body { overflow-x: clip; }
+/* Resumo do servidor (SEO) até o React montar: a margem dele não vaza para o body (o body pularia 15 px ao montar). */
+.seo-resumo { display: flow-root; padding-inline: var(--gutter, 16px); }
 body {
   margin: 0;
   background: var(--bg);
@@ -312,7 +314,7 @@ p { margin: 0; }
 }
 .ticker a:hover { background: var(--superficie); }
 .ticker-uf { font-size: 12px; color: var(--muted); }
-.ticker-lider { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.ticker-lider { min-width: 8ch; font-size: 13px; font-weight: 600; white-space: nowrap; } /* "FLA 51,3": a célula não alarga quando o dado chega */
 
 /* ======================= cabeçalho das telas ======================= */
 

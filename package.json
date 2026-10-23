@@ -9,7 +9,9 @@
     "demo": "DEMO=1 npm run dev",
     "build": "tsc --noEmit && vite build",
     "start": "node --max-old-space-size=320 server/index.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json",
+    "test": "node --import ./testes/ts.mjs --test 'testes/**/*.test.mjs'",
+    "test:atualizar": "node --import ./testes/ts.mjs --test --test-update-snapshots 'testes/**/*.test.mjs'",
     "candidatos": "node server/scripts/candidatos.mjs",
     "arquivar": "node server/scripts/arquivar.mjs",
     "simular-2turno": "node server/scripts/simular-2turno.mjs",
@@ -26,6 +28,8 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@fontsource-variable/archivo": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
     "@types/d3-geo": "^3.1.1",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 import { useCarregandoGlobal } from '../api/cliente';
 import { Logo } from './Logo';
 
@@ -69,6 +69,37 @@ export function EsqueletoPainel({ linhas = 6 }: { linhas?: number }) {
 }
 
 /**
+ * Esqueleto do placar (majoritários, enquanto o resultado não chega), com as mesmas classes e alturas do Placar:
+ * sem ele, o placar entra depois e empurra o mapa para baixo (o maior deslocamento de layout da página). As
+ * barras têm a altura da linha (`1lh`) para o esqueleto ter a mesma altura do texto.
+ */
+export function EsqueletoPlacar({ compacto = false, rotulo }: { compacto?: boolean; rotulo?: ReactNode }) {
+  return (
+    <section className={`placar ${compacto ? 'placar-compacto' : ''}`} aria-busy="true" aria-label="Carregando o placar">
+      {rotulo}
+      <div className="placar-colunas">
+        {[0, 1].map((i) => (
+          <div key={i} className="placar-lado" style={{ '--cor': 'var(--borda)' } as CSSProperties}>
+            <div className="placar-nome-linha"><span className="placar-nome"><Esq w="60%" h="1lh" /></span></div>
+            <p className="placar-sub"><Esq w="40%" h="1lh" /></p>
+            <div className="placar-numeros">
+              <span className="placar-pct vazio">––,––<span className="placar-sinal">%</span></span>
+              {!compacto && (
+                <dl className="placar-dados">
+                  {[0, 1, 2].map((j) => <div key={j}><dt><Esq w="4em" h="1lh" /></dt><dd><Esq w="6em" h="1lh" /></dd></div>)}
+                </dl>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="placar-barra vazia" />
+      <div className="placar-legenda"><span>&nbsp;</span></div>
+    </section>
+  );
+}
+
+/**
  * Esqueleto do mapa: mantém a proporção do SVG para a página não "pular". Com `falhou`, avisa que a malha não
  * veio (quem a pede tenta de novo sozinho) em vez de parecer que ainda está carregando.
  */
@@ -96,7 +127,7 @@ export function EsqueletoPagina() {
         <div className="busca"><Esq h="2.5rem" /></div>
       </header>
       <div className="faixa-status"><Esq w="22rem" h="0.8rem" /></div>
-      <div className="placar"><Esq w="40%" h="6rem" /><Esq h="14px" className="esq-espaco" /></div>
+      <EsqueletoPlacar />
       <main className="grade">
         <section className="painel-mapa">
           <Esq w="30%" h="0.9rem" />

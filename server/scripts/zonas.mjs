@@ -171,7 +171,7 @@ function zonasDoMunicipio(geometria, locais) {
 
   const zonas = {};
   for (const [zona, lista] of celulas) {
-    const unida = polygonClipping.union(...lista);
+    const unida = polygonClipping.union(lista[0], ...lista.slice(1));
     const recortada = limpar(polygonClipping.intersection(unida, polis));
     if (recortada.length) zonas[zona] = recortada;
   }
@@ -180,7 +180,7 @@ function zonasDoMunicipio(geometria, locais) {
 
 // ---------- principal ----------
 
-const munCm = JSON.parse(zlib.gunzipSync(await fs.readFile(MUN_CM)));
+const munCm = JSON.parse(zlib.gunzipSync(await fs.readFile(MUN_CM)).toString());
 await baixarZip();
 
 const saida = { gerado: null, fonte: `${CONJUNTO}_${ANO}`, municipios: {} };

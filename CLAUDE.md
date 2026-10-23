@@ -12,7 +12,8 @@ Idioma do projeto: **português** (código, UI, comentários e commits).
 npm install
 npm run dev        # API (porta 3001) + Vite (porta 5173, proxy /api → 3001)
 npm run demo       # igual ao dev, mas com votos sintéticos (DEMO=1) — útil antes das 17h de Brasília
-npm run typecheck
+npm run typecheck  # front (tsconfig.json) e servidor (tsconfig.server.json, checkJs) contra o contrato da API
+npm test           # testes (node:test, sem dependências); npm run test:atualizar regera os snapshots
 npm run candidatos # regera dados/candidatos-2026.tsv.gz (perfil e bens, Dados Abertos do TSE)
 npm run arquivar   # guarda os resultados finais em arquivo/ (ver "Arquivo próprio" abaixo)
 npm run simular-2turno  # regera a simulação do 2º turno em simulacao/ (ver "Simulação do 2º turno")
@@ -59,11 +60,33 @@ Com `ADMIN_TOKEN` definido:
 ## Arquitetura
 
 ```
+compartilhado/     O que front e servidor usam igual, sem build
+  api.d.mts        Contrato da API: tipos de cada resposta (/api/config, /resultado, /mapa, /busca, /composicao…).
+                   O front importa (`import type`, via src/lib/types.ts) e o servidor anota em JSDoc (`@import`,
+                   `@returns`); `npm run typecheck` confere os dois lados. Só tipos: não existe api.mjs
+  rotas.mjs        Rotas públicas e títulos das páginas (tipos em rotas.d.mts); front e server/seo.mjs
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
-  index.mjs        Rotas HTTP, busca, malhas do IBGE (/api/geo/<uf|br>, em memória após o 1º pedido), contorno das zonas
-                   (/api/zonas?uf=&mun=, de dados/zonas-2026.json.gz), arquivos estáticos
+  index.mjs        Servidor HTTP: despacho das rotas (as JSON vêm da tabela de rotas/index.mjs; malhas, candidato,
+                   SSE e prévia/flags têm resposta própria), ETag/304 das respostas JSON, arquivos estáticos
+  http.mjs         HttpError e validação comum (cargoDe, validarUf)
+  rotas/           Uma rota (ou par de rotas) por arquivo; cada handler (query, flags) declara o tipo da resposta
+    index.mjs        Tabela caminho → handler (ROTAS_JSON)
+    config.mjs       /api/config (config + `encerrada` + flags) e /api/municipios
+    resultado.mjs    /api/resultado (e paramsResultado, usado também pelo SSE)
+    mapa.mjs         /api/mapa: resumo por UF, município ou zona (`virou` no 2º turno)
+    composicao.mjs   /api/composicao: cadeiras por partido
+    busca.mjs        /api/busca: índice em memória dos candidatos
+    geo.mjs          /api/geo/<uf|br> (malhas do IBGE, em memória após o 1º pedido) e /api/zonas (contorno estimado,
+                     de dados/zonas-2026.json.gz)
+    saude.mjs        /api/saude e o alerta de memória no log
   aovivo.mjs       Stream SSE /api/ao-vivo: 1 vigia por resultado consulta o TSE a cada 5 s e empurra só quando muda
-  tse.mjs          Cliente TSE: URLs, cache em memória c/ dedup, normalização dos JSONs
+  tse.mjs          Cliente TSE (fachada): config, municípios, resultados (getResultado, getResultadosRapidos,
+                   getResultadoSemTse), abrangência e apuração encerrada; as peças ficam em tse/:
+    tse/urls.mjs     Endereços dos arquivos (resultadoUrl, fotoUrl), TSE_BASE, CICLO, UFS
+    tse/cache.mjs    Cache em memória (LRU por tamanho, validadores HTTP, `vale()`, resultado normalizado junto do JSON)
+    tse/fila.mjs     Fila com taxa e prioridade; pausa geral após 429
+    tse/fonte.mjs    fetchJson: cache + dedup + fila + arquivo próprio (reserva ou fonte única)
+    tse/apuracao.mjs Regras puras: normalizar, classificar, situacaoMatematica, QE, chapas, resumo (testadas)
   demo.mjs         Gera votos determinísticos sobre os arquivos reais (candidatos reais); arquivo com votos (arquivo
                    próprio, simulação) segue a proporção real e só mostra a situação ao chegar a 100%
   malhas.mjs       Malhas do IBGE: dados/malhas, senão .cache/geo, senão o IBGE (com a CA de server/certs/)
@@ -85,10 +108,14 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
                    Pastas por funcionalidade: uma pasta de features/ nunca importa outra (só api/, rota/, apuracao/,
                    ui/ e lib/); o que duas features usam sobe para ui/ ou lib/, e o App junta tudo
   main.tsx         Monta o App dentro dos Providers
-  rotas.mjs        Rotas públicas e títulos das páginas, JS puro compartilhado com o servidor (tipos em rotas.d.mts;
-                   fica em src/ porque o server/seo.mjs importa de lá)
   app/
-    App.tsx            Composição da tela: lê rota, config e fase, faz as consultas e distribui aos componentes
+    App.tsx            Composição da tela (~180 linhas): rota, useDadosTela, navegação (NavegacaoContext) e o estado
+                       da interface (modo do mapa, "ao vivo", filtro da busca, índice aberto); distribui aos componentes
+    useDadosTela.ts    Todas as consultas da tela e o que se deriva delas (cargo/UF/local, fase, município aberto,
+                       placar, cores do 2º turno, situação da apuração); `pronta: false` até a config chegar
+    usePrefetch.ts     Prefetch do resultado da tela de destino de um link (ponteiro parado ou foco)
+    Topo.tsx, FaixaStatus.tsx, CabecalhoTela.tsx, PainelMapa.tsx  Blocos da tela; recebem `d` (DadosTela)
+    Lateral.tsx        lateralDe(): a coluna ao lado do mapa conforme a tela (ou null, sem coluna)
     providers.tsx      QueryClient (sem retry automático, sem polling em aba oculta, gcTime 30 min)
   api/
     cliente.ts         getJson (timeout 30 s, conta requisições ativas para a barra do topo), URLs, cópia no
@@ -103,7 +130,9 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
     resolver.ts        resolverTela(): cargo, UF e local de uma tela (App e prefetch usam o mesmo)
     Link.tsx           <a href> com navegação SPA no clique simples (ctrl/cmd/meio abrem nova aba); toda navegação
                        usa links de verdade para o Google rastrear. Ponteiro parado 120 ms ou foco: adianta o
-                       resultado do destino (`PrefetchContext`, fornecido pelo App; o mapa fica para o clique)
+                       resultado do destino (o mapa fica para o clique). `LinkTela para={local} cargo?`: href e
+                       navegação do `NavegacaoContext` (caminhoDe, ir, prefetch; fornecido pelo App);
+                       `useNavegacaoTela()` para o que não é link (regiões do mapa SVG)
   apuracao/
     useFaseApuracao.ts Aberta/encerrada/tempo real, intervalos (`ATUALIZA_*_MS`) e `vale` (staleTime) do momento
     AvisoVotacao.tsx   Faixa âmbar acima da faixa de status: "votação ainda não começou / em andamento (contagem
@@ -125,8 +154,7 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
                          grandes, votos, regiões vencidas, exterior; barra 1º | outros | 2º com a marca dos 50%;
                          `compacto` nas telas de UF/município/zona; antes dos votos do 2º turno, "––,––%" e o 1º turno
       PainelResultado.tsx Tabela de todos os candidatos (filtro local) e o comparecimento
-      Duelo.tsx          2º turno: finalistas e cores (`finalistas`, `coresFinalistas`) e `ListaDuelos` (cargos estaduais
-                         no nível Brasil, uma linha por UF)
+      Duelo.tsx          2º turno: `ListaDuelos` (cargos estaduais no nível Brasil, uma linha por UF)
     candidato/
       FichaCandidato.tsx Ficha aberta (sq da rota) sobre a tela; ModalCandidato em chunk próprio (React.lazy)
       ModalCandidato.tsx Ficha do candidato (<dialog>): resultado + perfil, candidatura e bens declarados
@@ -148,10 +176,16 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
     ListaRegioes.tsx   Lista clicável para regiões sem malha (zonas, cidades no exterior, UFs)
     Num.tsx            Número ao vivo: conta do valor antigo ao novo e realça ao mudar; pulsa sob `.atualizando`
     SeloSituacao.tsx, Logo.tsx, BotaoTema.tsx, SeletorMunicipio.tsx
+  dominio/           Regras da tela em funções puras (.ts, sem React; testadas em testes/front/dominio.test.mjs)
+    cargo.ts         cargoBase, nomeCargo, turnosDe, localCargo, destinoTurno (troca de cargo/turno mantendo a UF)
+    fase.ts          faseVotacao (antes/votando/aguardando/…), situacaoApuracao (% apurado, TSE indisponível), rotuloEstado
+    duelo.ts         2º turno: finalistas, coresFinalistas, corDoLider
+    placar.ts        placarDe (os dois da frente ou os finalistas, com cores), regioesVencidas
+    titulo.ts        tituloDaAba (document.title), nomeDaRegiao
   lib/
     util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos e o ajuste delas ao tema (OKLCH)
     tema.ts          useTema()/definirTema() (data-tema + prefers-color-scheme) e useCores() (cores de partido no tema)
-    types.ts         Tipos das respostas da API
+    types.ts         Reexporta compartilhado/api.d.mts (+ tipos só do front, como ModoMapa)
   styles.css       Tema único ("Plantão") — tokens em variáveis CSS no :root
 ```
 
@@ -159,7 +193,10 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
 
 **Arquitetura por funcionalidade** (*feature-based*/*package by feature*, no estilo do Bulletproof React), com o
 TanStack Query como camada de estado do servidor. Reforma feita em outubro de 2026 (branch `feature/architecture`),
-antes do 2º turno, em fases que podem ser revertidas uma a uma.
+antes do 2º turno, em fases que podem ser revertidas uma a uma. Segunda reforma (branch `refactor/arquitetura`,
+um commit por fase): testes e CI, `App.tsx` dividido (`useDadosTela`, blocos em `app/`, `dominio/`, `NavegacaoContext`),
+contrato da API em `compartilhado/` com `checkJs` no servidor, `tse.mjs`/`index.mjs` separados em `server/tse/` e
+`server/rotas/`, e `memo` nos componentes pesados (re-render a cada evento do "ao vivo").
 
 **Camadas e regra de importação** (só para baixo; nunca entre features):
 
@@ -170,13 +207,19 @@ features/*      uma pasta por funcionalidade (mapa, resultado, candidato, busca,
   ↓
 api/  rota/  apuracao/      infraestrutura do app: consultas, URL/navegação, fase da apuração
   ↓
-ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilitários/tipos
+ui/  dominio/  lib/         peças sem regra de negócio (Num, esqueletos, Logo…), regras puras da tela e utilitários/tipos
 ```
+- `dominio/` só importa `lib/` (e `compartilhado/`): sem React, testável no Node. Regra que decide o que a tela mostra
+  (fase, placar, títulos, troca de turno) vai para lá, não para um `.tsx` — `.tsx` não roda nos testes.
+- `ui/` usa `rota/Link` (o `LinkTela`), a única exceção ao "só para baixo"; links nunca recebem `href` + `onSelect`
+  à mão: recebem a tela de destino (`para`/`destino: (chave) => Local`).
 - Uma feature não importa outra. O que duas usam sobe para `ui/` ou `lib/`; o que precisa das duas é montado no
   App (ex.: a ficha saiu de dentro do `PainelResultado` e virou `FichaCandidato`, renderizada pelo App, porque o
   `<dialog>` modal não depende de onde está no DOM).
-- `src/rotas.mjs` fica fora das pastas porque é compartilhado com o servidor (`server/seo.mjs`): mudou o formato
-  de uma rota, muda nos dois lados.
+- `compartilhado/` fica fora de `src/` porque o servidor também usa: `rotas.mjs` (mudou o formato de uma rota, muda
+  nos dois lados) e o contrato `api.d.mts`. Campo novo numa resposta: tipo em `api.d.mts` primeiro; o servidor
+  declara o tipo de cada rota em JSDoc e o `typecheck` acusa campo a mais, a menos ou com nome trocado. O servidor
+  roda com `strict: false` (o JSON do TSE chega como `any`): o tipo de um valor lido do TSE não é conferido.
 
 **Fluxo de dados**
 
@@ -184,8 +227,8 @@ ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilit
    prefetch dos links).
 2. `useFaseApuracao(cargo, aoVivo)` decide o ritmo: antes das 17h nada se repete; durante a apuração, SSE (resultado)
    + polling (mapa, composição); encerrada, só repete o que veio incompleto. Também dá o `vale` (`staleTime`).
-3. O App chama `useConsulta(consultas.<recurso>(…, vale), { intervalo, incompleto, sse })` e passa `data`/`erro`/
-   `carregando` aos componentes. Os componentes não buscam dados sozinhos, exceto a ficha (perfil) e a busca.
+3. `app/useDadosTela.ts` chama `useConsulta(consultas.<recurso>(…, vale), { intervalo, incompleto, sse })` e o App
+   passa `data`/`erro`/`carregando` (ou o `d` inteiro, nos blocos de `app/`) aos componentes. Os componentes não buscam dados sozinhos, exceto a ficha (perfil) e a busca.
 4. Com SSE, o stream grava no cache da consulta (`setQueryData`); a consulta fica com `skipToken` (sem buscar).
 
 **Decisões (e o que foi descartado)**
@@ -195,9 +238,10 @@ ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilit
 | Pastas | Por funcionalidade, regra de importação em um sentido | `App.tsx` com 939 linhas e `components/` plano já não escalavam | Feature-Sliced Design (camadas `pages`/`widgets`/`entities` demais para ~30 componentes) |
 | Estado do servidor | TanStack Query 5 (versão fixa, sem `^`) | Dedup por chave, `staleTime`, polling condicional, prefetch, cache entre telas; antes era tudo à mão no `useApi` | SWR (sem prefetch/devtools tão completos), RTK Query (traz Redux), manter o `useApi` |
 | Roteamento | Roteador próprio (`rotas.mjs` + `useRota`/`useNavegacao`) | O mesmo arquivo valida rotas e gera títulos no servidor (SEO, 404 de verdade) | TanStack Router e React Router 7 (duplicariam as rotas e arriscariam o SEO) |
-| Estado da interface | `useState` no App + props; um contexto só (`PrefetchContext`) | O estado global de verdade é rota + config | Zustand, Jotai, Redux |
+| Estado da interface | `useState` no App + props; um contexto só (`NavegacaoContext`: caminhoDe, ir, prefetch) | O estado global de verdade é rota + config; a navegação vale para a tela inteira e tirou os pares `href`/`onSelect` de todos os links | Zustand, Jotai, Redux |
 | Dado no F5 | sessionStorage próprio (`guardarCacheCliente`), lido como `initialData` vencido | Mantém o limite de 150 KB por resposta e não serializa o cache inteiro a cada mudança | `@tanstack/query-sync-storage-persister` |
-| Prefetch | Só o resultado, com o ponteiro parado 120 ms ou com foco | Barato e com cache no servidor | Prefetch do mapa da UF (centenas de consultas ao TSE por UF) |
+| Prefetch | Só o resultado, com o ponteiro parado 120 ms ou com foco, nos links e nas regiões/zonas do mapa SVG (`onIntencao`) | Barato e com cache no servidor | Prefetch do mapa da UF (centenas de consultas ao TSE por UF) |
+| Re-render no "ao vivo" | `memo` nos componentes pesados que não dependem do resultado (`Mapa`, `IndiceRegioes`, `SeletorMunicipio`, `Hemiciclo`) e props estáveis (`useCallback`/`useMemo` no `PainelMapa`) | Medido em /presidente/sp (645 municípios, demo, dev): cada evento do SSE custava ~110 ms de render (mapa ~40 ms, índice de links ~67 ms, seletor ~22 ms); caiu para ~30 ms, o que de fato mostra o resultado | Consultas dentro das features com `select`: o mapa e o resultado são lidos por vários blocos da tela (placar, lateral, ticker, faixa), então o App re-renderizaria igual; o custo estava nos filhos, não no App |
 | Code splitting | `React.lazy` só na ficha e no hemiciclo | Aparecem sob interação ou abaixo do mapa | `BarraBusca` (fica no topo: carregar depois faria o layout pular) |
 
 **Regras do TanStack Query neste projeto**
@@ -216,11 +260,19 @@ ui/  lib/       peças sem regra de negócio (Num, esqueletos, Logo…) e utilit
 **Como acrescentar uma funcionalidade**
 
 1. Pasta em `features/<nome>/` com os componentes e hooks dela.
-2. Recurso novo da API: função em `consultas.ts`; no servidor, decidir se a rota entra no `robots.txt` (ver "SEO").
-3. Ligar no `App.tsx` (consulta + props). Se a feature precisar de algo de outra, suba esse algo para `ui/`/`lib/`.
+2. Recurso novo da API: tipo da resposta em `compartilhado/api.d.mts`; no servidor, um arquivo em `server/rotas/` com
+   o handler (`@returns` com o tipo) e a linha em `rotas/index.mjs`; decidir se a rota entra no `robots.txt` (ver
+   "SEO"); no front, função em `consultas.ts`.
+3. Consulta em `app/useDadosTela.ts`, componente ligado no `App.tsx` (ou num bloco de `app/`); regra pura em `dominio/`
+   com teste. Se a feature precisar de algo de outra, suba esse algo para `ui/`/`lib/`.
 
-**Próximos passos possíveis** (fora da reforma, por risco perto da eleição): mover as consultas do App para dentro
-das features e usar `select` (menos re-render a cada SSE), prefetch ao passar o ponteiro no mapa SVG, e avaliar o
+**Componentes pesados e o "ao vivo"**: a cada evento do SSE o App renderiza de novo (o resultado mudou). Componente
+com centenas de elementos que não depende do resultado leva `memo`, e quem o usa passa props estáveis (`useCallback`,
+`useMemo`, objetos que vêm do cache do TanStack). Para conferir, envolva o bloco num `<Profiler>` do React e rode a
+demo numa UF grande (/presidente/sp): o mapa não deve aparecer a cada evento.
+
+**Próximos passos possíveis**: `memo` na coluna lateral (~12 ms por evento em dev; depende do placar, que muda a cada
+evento — precisaria de um par estável só com número/nome/cor), o `strict` no servidor (trabalho à parte) e avaliar o
 TanStack Router se as rotas crescerem.
 
 ### Estilo visual
@@ -228,8 +280,9 @@ TanStack Router se as rotas crescerem.
 Um único tema, "Plantão" (mesa de redação na noite da apuração), todo em `src/styles.css`: tokens em variáveis
 CSS no `:root` com duas edições, diurna (clara) e noturna (escura, `prefers-color-scheme: dark` ou o botão do topo,
 que grava `data-tema` no `<html>`). Archivo condensado (`font-stretch` 62–75%, 800, maiúsculas) nos títulos e
-números grandes, IBM Plex Mono nos rótulos, abas, tabelas e horários, Archivo no corpo (Google Fonts no
-`index.html`). Filetes finos, blocos invertidos para o que está ativo e **nenhum canto arredondado** (`--raio: 0`).
+números grandes, IBM Plex Mono nos rótulos, abas, tabelas e horários, Archivo no corpo (servidas pelo próprio
+site: `src/fontes.css`, arquivos dos pacotes Fontsource, só latin/latin-ext; sem preload, que no Lighthouse atrasava a
+primeira pintura). Filetes finos, blocos invertidos para o que está ativo e **nenhum canto arredondado** (`--raio: 0`).
 Cor forte fica reservada aos partidos; `--ao-vivo` (âmbar) só em status (ao vivo, encerrada, contagem), nunca em
 dado. Evite verde-amarelo ou vermelho como cor de interface (são lidos como sinal político).
 
@@ -247,13 +300,16 @@ mudou o desenho, mude os dois SVGs e rode `npm run icones`.
 
 ## SEO
 
-- Rotas (`src/rotas.mjs`): `/`, `/<cargo>[/<uf>[/<mun>-<nome>[/zona-<zona>]]]` (cargo por slug: `governador`,
+- Rotas (`compartilhado/rotas.mjs`): `/`, `/<cargo>[/<uf>[/<mun>-<nome>[/zona-<zona>]]]` (cargo por slug: `governador`,
   `presidente-2-turno`…; município pelo código TSE, o nome é opcional) e `/candidato/<sq>-<nome>`. Links antigos
   `#/<cargoId>/…` viram o caminho novo no front (`replaceState`). Título da página por `tituloPagina()`, igual no
   servidor e no front.
 - O servidor (`server/seo.mjs`) valida a rota (cargo visível pelas flags, UF do cargo, município, zona, candidato) e
   responde 200 com o `dist/index.html` preenchido nos marcadores `<!--seo-->…<!--/seo-->` e `<!--seo:conteudo-->`
   do `index.html` (não os remova), ou 404 + `noindex`. O `createRoot` substitui o resumo ao montar — esperado.
+- Preload dos dados: o `index.html` já pede `/api/config` e o servidor acrescenta no `<head>` o `/api/resultado` da
+  tela (`urlResultadoDoFront()` em `seo.mjs`), que começam junto com o JS. A URL tem de ser idêntica à do front
+  (`urlResultado` em `src/api/cliente.ts`, mesmos parâmetros na mesma ordem); diferente, vira uma consulta a mais.
 - **Nunca consultar o TSE para montar página**: o Googlebot pede dezenas de milhares de URLs. Usa só config,
   municípios, perfil e resultados do cache em memória ou do arquivo final (`getResultadoSemTse`), com prazo de
   300 ms (passou, descrição genérica). O índice de candidatos (cargo/UF/votos por `sq`) é montado uma vez por
@@ -274,7 +330,8 @@ mudou o desenho, mude os dois SVGs e rode `npm run icones`.
 `starter` (512 MB, não dorme), health check em `/api/saude` (não passa pelo 301 do `SITE_URL`).
 Publicado em **https://apuracao.org** (`www` redireciona para a raiz). O endereço do Render,
 `https://apuracao-2026-kipe.onrender.com`, responde 301 para o domínio (`SITE_URL`), menos `/api/*`. Cada push na
-branch principal do GitHub publica de novo; um deploy ou mudança de variável reinicia o processo e esvazia o cache
+branch principal do GitHub publica de novo depois que o CI passa (`.github/workflows/ci.yml`, `autoDeployTrigger:
+checksPass`); um deploy ou mudança de variável reinicia o processo e esvazia o cache
 em memória — normal, mas evite durante a apuração.
 
 DNS na Cloudflare (registrador do domínio): CNAME `@` e `www` → `apuracao-2026-kipe.onrender.com` com o proxy
@@ -305,18 +362,18 @@ Base: `https://resultados.tse.jus.br/oficial`
   Números vêm como string; percentuais com vírgula decimal.
 - Situação do candidato: use o texto `st`, NÃO só o `e` — quem vai ao 2º turno também vem com `e = "s"`.
   Valores vistos (2024): majoritário "Eleito" / "2º turno" / "Não eleito"; proporcional "Eleito por QP" /
-  "Eleito por média" / "Suplente" / "Não eleito"; vazio = indefinido. `classificar()` em `tse.mjs` vira
+  "Eleito por média" / "Suplente" / "Não eleito"; vazio = indefinido. `classificar()` em `tse/apuracao.mjs` vira
   `status` + `detalhe`. `dvt` = destino dos votos: "Válido", "Válido (legenda)", "Anulado", "Anulado sub judice".
 - Campos de progresso: `e.esnt` = eleitores em seções ainda não totalizadas (teto de votos que faltam),
   `v.vansj` = votos anulados sub judice; no proporcional, `par[].tvtn`/`tvtl` = votos nominais/legenda e
   `agr[].vag` = vagas projetadas pelo TSE (não garantidas).
-- "Matematicamente eleito" / "2º turno garantido" (`matematicamente`, `situacaoMatematica()` em `tse.mjs`): calculado só
+- "Matematicamente eleito" / "2º turno garantido" (`matematicamente`, `situacaoMatematica()` em `tse/apuracao.mjs`): calculado só
   no arquivo da disputa (BR p/ Presidente, UF p/ os demais); município/zona/UF do Presidente copiam do
   arquivo da disputa em `getResultado`. Pior caso: todo eleitor que falta vota contra; sub judice conta
   como válido para os rivais; no proporcional só a vaga por QP (sobras fora). 2º turno garantido (executivo):
   ninguém mais alcança a maioria e os 2 rivais mais próximos, juntos, precisariam de mais votos do que
   faltam. Os selos somem quando o TSE marca `st` (eleito / 2º turno).
-- Suplência e efeito puxador (`chapa`, `chapas()` em `tse.mjs`, só proporcional, no arquivo da UF e copiado para
+- Suplência e efeito puxador (`chapa`, `chapas()` em `tse/apuracao.mjs`, só proporcional, no arquivo da UF e copiado para
   município/zona): puxado = eleito com menos votos que o QE (`carg.qe`) numa chapa (partido isolado ou federação)
   em que alguém passou do QE. Com `st` oficial usa eleitos/suplentes do TSE; antes, projeta pelas vagas de cada
   chapa (`agr.vag`) e o front marca "(projeção)" e só mostra os 5 primeiros suplentes de cada chapa.
@@ -355,7 +412,7 @@ aproximado para os ~190 municípios com mais de uma zona (725 zonas; nos demais 
   mais eleitores; local a mais de 1 km fora do município é descartado (o script avisa).
 - Dependências só do script (devDependencies): `d3-delaunay` e `polygon-clipping`. O servidor só lê o `.json.gz`
   (`{ gerado, municipios: { <cd TSE>: { <zona4>: MultiPolygon } } }`), em memória no 1º pedido.
-- Front: com o município aberto, `app/App.tsx` pede `/api/zonas?uf=<uf>&mun=<mun>` (404 = sem contorno;
+- Front: com o município aberto, `app/useDadosTela.ts` pede `/api/zonas?uf=<uf>&mun=<mun>` (404 = sem contorno;
   ETag + `no-cache` como as demais rotas, para uma regeração chegar no deploy) e o `Mapa` pinta as
   zonas sobre o município (mesmas cores/modos, tooltip, clique abre a zona; a zona aberta é enquadrada e as outras
   atenuadas, como o município); a lista de zonas continua abaixo. Uma
@@ -465,6 +522,13 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
 
 ## Convenções e cuidados
 
+- Deslocamento de layout (CLS): o que chega depois não pode empurrar a tela. Enquanto o dado não vem, guarde o
+  lugar com a mesma altura/largura: `EsqueletoPlacar` (mesmas classes do `Placar`, barras com altura `1lh`), os
+  itens da faixa de status, o seletor de município desativado, "—" nas contagens do subtítulo e do placar. Meça com
+  o Lighthouse sobre o build (`npm run build`, `ARQUIVO=1 PORT=3099 node server/index.mjs`) e, no celular,
+  `--throttling-method=devtools` (a simulação padrão exagera o LCP em localhost). Em out/2026: início 75→96
+  (desktop) e 76→98 (celular), CLS de 0,44–0,64 para menos de 0,02.
+
 - Antes da apuração (até 17h de Brasília no dia da eleição) os arquivos existem com votos zerados —
   use `npm run demo` para desenvolver a interface. Horário de votação é unificado (8h–17h de Brasília);
   `getConfig()` envia `abertura`/`encerramento` por cargo e o front mostra o `AvisoVotacao`
@@ -474,7 +538,7 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
   o servidor guarda cache de 20 s (UF/BR), 45 s (zonas) e 60 s (municípios). O TSE não tem intervalo
   fixo — publica conforme as urnas são totalizadas. Se mudar os intervalos, os avisos se ajustam sozinhos.
 - O Akamai do TSE guarda cada arquivo por ~60 s (`cache-control: max-age` com o tempo que falta, fase
-  própria por arquivo): o cache do servidor vale no mínimo até lá (`vale()` em `tse.mjs`), então o "ao vivo"
+  própria por arquivo): o cache do servidor vale no mínimo até lá (`vale()` em `tse/cache.mjs`), então o "ao vivo"
   de 5 s vai ao TSE ~1x por minuto por arquivo. Vencido, a consulta é condicional (`If-None-Match` → 304 sem
   corpo). O resultado normalizado fica junto do JSON no cache (`deRaw`) e só é refeito quando o JSON muda.
 - Mapas: região com 100% das seções totalizadas renova a cada 30 min (`ttlCompletoMs`), já que o líder não
@@ -501,4 +565,14 @@ em `<uf>-c<cargo4>-uf.json.gz` (a busca lê as ~140 UFs; abrir as unidades intei
   Os TTLs ficam em `getResultado(params, ttlMs)` e `fetchJson`.
 - A projeção do mapa é plana de propósito (ver comentário em `Mapa.tsx`): as malhas do IBGE não seguem
   a orientação de anéis que as projeções esféricas do d3 exigem.
-- Não há testes automatizados ainda; valide com `npm run typecheck` e abrindo o app em modo demo.
+- Testes em `testes/` (`npm test`, `node:test` sem dependências; o CI do GitHub roda typecheck, testes e build):
+  - `testes/servidor/normalizar.test.mjs`: resultados reais do `arquivo/` passados pelo `normalizar()`, congelados em
+    `.snapshot` (inclusive uma apuração "em andamento" simulada sobre eles, para a projeção das chapas e o
+    "matematicamente"). Mudou o normalizar de propósito: `npm run test:atualizar` e revise o diff do snapshot.
+  - `testes/servidor/apuracao.test.mjs`: regras de maioria, 2º turno garantido, Senado, QE e `classificar`, com
+    resultados montados à mão.
+  - `testes/servidor/fonte.test.mjs`: `fetchJson` com o `fetch` simulado (dedup, cache, 304, 404, pausa após 429).
+  - `testes/front/`: módulos `.ts` puros do front (rotas, `resolverTela`, `util`), importados sem build pelo
+    `testes/ts.mjs` (o Node remove os tipos; o hook só completa a extensão). `.tsx` não roda no Node: lógica
+    testável fica em `.ts`.
+  - Interface: valide com `npm run typecheck` e abrindo o app em modo demo.
