@@ -17,6 +17,13 @@ import { SIMULACAO } from './simulacao.mjs';
 import { flagsDe, cargoVisivel, rotaPreview, rotaFlags } from './flags.mjs';
 import { lerMalha } from './malhas.mjs';
 import { redirecionarHost, responderPagina, responderRobots, responderSitemap, candidaturaDe } from './seo.mjs';
+/**
+ * @import { Composicao, Config, Eleito, Flags, MapaDados, Municipios, ParamsResultado, RespostaBusca, Resultado }
+ *   from '../compartilhado/api.mjs'
+ */
+
+// Cada rota declara o tipo da resposta (compartilhado/api.d.mts): o `npm run typecheck` confere o que o servidor
+// monta contra o que o front lê.
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -42,6 +49,11 @@ const uf = (s) => {
 
 // ---------- handlers ----------
 
+/**
+ * @param {URLSearchParams} q
+ * @param {Flags} flags
+ * @returns {Promise<ParamsResultado>}
+ */
 async function paramsResultado(q, flags) {
   const c = await cargoDe(q.get('cargo'), flags);
   const mun = q.get('mun') || undefined;
@@ -50,6 +62,11 @@ async function paramsResultado(q, flags) {
   return { eleicao: c.eleicao, cargo: c.cargo, uf: uf(q.get('uf') || 'br'), mun, zona };
 }
 
+/**
+ * @param {URLSearchParams} q
+ * @param {Flags} flags
+ * @returns {Promise<Resultado>}
+ */
 async function resultado(q, flags) {
   const params = await paramsResultado(q, flags);
   const r = await getResultado(params);
@@ -57,6 +74,11 @@ async function resultado(q, flags) {
   return r;
 }
 
+/**
+ * @param {URLSearchParams} q
+ * @param {Flags} flags
+ * @returns {Promise<MapaDados>}
+ */
 async function mapa(q, flags) {
   const c = await cargoDe(q.get('cargo'), flags);
   const u = uf(q.get('uf') || 'br');
@@ -121,6 +143,11 @@ function eleitosDe(r) {
  * Cadeiras por partido. Senado: sempre o Brasil (as cadeiras em disputa na eleição); Dep. Federal:
  * a bancada da UF ou, no Brasil, a Câmara inteira; Dep. Estadual/Distrital: a assembleia da UF.
  */
+/**
+ * @param {URLSearchParams} q
+ * @param {Flags} flags
+ * @returns {Promise<Composicao>}
+ */
 async function composicao(q, flags) {
   if (!flags.hemiciclo) throw new HttpError(404, 'composição das casas desligada');
   const c = await cargoDe(q.get('cargo'), flags);
@@ -136,6 +163,7 @@ async function composicao(q, flags) {
     : [await getResultado({ ...base, uf: ufs[0] })];
 
   const cadeiras = new Map();
+  /** @type {Eleito[]} */
   const eleitos = [];
   let vagas = 0;
   let atribuidas = 0;
@@ -236,6 +264,11 @@ async function indiceBusca(cargoId, ufFiltro, flags) {
 const normalizarTexto = (s) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
+/**
+ * @param {URLSearchParams} q
+ * @param {Flags} flags
+ * @returns {Promise<RespostaBusca>}
+ */
 async function busca(q, flags) {
   if (!flags.busca) throw new HttpError(404, 'busca desligada');
   const termo = (q.get('q') || '').trim();
@@ -251,7 +284,7 @@ async function busca(q, flags) {
   let hits = partido ? indice.filter((c) => c.partido.toUpperCase() === partido) : indice;
   if (/^\d+$/.test(termo)) {
     hits = hits.filter((c) => c.numero.startsWith(termo));
-    hits.sort((a, b) => (b.numero === termo) - (a.numero === termo) || b.votos - a.votos);
+    hits.sort((a, b) => Number(b.numero === termo) - Number(a.numero === termo) || b.votos - a.votos);
   } else if (termo) {
     const tokens = normalizarTexto(termo).split(/\s+/).filter(Boolean);
     hits = hits.filter((c) => tokens.every((t) => c.chave.includes(t)));
@@ -306,7 +339,7 @@ async function geoZonas(q) {
   const mun = q.get('mun');
   if (!/^\d{5}$/.test(mun || '')) throw new HttpError(400, 'município inválido');
   zonasGeo ??= fs.readFile(path.join(ROOT, 'dados', 'zonas-2026.json.gz'))
-    .then((b) => JSON.parse(zlib.gunzipSync(b)))
+    .then((b) => JSON.parse(zlib.gunzipSync(b).toString()))
     .catch(() => ({ municipios: {} }));
   const { municipios, gerado } = await zonasGeo;
   const zonas = municipios[mun];
@@ -326,11 +359,16 @@ async function geoZonas(q) {
  * só com os cargos que as flags liberam — o turno mais recente primeiro, que é o que o front abre —
  * e as flags, para o front esconder o que estiver desligado.
  */
+/**
+ * @param {URLSearchParams} _q
+ * @param {Flags} flags
+ * @returns {Promise<Config>}
+ */
 async function configComSituacao(_q, flags) {
   const cfg = await getConfig();
   const cargos = cfg.cargos.filter((c) => cargoVisivel(c, flags));
   const eleicoes = [...new Set(cargos.map((c) => c.eleicao))];
-  const encerradas = new Map(await Promise.all(eleicoes.map(async (e) => [e, await apuracaoEncerrada(e)])));
+  const encerradas = new Map(await Promise.all(eleicoes.map(async (e) => /** @type {[string, boolean]} */ ([e, await apuracaoEncerrada(e)]))));
   return {
     ...cfg,
     cargos: cargos.map((c) => ({ ...c, encerrada: encerradas.get(c.eleicao) })).sort((a, b) => b.turno - a.turno),
@@ -338,14 +376,21 @@ async function configComSituacao(_q, flags) {
   };
 }
 
+/**
+ * @param {URLSearchParams} q
+ * @param {Flags} flags
+ * @returns {Promise<Municipios | null>}
+ */
+async function listaMunicipios(q, flags) {
+  const c = await cargoDe(q.get('cargo'), flags);
+  return getMunicipios(c.eleicao);
+}
+
 // ---------- roteamento ----------
 
 const rotas = {
   '/api/config': configComSituacao,
-  '/api/municipios': async (q, flags) => {
-    const c = await cargoDe(q.get('cargo'), flags);
-    return getMunicipios(c.eleicao);
-  },
+  '/api/municipios': listaMunicipios,
   '/api/resultado': resultado,
   '/api/mapa': mapa,
   '/api/busca': busca,

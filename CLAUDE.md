@@ -12,7 +12,7 @@ Idioma do projeto: **português** (código, UI, comentários e commits).
 npm install
 npm run dev        # API (porta 3001) + Vite (porta 5173, proxy /api → 3001)
 npm run demo       # igual ao dev, mas com votos sintéticos (DEMO=1) — útil antes das 17h de Brasília
-npm run typecheck
+npm run typecheck  # front (tsconfig.json) e servidor (tsconfig.server.json, checkJs) contra o contrato da API
 npm test           # testes (node:test, sem dependências); npm run test:atualizar regera os snapshots
 npm run candidatos # regera dados/candidatos-2026.tsv.gz (perfil e bens, Dados Abertos do TSE)
 npm run arquivar   # guarda os resultados finais em arquivo/ (ver "Arquivo próprio" abaixo)
@@ -60,6 +60,11 @@ Com `ADMIN_TOKEN` definido:
 ## Arquitetura
 
 ```
+compartilhado/     O que front e servidor usam igual, sem build
+  api.d.mts        Contrato da API: tipos de cada resposta (/api/config, /resultado, /mapa, /busca, /composicao…).
+                   O front importa (`import type`, via src/lib/types.ts) e o servidor anota em JSDoc (`@import`,
+                   `@returns`); `npm run typecheck` confere os dois lados. Só tipos: não existe api.mjs
+  rotas.mjs        Rotas públicas e títulos das páginas (tipos em rotas.d.mts); front e server/seo.mjs
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
   index.mjs        Rotas HTTP, busca, malhas do IBGE (/api/geo/<uf|br>, em memória após o 1º pedido), contorno das zonas
                    (/api/zonas?uf=&mun=, de dados/zonas-2026.json.gz), arquivos estáticos
@@ -86,8 +91,6 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
                    Pastas por funcionalidade: uma pasta de features/ nunca importa outra (só api/, rota/, apuracao/,
                    ui/ e lib/); o que duas features usam sobe para ui/ ou lib/, e o App junta tudo
   main.tsx         Monta o App dentro dos Providers
-  rotas.mjs        Rotas públicas e títulos das páginas, JS puro compartilhado com o servidor (tipos em rotas.d.mts;
-                   fica em src/ porque o server/seo.mjs importa de lá)
   app/
     App.tsx            Composição da tela (~180 linhas): rota, useDadosTela, navegação (NavegacaoContext) e o estado
                        da interface (modo do mapa, "ao vivo", filtro da busca, índice aberto); distribui aos componentes
@@ -165,7 +168,7 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
   lib/
     util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos e o ajuste delas ao tema (OKLCH)
     tema.ts          useTema()/definirTema() (data-tema + prefers-color-scheme) e useCores() (cores de partido no tema)
-    types.ts         Tipos das respostas da API
+    types.ts         Reexporta compartilhado/api.d.mts (+ tipos só do front, como ModoMapa)
   styles.css       Tema único ("Plantão") — tokens em variáveis CSS no :root
 ```
 
@@ -186,15 +189,17 @@ api/  rota/  apuracao/      infraestrutura do app: consultas, URL/navegação, f
   ↓
 ui/  dominio/  lib/         peças sem regra de negócio (Num, esqueletos, Logo…), regras puras da tela e utilitários/tipos
 ```
-- `dominio/` só importa `lib/` (e `rotas.mjs`): sem React, testável no Node. Regra que decide o que a tela mostra
+- `dominio/` só importa `lib/` (e `compartilhado/`): sem React, testável no Node. Regra que decide o que a tela mostra
   (fase, placar, títulos, troca de turno) vai para lá, não para um `.tsx` — `.tsx` não roda nos testes.
 - `ui/` usa `rota/Link` (o `LinkTela`), a única exceção ao "só para baixo"; links nunca recebem `href` + `onSelect`
   à mão: recebem a tela de destino (`para`/`destino: (chave) => Local`).
 - Uma feature não importa outra. O que duas usam sobe para `ui/` ou `lib/`; o que precisa das duas é montado no
   App (ex.: a ficha saiu de dentro do `PainelResultado` e virou `FichaCandidato`, renderizada pelo App, porque o
   `<dialog>` modal não depende de onde está no DOM).
-- `src/rotas.mjs` fica fora das pastas porque é compartilhado com o servidor (`server/seo.mjs`): mudou o formato
-  de uma rota, muda nos dois lados.
+- `compartilhado/` fica fora de `src/` porque o servidor também usa: `rotas.mjs` (mudou o formato de uma rota, muda
+  nos dois lados) e o contrato `api.d.mts`. Campo novo numa resposta: tipo em `api.d.mts` primeiro; o servidor
+  declara o tipo de cada rota em JSDoc e o `typecheck` acusa campo a mais, a menos ou com nome trocado. O servidor
+  roda com `strict: false` (o JSON do TSE chega como `any`): o tipo de um valor lido do TSE não é conferido.
 
 **Fluxo de dados**
 
@@ -266,7 +271,7 @@ mudou o desenho, mude os dois SVGs e rode `npm run icones`.
 
 ## SEO
 
-- Rotas (`src/rotas.mjs`): `/`, `/<cargo>[/<uf>[/<mun>-<nome>[/zona-<zona>]]]` (cargo por slug: `governador`,
+- Rotas (`compartilhado/rotas.mjs`): `/`, `/<cargo>[/<uf>[/<mun>-<nome>[/zona-<zona>]]]` (cargo por slug: `governador`,
   `presidente-2-turno`…; município pelo código TSE, o nome é opcional) e `/candidato/<sq>-<nome>`. Links antigos
   `#/<cargoId>/…` viram o caminho novo no front (`replaceState`). Título da página por `tituloPagina()`, igual no
   servidor e no front.

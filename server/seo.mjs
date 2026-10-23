@@ -14,7 +14,7 @@ import { getConfig, getMunicipios, getResultadoSemTse, resultadoUrl, CICLO, TSE_
 import { getCandidato, geradoEm } from './candidatos.mjs';
 import { dataFinal, eleicaoFinal } from './arquivo.mjs';
 import { cargoVisivel, flagsDe } from './flags.mjs';
-import { slugCargo, cargoPorSlug, caminho, caminhoCandidato, lerCaminho, tituloPagina } from '../src/rotas.mjs';
+import { slugCargo, cargoPorSlug, caminho, caminhoCandidato, lerCaminho, tituloPagina } from '../compartilhado/rotas.mjs';
 
 const NOME_SITE = 'Apuração.org';
 // Nome anterior do site, para o Google ligar a marca nova à antiga nos dados estruturados.

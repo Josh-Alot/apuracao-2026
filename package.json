@@ -9,7 +9,7 @@
     "demo": "DEMO=1 npm run dev",
     "build": "tsc --noEmit && vite build",
     "start": "node --max-old-space-size=320 server/index.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json",
     "test": "node --import ./testes/ts.mjs --test 'testes/**/*.test.mjs'",
     "test:atualizar": "node --import ./testes/ts.mjs --test --test-update-snapshots 'testes/**/*.test.mjs'",
     "candidatos": "node server/scripts/candidatos.mjs",

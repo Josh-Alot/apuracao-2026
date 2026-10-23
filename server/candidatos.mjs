@@ -36,7 +36,11 @@ function carregar() {
   return carga;
 }
 
-/** Dados do candidato pelo sequencial do TSE (`sqcand`), ou null se não existir. */
+/**
+ * Dados do candidato pelo sequencial do TSE (`sqcand`), ou null se não existir. O JSON vem do .tsv.gz gerado por
+ * `npm run candidatos` (o tipo documenta, mas não confere, o que o script grava); `candidatura` entra no index.mjs.
+ * @returns {Promise<Omit<import('../compartilhado/api.mjs').DetalheCandidato, 'candidatura'> | null>}
+ */
 export async function getCandidato(sq) {
   const { buf, indice, gerado } = await carregar();
   const pos = indice.get(sq);

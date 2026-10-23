@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { consultas } from '../api/consultas';
 import type { Config } from '../lib/types';
 import { resolverTela } from '../rota/resolver';
-import { lerCaminho } from '../rotas.mjs';
+import { lerCaminho } from '../../compartilhado/rotas.mjs';
 
 /**
  * Ponteiro sobre um link interno: o resultado da tela de destino começa a vir antes do clique. Só o resultado

@@ -6,7 +6,7 @@ import { SeloSituacao } from '../../ui/SeloSituacao';
 import { cliqueSimples } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
 import { corPartido, fmt, fmtPct, semAcento, titulo } from '../../lib/util';
-import { caminhoCandidato } from '../../rotas.mjs';
+import { caminhoCandidato } from '../../../compartilhado/rotas.mjs';
 
 interface Props {
   resultado: Resultado | null;

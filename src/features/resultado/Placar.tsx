@@ -4,7 +4,7 @@ import { Num } from '../../ui/Num';
 import { cliqueSimples } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
 import { fmt, fmtPct, titulo } from '../../lib/util';
-import { caminhoCandidato } from '../../rotas.mjs';
+import { caminhoCandidato } from '../../../compartilhado/rotas.mjs';
 import { regioesVencidas } from '../../dominio/placar';
 
 const pf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

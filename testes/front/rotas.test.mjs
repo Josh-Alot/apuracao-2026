@@ -1,8 +1,8 @@
-// Rotas públicas (src/rotas.mjs, as mesmas no servidor e no front) e a tela que cada uma abre (resolverTela).
+// Rotas públicas (compartilhado/rotas.mjs, as mesmas no servidor e no front) e a tela que cada uma abre (resolverTela).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { caminho, caminhoCandidato, cargoPorSlug, lerCaminho, slugCargo, slugTexto, tituloPagina } from '../../src/rotas.mjs';
+import { caminho, caminhoCandidato, cargoPorSlug, lerCaminho, slugCargo, slugTexto, tituloPagina } from '../../compartilhado/rotas.mjs';
 import { resolverTela } from '../../src/rota/resolver.ts';
 
 const cargo = (eleicao, cd, turno, ufs) => ({ id: `${eleicao}-${cd}`, eleicao, cargo: cd, turno, ufs });

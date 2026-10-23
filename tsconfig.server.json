@@ -1,0 +1,19 @@
+// Verificação do servidor (JS puro, sem build): `checkJs` com os tipos de compartilhado/api.d.mts em JSDoc
+// (`@import`, `@returns`, `@type`). Rode com `npm run typecheck`, junto do front.
+// `strict: false` por enquanto: o JSON do TSE chega como `any`, e anotar tudo de uma vez seria uma reescrita. O que
+// o contrato confere: o formato que cada rota monta (campos a mais, a menos ou com o nome trocado).
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowJs": true,
+    "checkJs": true,
+    "strict": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["server/**/*.mjs", "compartilhado"]
+}

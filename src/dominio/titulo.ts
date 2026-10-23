@@ -1,6 +1,6 @@
 import type { Candidato, Cargo, Local, Municipio } from '../lib/types';
 import { UF_NOMES, titulo } from '../lib/util';
-import { tituloPagina } from '../rotas.mjs';
+import { tituloPagina } from '../../compartilhado/rotas.mjs';
 import { nomeCargo } from './cargo';
 
 /**

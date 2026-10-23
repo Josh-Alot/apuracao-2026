@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { applyDemo, demoProgresso } from './demo.mjs';
 import { ARQUIVO_FORCADO, doArquivo, eleicaoFinal } from './arquivo.mjs';
 import { eleicaoDaFoto, eleicoesSimuladas, mesclarConfig } from './simulacao.mjs';
+/** @import { Candidato, CargoTse, ConfigTse, MapaDados, Municipios, ParamsResultado, Resultado, Resumo } from '../compartilhado/api.mjs' */
 
 export const TSE_BASE = 'https://resultados.tse.jus.br/oficial';
 export const CICLO = process.env.CICLO || 'ele2026';
@@ -42,8 +43,12 @@ export const UFS = [
 // health check falha). Em memória o JSON ocupa ~6x o tamanho do texto: 28 MB de texto ≈ 170 MB. Com 40 MB o
 // processo chegou a 489 MB de RSS (somado ao índice do SEO e ao arquivo próprio) e foi reiniciado pelo Render.
 const CACHE_MAX_BYTES = Number(process.env.CACHE_MB || 28) * 1024 * 1024;
-// url -> { ts, data, bytes, expira, etag, modificado, norm, normBytes }
+/**
+ * @typedef {{ ts: number, data: any, bytes: number, expira?: number, etag?: string | null, modificado?: string | null,
+ *   norm?: Resultado | null, normBytes?: number }} EntradaCache
+ */
 // (ordem de inserção = do menos ao mais recente; `norm` = resultado já normalizado, ver deRaw)
+/** @type {Map<string, EntradaCache>} */
 const cache = new Map();
 let cacheBytes = 0;
 const inflight = new Map(); // url -> Promise
@@ -65,6 +70,7 @@ function guardar(url, data, bytes, meta = {}) {
     cacheBytes -= pesoDe(antigo);
     cache.delete(url);
   }
+  /** @type {EntradaCache} */
   const e = { ts: Date.now(), data, bytes, ...meta };
   // Mesmo JSON (resposta 304): aproveita a normalização já feita.
   if (antigo && antigo.data === data && antigo.norm) {
@@ -340,6 +346,7 @@ export async function mapLimit(items, limit, fn) {
 
 const pad = (s, n) => String(s).padStart(n, '0');
 
+/** @param {ParamsResultado} params */
 export function resultadoUrl({ eleicao, cargo, uf, mun, zona }) {
   let abr = uf;
   if (mun) abr += mun;
@@ -370,9 +377,11 @@ async function configTse() {
 // getConfig() é chamada em quase toda requisição: só remonta quando o ele-c.json muda.
 let configMemo = { raw: null, cfg: null };
 
+/** @returns {Promise<ConfigTse>} */
 export async function getConfig() {
   const raw = await configTse();
   if (configMemo.raw === raw) return configMemo.cfg;
+  /** @type {CargoTse[]} */
   const cargos = [];
   const simuladas = eleicoesSimuladas();
   // 2º turno → eleição do 1º turno (`cdt2`), para comparar os dois turnos (mapa: quem "virou").
@@ -424,6 +433,7 @@ export async function getConfig() {
   return cfg;
 }
 
+/** @returns {Promise<Municipios | null>} */
 export async function getMunicipios(eleicao) {
   const raw = await fetchJson(
     `${TSE_BASE}/${CICLO}/${eleicao}/config/mun-e${pad(eleicao, 6)}-cm.json`,
@@ -455,6 +465,7 @@ export async function getMunicipios(eleicao) {
  * proporcional — "Eleito por QP" (quociente partidário), "Eleito por média", "Suplente", "Não eleito".
  * Vazio = ainda indefinido (apuração em andamento). Textos desconhecidos seguem como "outro".
  */
+/** @returns {{ status: Candidato['status'], detalhe: string | null }} */
 export function classificar(st, e) {
   const t = (st || '').trim();
   if (!t) return { status: e === 's' ? 'eleito' : null, detalhe: null };
@@ -482,6 +493,10 @@ async function fimDaVotacao(eleicao) {
   return ms > Date.now() ? ms : 0;
 }
 
+/**
+ * @param {ParamsResultado} params
+ * @returns {Promise<Resultado | null>}
+ */
 export async function getResultado(params, ttlMs = 20_000, prioridade = PRIORIDADE.alta) {
   const url = resultadoUrl(params);
   const r = deRaw(await fetchJson(url, ttlMs, await fimDaVotacao(params.eleicao), prioridade), params, url);
@@ -504,6 +519,10 @@ export async function getResultado(params, ttlMs = 20_000, prioridade = PRIORIDA
  * a cada atualização e o "ao vivo" relê o mesmo a cada 5 s — normalizar de novo só quando o JSON muda.
  * O normalizado conta no limite do cache (estimado em metade do tamanho do texto).
  */
+/**
+ * @param {ParamsResultado} params
+ * @returns {Resultado | null}
+ */
 function deRaw(raw, params, url) {
   if (!raw || !raw.carg?.length) return null;
   if (DEMO) return normalizar(applyDemo(raw), params); // a demo muda com o tempo
@@ -524,6 +543,10 @@ function deRaw(raw, params, url) {
  * (lido direto, sem entrar no cache do TSE). `arquivo: false` dispensa também o arquivo (unidades grandes,
  * como as de deputado por município). null se não houver.
  */
+/**
+ * @param {ParamsResultado} params
+ * @returns {Promise<Resultado | null>}
+ */
 export async function getResultadoSemTse(params, { arquivo = true } = {}) {
   const url = resultadoUrl(params);
   const hit = cache.get(url);
@@ -543,6 +566,10 @@ const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
  * `esperaMs` pelo que precisa ser consultado e devolve o que houver — o dado em cache (mesmo
  * vencido), null se o TSE não tem o arquivo, ou undefined se ainda não chegou (segue na fila e
  * entra na próxima atualização).
+ */
+/**
+ * @param {ParamsResultado[]} lista
+ * @returns {Promise<(Resultado | null | undefined)[]>}
  */
 export async function getResultadosRapidos(lista, ttlMs, prioridade, { esperaMs = 4_000, ttlCompletoMs = ttlMs } = {}) {
   const fim = await fimDaVotacao(lista[0]?.eleicao);
@@ -565,6 +592,11 @@ export async function getResultadosRapidos(lista, ttlMs, prioridade, { esperaMs 
  * fossem validados para os rivais, e no proporcional só entra a vaga pelo quociente partidário
  * (as sobras ficam de fora). No executivo também marca quem já tem o 2º turno garantido.
  * Devolve Map sqcand → 'eleito' | 'segundo-turno'.
+ */
+/**
+ * @param {Candidato[]} candidatos
+ * @param {Grupos} grupos
+ * @returns {Map<string, Candidato['matematicamente']>}
  */
 export function situacaoMatematica(raw, candidatos, grupos) {
   const carg = raw.carg[0];
@@ -655,6 +687,11 @@ export function quocienteEleitoral(validos, vagas) {
  * da chapa com ao menos 10% do QE. Suplência = demais candidatos com votos válidos, por votos.
  * Devolve Map sqcand → { suplente, puxadoPor, puxou, qe, projecao }.
  */
+/**
+ * @param {Candidato[]} candidatos
+ * @param {Grupos} grupos
+ * @returns {Map<string, Candidato['chapa']>}
+ */
 export function chapas(raw, candidatos, grupos) {
   const carg = raw.carg[0];
   const out = new Map();
@@ -694,13 +731,24 @@ const PROPORCIONAIS = new Set(['6', '7', '8']);
 /** Abrangência em que a disputa é decidida: Brasil para Presidente, UF para os demais cargos. */
 const escopoDaDisputa = (cargo) => (String(cargo) === '1' ? 'br' : 'uf');
 
+/**
+ * Agremiação (partido isolado ou federação, objeto `agr` do TSE) → total dela (nominais + legenda), e `agrDe[i]` = a
+ * agremiação do i-ésimo candidato.
+ * @typedef {Map<any, number> & { agrDe: any[] }} Grupos
+ */
+
+/**
+ * @param {any} raw JSON do TSE
+ * @param {Pick<ParamsResultado, 'eleicao' | 'uf'>} params
+ * @returns {Resultado}
+ */
 export function normalizar(raw, { eleicao, uf }) {
   const carg = raw.carg[0];
   const fotoUf = carg.cd === '1' ? 'br' : uf;
+  /** @type {Candidato[]} */
   const candidatos = [];
-  // Agremiação (partido isolado ou federação) de cada candidato e o total dela (nominais + legenda).
-  const grupos = new Map();
-  grupos.agrDe = [];
+  /** @type {Grupos} */
+  const grupos = Object.assign(new Map(), { agrDe: [] });
   for (const agr of carg.agr ?? []) {
     grupos.set(agr, (agr.par ?? []).reduce((t, par) => t + int(par.tvtn) + int(par.tvtl), 0));
     for (const par of agr.par ?? []) {
@@ -776,6 +824,11 @@ const resumoCand = (c) => (c && c.votos > 0
  * resultado do 1º turno na mesma região) traz também se a região "virou": quem lidera agora ficou atrás do rival
  * no 1º turno (entre os dois finalistas).
  */
+/**
+ * @param {Resultado | null | undefined} r
+ * @param {Resultado | null} [r1]
+ * @returns {Resumo | null}
+ */
 export function resumo(r, r1) {
   if (!r) return null;
   const lider = resumoCand(r.candidatos[0]);
@@ -805,6 +858,7 @@ export async function apuracaoEncerrada(eleicao) {
 }
 
 /** Percentual de seções totalizadas por município, a partir do arquivo de abrangência (1 requisição por UF). */
+/** @returns {Promise<MapaDados>} */
 export async function getAbrangencia(eleicao, uf) {
   const raw = await fetchJson(
     `${TSE_BASE}/${CICLO}/${eleicao}/dados/${uf}/${uf}-e${pad(eleicao, 6)}-ab.json`, 30_000, await fimDaVotacao(eleicao),
