@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cargoBase, destinoTurno, localCargo, nomeCargo, turnosDe } from '../../src/dominio/cargo.ts';
+import { cargoBase, destinoTurno, localCargo, nomeCargo, semSegundoTurno, turnosDe } from '../../src/dominio/cargo.ts';
 import { faseVotacao, rotuloEstado, situacaoApuracao } from '../../src/dominio/fase.ts';
 import { coresFinalistas, corDoLider, finalistas } from '../../src/dominio/duelo.ts';
 import { placarDe, regioesVencidas, rotuloRegioesVencidas } from '../../src/dominio/placar.ts';
@@ -38,6 +38,16 @@ test('troca de cargo e de turno mantém a UF quando existe', () => {
   assert.deepEqual(destinoTurno(CONFIG, GOV1, 'rj', 2), [{ uf: 'rj' }, '6260-3']);
   assert.deepEqual(destinoTurno(CONFIG, GOV1, 'sp', 2), [{}, '6260-3']); // SP sem 2º turno para governador
   assert.deepEqual(destinoTurno(CONFIG, DEP1, 'sp', 2), [{ uf: 'sp' }, '6258-1']); // sem deputado no 2º turno: o 1º cargo
+});
+
+test('UF sem 2º turno para o cargo', () => {
+  const gov2 = { ...GOV2, primeiroTurno: '6259-3' };
+  assert.equal(semSegundoTurno(gov2, 'sp'), true);
+  assert.equal(semSegundoTurno(gov2, 'rj'), false);
+  assert.equal(semSegundoTurno(gov2, undefined), false);
+  assert.equal(semSegundoTurno(gov2, 'zz'), false);
+  assert.equal(semSegundoTurno(GOV1, 'ba'), false); // 1º turno: nunca
+  assert.equal(semSegundoTurno({ ...PRES2, primeiroTurno: '6257-1' }, 'sp'), false);
 });
 
 test('fase da votação pelo relógio e pelo que chegou', () => {

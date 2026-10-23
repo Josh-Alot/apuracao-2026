@@ -12,8 +12,8 @@ export const cliqueSimples = (e: MouseEvent) =>
 export interface Navegacao {
   /** Caminho de uma tela, com o nome do município quando a lista já chegou. */
   caminhoDe: (l: Local, cargoId?: string) => string;
-  /** Navega para uma tela (nova entrada no histórico). */
-  ir: (l: Local, cargoId?: string) => void;
+  /** Navega para uma tela (nova entrada no histórico); `ufFora`: a UF que o cargo de destino não tem (Rota.ufFora). */
+  ir: (l: Local, cargoId?: string, ufFora?: string) => void;
   /** Adianta os dados de um caminho interno (o App consulta o resultado da tela de destino). */
   prefetch: (href: string) => void;
 }
@@ -71,8 +71,11 @@ export function Link({ onNavegar, onClick, onPointerEnter, onPointerLeave, onFoc
   );
 }
 
-/** Link para uma tela do funil (`para`, no cargo `cargo` ou no da tela atual): caminho e navegação vêm do contexto. */
-export function LinkTela({ para, cargo, ...props }: Omit<PropsA, 'href'> & { para: Local; cargo?: string }) {
+/**
+ * Link para uma tela do funil (`para`, no cargo `cargo` ou no da tela atual): caminho e navegação vêm do contexto.
+ * `ufFora`: a UF de origem que o cargo de destino não tem (a tela de destino avisa; ver Rota.ufFora).
+ */
+export function LinkTela({ para, cargo, ufFora, ...props }: Omit<PropsA, 'href'> & { para: Local; cargo?: string; ufFora?: string }) {
   const nav = useNavegacaoTela();
-  return <Link {...props} href={nav.caminhoDe(para, cargo)} onNavegar={() => nav.ir(para, cargo)} />;
+  return <Link {...props} href={nav.caminhoDe(para, cargo)} onNavegar={() => nav.ir(para, cargo, ufFora)} />;
 }

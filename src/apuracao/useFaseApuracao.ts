@@ -8,8 +8,9 @@ export const ATUALIZA_RESULTADO_MS = 30_000;
 const ATUALIZA_MAPA_MS = 60_000;
 const ATUALIZA_MAPA_AO_VIVO_MS = 30_000;
 
-// Apuração encerrada: o mapa só é consultado de novo enquanto houver região que ainda não chegou;
-// o resultado, só se a consulta falhar.
+// Antes das 17h e com a apuração encerrada: o mapa só é consultado de novo enquanto houver região que
+// ainda não chegou (antes das 17h o servidor já guarda cada arquivo até o fechamento, então não vai ao TSE);
+// encerrada, o resultado só se a consulta falhar.
 const mapaIncompleto = (d: MapaDados) => Object.values(d).some((x) => x == null);
 const nuncaIncompleto = () => false;
 
@@ -37,7 +38,7 @@ export function useFaseApuracao(cargo: Cargo | undefined, aoVivo: boolean) {
     intervaloResultado: !tempoReal || aoVivo ? 0 : ATUALIZA_RESULTADO_MS,
     /** Por quanto tempo um resultado/mapa já consultado vale ao voltar a uma tela (sem nova consulta). */
     vale: tempoReal ? VALE_APURANDO_MS : VALE_PARADO_MS,
-    completarMapa: encerrada ? mapaIncompleto : undefined,
+    completarMapa: encerrada || !apuracaoAberta ? mapaIncompleto : undefined,
     completarResultado: encerrada ? nuncaIncompleto : undefined,
   };
 }

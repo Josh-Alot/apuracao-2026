@@ -9,6 +9,7 @@ import { Mapa } from '../features/mapa/Mapa';
 import { AvisoMapa } from '../features/mapa/AvisoMapa';
 import { CartaoExterior } from '../features/mapa/CartaoExterior';
 import { IndiceRegioes } from '../features/mapa/IndiceRegioes';
+import { cargoBase, semSegundoTurno } from '../dominio/cargo';
 import type { DadosTela } from './useDadosTela';
 
 const corDoPartido = (l: ResumoCandidato) => corPartido(l.partido);
@@ -54,12 +55,22 @@ export function PainelMapa({ d, modo, onModo, indiceAberto, onIndice }: {
     zona ? { uf, mun: munCd, zona: k } : uf ? { uf, mun: k } : { uf: k }
   ), [uf, munCd]);
   const destinoIndice = useCallback((k: string) => destino(k, false), [destino]);
-  const aoSelecionar = useCallback((k: string) => ir(destino(k, false)), [ir, destino]);
+  // UF sem 2º turno para o cargo (no mapa do Brasil): o clique leva ao 1º turno dela.
+  const fora = useCallback((k: string) => !uf && semSegundoTurno(cargo, k), [uf, cargo]);
+  const primeiro = cargo.primeiroTurno ?? undefined;
+  const aoSelecionar = useCallback((k: string) => (fora(k) ? ir({ uf: k }, primeiro) : ir(destino(k, false))), [ir, destino, fora, primeiro]);
   // Ponteiro parado numa região: o resultado do destino começa a vir antes do clique (como nos links).
-  const aoPairar = useCallback((k: string, zona: boolean) => prefetch(caminhoDe(destino(k, zona))), [prefetch, caminhoDe, destino]);
-  const dica = useCallback((k: string) => (!uf
+  const aoPairar = useCallback((k: string, zona: boolean) => prefetch(
+    !zona && fora(k) ? caminhoDe({ uf: k }, primeiro) : caminhoDe(destino(k, zona)),
+  ), [prefetch, caminhoDe, destino, fora, primeiro]);
+  const semDisputa = useCallback((k: string) => (fora(k)
+    ? `Sem 2º turno para ${cargoBase(cargo).toLowerCase()}: eleição decidida no 1º turno`
+    : null), [fora, cargo]);
+  const dica = useCallback((k: string) => (fora(k)
+    ? 'Clique para ver o resultado do 1º turno →'
+    : !uf
     ? 'Clique para abrir o estado →'
-    : (porCd.get(k)?.zonas.length ?? 0) > 1 ? 'Clique para abrir as zonas →' : 'Clique para abrir o município →'), [uf, porCd]);
+    : (porCd.get(k)?.zonas.length ?? 0) > 1 ? 'Clique para abrir as zonas →' : 'Clique para abrir o município →'), [uf, porCd, fora]);
   const zonas = useMemo(() => (zonasNoMapa && munCd ? {
     geo: zonasNoMapa,
     dados: mapaZonas.data,
@@ -118,6 +129,7 @@ export function PainelMapa({ d, modo, onModo, indiceAberto, onIndice }: {
             onSelect={aoSelecionar}
             onIntencao={aoPairar}
             dica={dica}
+            semDisputa={semDisputa}
             rodape={exterior}
             zonas={zonas}
           />

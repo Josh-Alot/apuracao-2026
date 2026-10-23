@@ -719,7 +719,7 @@ tr.clicavel:hover .cand-abrir { text-decoration: underline; text-underline-offse
 .aviso-mapa-erro { border-left-color: var(--erro); background: color-mix(in srgb, var(--erro) 8%, transparent); }
 .aviso-mapa-erro strong { color: var(--erro); }
 /* Nota na coluna central, não de ponta a ponta como as faixas. */
-.app > .aviso-simulacao {
+.app > .aviso-simulacao, .app > .aviso-coluna {
   margin: 16px max(var(--gutter), calc((100% - var(--largura)) / 2)) 0; padding-inline: 16px;
 }
 
