@@ -424,6 +424,7 @@ p { margin: 0; }
 .regiao:hover { stroke: var(--texto); stroke-width: 1.4; }
 .quadro-ilha { fill: none; stroke: var(--borda-forte); stroke-width: 1; pointer-events: none; }
 .contorno-selecao { fill: none; stroke: var(--texto); stroke-width: 2.5; pointer-events: none; }
+.contorno-hover { fill: none; stroke: var(--texto); stroke-width: 1.4; pointer-events: none; }
 .rotulo-regiao {
   fill: #141413; stroke: rgb(255 255 255 / 0.85); paint-order: stroke; stroke-linejoin: round;
   font-family: var(--fonte-dado); font-weight: 600; text-anchor: middle; pointer-events: none;
