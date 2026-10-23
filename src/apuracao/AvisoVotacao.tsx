@@ -1,34 +1,11 @@
-import { useEffect, useState } from 'react';
 import type { Cargo } from '../lib/types';
 import type { FaseVotacao } from '../dominio/fase';
-
-/** Relógio que só "anda" enquanto `ativo` (atualiza a cada 15 s — a contagem é em minutos). */
-export function useAgora(ativo: boolean) {
-  const [agora, setAgora] = useState(Date.now);
-  useEffect(() => {
-    if (!ativo) return;
-    const id = setInterval(() => setAgora(Date.now()), 15_000);
-    return () => clearInterval(id);
-  }, [ativo]);
-  return agora;
-}
+import { useRelogio } from './useRelogio';
 
 /** "03:12:45" até o fechamento. */
 function contagem(ms: number) {
   const t = Math.max(0, Math.floor(ms / 1000));
   return [Math.floor(t / 3600), Math.floor(t / 60) % 60, t % 60].map((n) => String(n).padStart(2, '0')).join(':');
-}
-
-/** Relógio de 1 s, só enquanto a contagem regressiva está na tela. */
-function useSegundos(ativo: boolean) {
-  const [agora, setAgora] = useState(Date.now);
-  useEffect(() => {
-    if (!ativo) return;
-    setAgora(Date.now());
-    const id = setInterval(() => setAgora(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [ativo]);
-  return agora;
 }
 
 const hora = (iso: string) =>
@@ -46,7 +23,8 @@ interface Props {
 
 /** Faixa de largura total, acima da faixa de status, enquanto não há resultados a divulgar. */
 export function AvisoVotacao({ cargo, fase, agora: agoraMinuto }: Props) {
-  const agora = useSegundos(fase === 'votando');
+  // Relógio de 1 s só enquanto a contagem regressiva está na tela.
+  const agora = useRelogio(fase === 'votando', 1000);
   if (fase === 'apurando' || fase === 'carregando' || !cargo.abertura || !cargo.encerramento) return null;
   const turno = `${cargo.turno}º turno`;
   const fim = hora(cargo.encerramento);

@@ -3,6 +3,7 @@ import type { Candidato, MapaDados, Resultado, Resumo } from '../../lib/types';
 import { Num } from '../../ui/Num';
 import { cliqueSimples } from '../../rota/Link';
 import { useCores } from '../../lib/tema';
+import { textoSituacao } from '../../dominio/situacao';
 import { fmt, fmtPct, titulo } from '../../lib/util';
 import { caminhoCandidato } from '../../../compartilhado/rotas.mjs';
 import { regioesVencidas } from '../../dominio/placar';
@@ -30,15 +31,6 @@ interface Props {
   rotulo?: ReactNode;
   carregando?: boolean;
   onAbrir: (c: Candidato) => void;
-}
-
-/** Texto do selo de situação no placar (bloco invertido), ou null. */
-function situacao(c: Candidato) {
-  if (c.status === 'eleito') return 'Eleito';
-  if (c.status === 'segundo-turno') return 'Vai ao 2º turno';
-  if (c.matematicamente === 'eleito') return 'Matematicamente eleito';
-  if (c.matematicamente === 'segundo-turno') return '2º turno garantido';
-  return null;
 }
 
 /**
@@ -69,7 +61,7 @@ export function Placar({
       {rotulo}
       <div className="placar-colunas">
         {par.map((c, i) => {
-          const sit = situacao(c);
+          const sit = textoSituacao(c);
           const n = vencidas(c.numero);
           const vc = c.vices?.find((v) => v.tipo === 'v');
           const c1 = primeiroTurno?.candidatos.find((x) => x.numero === c.numero);

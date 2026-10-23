@@ -1,6 +1,6 @@
 import type { Cargo, MapaDados } from '../lib/types';
 import { VALE_APURANDO_MS, VALE_PARADO_MS } from '../api/consultas';
-import { useAgora } from './AvisoVotacao';
+import { useRelogio } from './useRelogio';
 
 // Com "ao vivo" ligado, os resultados chegam por stream (o servidor verifica o TSE a cada 5 s)
 // e o mapa é consultado com mais frequência. Desligado, tudo é atualizado periodicamente.
@@ -21,7 +21,7 @@ const nuncaIncompleto = () => false;
 export function useFaseApuracao(cargo: Cargo | undefined, aoVivo: boolean) {
   // Antes das 17h (fechamento das urnas) o TSE não divulga nada: carrega uma vez e não fica consultando.
   // O relógio anda a cada 15 s, então "ao vivo"/atualização periódica ligam sozinhos às 17h.
-  const agora = useAgora(!!cargo?.encerramento);
+  const agora = useRelogio(!!cargo?.encerramento, 15_000);
   const apuracaoAberta = !cargo?.encerramento || agora >= Date.parse(cargo.encerramento);
   // Com 100% das seções totalizadas os números não mudam mais: sem "ao vivo" nem atualização periódica,
   // os dados vêm ao abrir a página e a cada navegação.

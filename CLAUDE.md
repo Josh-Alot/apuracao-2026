@@ -138,7 +138,8 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
   apuracao/
     useFaseApuracao.ts Aberta/encerrada/tempo real, intervalos (`ATUALIZA_*_MS`) e `vale` (staleTime) do momento
     AvisoVotacao.tsx   Faixa âmbar acima da faixa de status: "votação ainda não começou / em andamento (contagem
-                       HH:MM:SS) / urnas fechadas"; `useAgora` (relógio de 15 s)
+                       HH:MM:SS) / urnas fechadas"
+    useRelogio.ts      Relógio que só anda enquanto ativo (15 s na fase da apuração, 1 s nas contagens regressivas)
     ProximaAtualizacao.tsx "a cada 30 s · próxima em 12 s" (usa `proxima` do useConsulta); na faixa de status
     ProximoPlantao.tsx Caixa "Próximo plantão" (2º turno na config, votação ainda não começou)
   features/
@@ -183,6 +184,7 @@ src/               React 19 + TypeScript + Vite + TanStack Query; d3-geo só par
     fase.ts          faseVotacao (antes/votando/aguardando/…), situacaoApuracao (% apurado, TSE indisponível), rotuloEstado
     duelo.ts         2º turno: finalistas, coresFinalistas, corDoLider
     placar.ts        placarDe (os dois da frente ou os finalistas, com cores), regioesVencidas
+    situacao.ts      textoSituacao: "Eleito", "Vai ao 2º turno", "Matematicamente eleito"… (placar e ficha)
     titulo.ts        tituloDaAba (document.title), nomeDaRegiao
   lib/
     util.ts          Formatação pt-BR, nomes das UFs, cores dos partidos e o ajuste delas ao tema (OKLCH)
