@@ -1,10 +1,8 @@
 import type { Cargo, Config, Local } from '../lib/types';
 
-/** Nome do cargo sem o turno: "Governador (2º turno)" → "Governador". */
-export const cargoBase = (c: Cargo) => c.nome.replace(/ \(\d+º turno\)$/, '');
-
-/** Nome do cargo como no <title> (e no <title> que o servidor injeta): "Governador", "Presidente 2º turno". */
-export const nomeCargo = (c: Cargo) => (c.turno === 2 ? `${cargoBase(c)} 2º turno` : cargoBase(c));
+// cargoBase ("Governador (2º turno)" → "Governador") e nomeCargo (como no <title>: "Presidente 2º turno") são os
+// mesmos do servidor, que injeta o <title>.
+export { cargoBase, nomeCargo } from '../../compartilhado/nomes.mjs';
 
 /** Turnos presentes na config (1, ou 1 e 2 quando o TSE publica o 2º turno). */
 export const turnosDe = (config: Config) => [...new Set(config.cargos.map((c) => c.turno))].sort();

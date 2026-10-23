@@ -15,15 +15,8 @@ export const UF_NOMES: Record<string, string> = {
   se: 'Sergipe', to: 'Tocantins', zz: 'Exterior',
 };
 
-/** "SÃO JOSÉ DOS CAMPOS" → "São José dos Campos" */
-export function titulo(s: string) {
-  const minusculas = new Set(['de', 'da', 'do', 'das', 'dos', 'e', "d'"]);
-  return s
-    .toLowerCase()
-    .split(' ')
-    .map((p, i) => (i > 0 && minusculas.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)))
-    .join(' ');
-}
+/** "SÃO JOSÉ DOS CAMPOS" → "São José dos Campos" (o mesmo do servidor, em compartilhado/nomes.mjs). */
+export { titulo } from '../../compartilhado/nomes.mjs';
 
 /** "SUPERIOR COMPLETO" → "Superior completo" */
 export const frase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();

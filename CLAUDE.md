@@ -65,6 +65,8 @@ compartilhado/     O que front e servidor usam igual, sem build
                    O front importa (`import type`, via src/lib/types.ts) e o servidor anota em JSDoc (`@import`,
                    `@returns`); `npm run typecheck` confere os dois lados. Só tipos: não existe api.mjs
   rotas.mjs        Rotas públicas e títulos das páginas (tipos em rotas.d.mts); front e server/seo.mjs
+  nomes.mjs        titulo ("SÃO JOSÉ" → "São José"), cargoBase e nomeCargo (tipos em nomes.d.mts): o <title> do
+                   servidor bate com o do front; o front reexporta por lib/util.ts e dominio/cargo.ts
 server/            Node puro (ESM, sem dependências) — o TSE não envia CORS, então tudo passa aqui
   index.mjs        Servidor HTTP: despacho das rotas (as JSON vêm da tabela de rotas/index.mjs; malhas, candidato,
                    SSE e prévia/flags têm resposta própria), ETag/304 das respostas JSON, arquivos estáticos

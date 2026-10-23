@@ -15,6 +15,7 @@ import { getCandidato, geradoEm } from './candidatos.mjs';
 import { dataFinal, eleicaoFinal } from './arquivo.mjs';
 import { cargoVisivel, flagsDe } from './flags.mjs';
 import { slugCargo, cargoPorSlug, caminho, caminhoCandidato, lerCaminho, tituloPagina } from '../compartilhado/rotas.mjs';
+import { cargoBase, nomeCargo, titulo } from '../compartilhado/nomes.mjs';
 
 const NOME_SITE = 'Apuração.org';
 // Nome anterior do site, para o Google ligar a marca nova à antiga nos dados estruturados.
@@ -56,13 +57,6 @@ const pf = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 const rf = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const pct = (n) => `${pf.format(n)}%`;
 
-/** "SÃO JOSÉ DOS CAMPOS" → "São José dos Campos" (igual ao `titulo` de src/util.ts, para bater com o front). */
-function titulo(s) {
-  const minusculas = new Set(['de', 'da', 'do', 'das', 'dos', 'e', "d'"]);
-  return String(s).toLowerCase().split(' ')
-    .map((p, i) => (i > 0 && minusculas.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1))).join(' ');
-}
-
 // Preposição + artigo antes do nome da UF: "no Rio de Janeiro", "na Bahia", "em São Paulo".
 const UF_O = new Set(['ac', 'ap', 'am', 'ce', 'df', 'es', 'ma', 'mt', 'ms', 'pa', 'pr', 'pi', 'rj', 'rn', 'rs', 'to', 'zz']);
 const UF_A = new Set(['ba', 'pb']);
@@ -78,9 +72,6 @@ function limitar(s, max = 160) {
 /** Junta o resumo dos votos e o complemento genérico, largando o complemento se passar de ~160 caracteres. */
 const descricao = (votos, complemento) => (votos ? limitar(`${votos} ${complemento}`.length <= 160 ? `${votos} ${complemento}` : votos) : limitar(complemento));
 
-const cargoBase = (c) => c.nome.replace(/\s*\(2º turno\)$/, '');
-/** Nome do cargo para `tituloPagina` (com o turno quando for o 2º). */
-const cargoNome = (c) => `${cargoBase(c)}${c.turno === 2 ? ' 2º turno' : ''}`;
 const noTurno = (c) => (c.turno === 2 ? ' no 2º turno' : '');
 
 // ---------- dados baratos ----------
@@ -242,7 +233,7 @@ async function montarPagina(pathname, flags) {
   const acima = migalhas.length > 1 ? migalhas.at(-2) : { nome: 'Início', caminho: '/' };
   listas.push({ titulo: 'Veja também', itens: [{ nome: acima.nome === 'Brasil' ? `${cargoBase(c)} no Brasil` : acima.nome, caminho: acima.caminho }] });
 
-  const titulo_ = tituloPagina({ cargoNome: cargoNome(c), ufNome, uf, munNome, zona: zona ?? undefined });
+  const titulo_ = tituloPagina({ cargoNome: nomeCargo(c), ufNome, uf, munNome, zona: zona ?? undefined });
   return {
     status: 200,
     titulo: titulo_,
@@ -277,7 +268,7 @@ function paginaInicio(cargos) {
     caminho: '/',
     h1: tituloPagina({}),
     texto: descricao_,
-    listas: [{ titulo: 'Cargos', itens: cargos.map((c) => ({ nome: cargoNome(c), caminho: `/${slugCargo(c)}` })) }],
+    listas: [{ titulo: 'Cargos', itens: cargos.map((c) => ({ nome: nomeCargo(c), caminho: `/${slugCargo(c)}` })) }],
     site: true,
     // O início abre o primeiro cargo da config (resolverTela no front).
     preload: cargos[0]?.escopo === 'br' ? urlResultadoDoFront(cargos[0]) : null,
@@ -351,7 +342,7 @@ async function paginaCandidato(sq, cargos, cfg) {
     texto: desc,
     fatos,
     migalhas: migalhas.length > 1 ? migalhas : null,
-    listas: c ? [{ titulo: 'Veja também', itens: [{ nome: `${cargoNome(c)} ${migalhas.length > 2 ? naUf('em', entrada.uf, migalhas[1].nome) : 'no Brasil'}`, caminho: migalhas.at(-2).caminho }] }] : [],
+    listas: c ? [{ titulo: 'Veja também', itens: [{ nome: `${nomeCargo(c)} ${migalhas.length > 2 ? naUf('em', entrada.uf, migalhas[1].nome) : 'no Brasil'}`, caminho: migalhas.at(-2).caminho }] }] : [],
     pessoa,
   };
 }
