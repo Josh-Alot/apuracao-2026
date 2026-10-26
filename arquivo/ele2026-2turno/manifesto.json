@@ -1,0 +1,322 @@
+{
+ "ciclo": "ele2026",
+ "turno": 2,
+ "fonte": "https://resultados.tse.jus.br/oficial",
+ "unidades": {
+  "6258/ac-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 45,
+   "faltando": 0,
+   "bytes": 4843,
+   "tse": "25/10/2026 23:26:56",
+   "arquivado": "2026-10-26T11:04:27.997Z"
+  },
+  "6258/al-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 209,
+   "faltando": 0,
+   "bytes": 17319,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:04:54.664Z"
+  },
+  "6258/am-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 136,
+   "faltando": 0,
+   "bytes": 12526,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:05:16.508Z"
+  },
+  "6258/ap-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 34,
+   "faltando": 0,
+   "bytes": 4015,
+   "tse": "25/10/2026 23:26:56",
+   "arquivado": "2026-10-26T11:04:59.157Z"
+  },
+  "6258/ba-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 867,
+   "faltando": 0,
+   "bytes": 70144,
+   "tse": "25/10/2026 23:27:06",
+   "arquivado": "2026-10-26T11:07:05.093Z"
+  },
+  "6258/br-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 0,
+   "faltando": 0,
+   "bytes": 1133,
+   "tse": "25/10/2026 23:27:02",
+   "arquivado": "2026-10-26T11:04:22.119Z"
+  },
+  "6258/ce-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 389,
+   "faltando": 0,
+   "bytes": 32669,
+   "tse": "25/10/2026 23:26:58",
+   "arquivado": "2026-10-26T11:07:53.908Z"
+  },
+  "6258/df-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 20,
+   "faltando": 0,
+   "bytes": 3882,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:07:56.456Z"
+  },
+  "6258/es-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 163,
+   "faltando": 0,
+   "bytes": 14668,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:08:17.070Z"
+  },
+  "6258/go-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 505,
+   "faltando": 0,
+   "bytes": 39487,
+   "tse": "25/10/2026 23:26:59",
+   "arquivado": "2026-10-26T11:09:20.273Z"
+  },
+  "6258/ma-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 440,
+   "faltando": 0,
+   "bytes": 34572,
+   "tse": "25/10/2026 23:27:00",
+   "arquivado": "2026-10-26T11:10:15.446Z"
+  },
+  "6258/mg-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 1751,
+   "faltando": 0,
+   "bytes": 136152,
+   "tse": "25/10/2026 23:27:09",
+   "arquivado": "2026-10-26T11:14:52.038Z"
+  },
+  "6258/ms-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 167,
+   "faltando": 0,
+   "bytes": 14806,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:11:12.751Z"
+  },
+  "6258/mt-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 289,
+   "faltando": 0,
+   "bytes": 23086,
+   "tse": "25/10/2026 23:26:58",
+   "arquivado": "2026-10-26T11:10:51.636Z"
+  },
+  "6258/pa-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 304,
+   "faltando": 0,
+   "bytes": 26006,
+   "tse": "25/10/2026 23:26:59",
+   "arquivado": "2026-10-26T11:15:30.380Z"
+  },
+  "6258/pb-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 453,
+   "faltando": 0,
+   "bytes": 35347,
+   "tse": "25/10/2026 23:26:59",
+   "arquivado": "2026-10-26T11:16:27.082Z"
+  },
+  "6258/pe-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 394,
+   "faltando": 0,
+   "bytes": 33523,
+   "tse": "25/10/2026 23:26:59",
+   "arquivado": "2026-10-26T11:18:59.197Z"
+  },
+  "6258/pi-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 454,
+   "faltando": 0,
+   "bytes": 35009,
+   "tse": "25/10/2026 23:26:59",
+   "arquivado": "2026-10-26T11:19:56.287Z"
+  },
+  "6258/pr-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 820,
+   "faltando": 0,
+   "bytes": 63826,
+   "tse": "25/10/2026 23:27:02",
+   "arquivado": "2026-10-26T11:18:09.763Z"
+  },
+  "6258/rj-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 275,
+   "faltando": 0,
+   "bytes": 30331,
+   "tse": "25/10/2026 23:26:58",
+   "arquivado": "2026-10-26T11:20:30.747Z"
+  },
+  "6258/rn-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 339,
+   "faltando": 0,
+   "bytes": 26726,
+   "tse": "25/10/2026 23:26:58",
+   "arquivado": "2026-10-26T11:21:13.249Z"
+  },
+  "6258/ro-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 108,
+   "faltando": 0,
+   "bytes": 9762,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:23:34.626Z"
+  },
+  "6258/rr-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 31,
+   "faltando": 0,
+   "bytes": 3711,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:23:38.704Z"
+  },
+  "6258/rs-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 1019,
+   "faltando": 0,
+   "bytes": 78471,
+   "tse": "25/10/2026 23:27:07",
+   "arquivado": "2026-10-26T11:23:20.924Z"
+  },
+  "6258/sc-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 610,
+   "faltando": 0,
+   "bytes": 48215,
+   "tse": "25/10/2026 23:27:01",
+   "arquivado": "2026-10-26T11:24:55.163Z"
+  },
+  "6258/se-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 152,
+   "faltando": 0,
+   "bytes": 12847,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:28:12.640Z"
+  },
+  "6258/sp-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 1424,
+   "faltando": 0,
+   "bytes": 121123,
+   "tse": "25/10/2026 23:27:11",
+   "arquivado": "2026-10-26T11:27:53.345Z"
+  },
+  "6258/to-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 279,
+   "faltando": 0,
+   "bytes": 21455,
+   "tse": "25/10/2026 23:26:58",
+   "arquivado": "2026-10-26T11:28:47.772Z"
+  },
+  "6258/zz-c0001": {
+   "cargo": "Presidente (2º turno)",
+   "final": true,
+   "regioes": 372,
+   "faltando": 0,
+   "bytes": 20533,
+   "tse": "25/10/2026 23:26:57",
+   "arquivado": "2026-10-26T11:29:34.339Z"
+  },
+  "6260/ac-c0003": {
+   "cargo": "Governador (2º turno)",
+   "final": true,
+   "regioes": 45,
+   "faltando": 0,
+   "bytes": 4814,
+   "tse": "25/10/2026 21:26:35",
+   "arquivado": "2026-10-26T11:31:03.254Z"
+  },
+  "6260/am-c0003": {
+   "cargo": "Governador (2º turno)",
+   "final": true,
+   "regioes": 136,
+   "faltando": 0,
+   "bytes": 12657,
+   "tse": "25/10/2026 22:10:45",
+   "arquivado": "2026-10-26T11:29:51.717Z"
+  },
+  "6260/df-c0003": {
+   "cargo": "Governador (2º turno)",
+   "final": true,
+   "regioes": 20,
+   "faltando": 0,
+   "bytes": 4070,
+   "tse": "25/10/2026 21:28:25",
+   "arquivado": "2026-10-26T11:30:36.936Z"
+  },
+  "6260/es-c0003": {
+   "cargo": "Governador (2º turno)",
+   "final": true,
+   "regioes": 163,
+   "faltando": 0,
+   "bytes": 14970,
+   "tse": "25/10/2026 21:32:45",
+   "arquivado": "2026-10-26T11:30:57.564Z"
+  },
+  "6260/rn-c0003": {
+   "cargo": "Governador (2º turno)",
+   "final": true,
+   "regioes": 339,
+   "faltando": 0,
+   "bytes": 27277,
+   "tse": "25/10/2026 21:24:45",
+   "arquivado": "2026-10-26T11:30:34.403Z"
+  },
+  "6260/to-c0003": {
+   "cargo": "Governador (2º turno)",
+   "final": true,
+   "regioes": 279,
+   "faltando": 0,
+   "bytes": 21873,
+   "tse": "25/10/2026 21:45:15",
+   "arquivado": "2026-10-26T11:31:38.242Z"
+  }
+ }
+}
